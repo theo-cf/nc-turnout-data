@@ -7,3 +7,5 @@ last_modified.txt
 site/
 __pycache__/
 _site/
+raw_results/
+results_modified.txt

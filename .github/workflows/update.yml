@@ -8,6 +8,8 @@ on:
     - cron: '37 9,10 * * *'
     - cron: '17 16,17 * * *'
     - cron: '17 21,22 * * *'
+    # Election night: every 20 minutes from 7 p.m. Nov. 3 to about 4:40 a.m. Nov. 4 Eastern (00:00-09:40 UTC Nov. 4).
+    - cron: '*/20 0-9 4 11 *'
   workflow_dispatch: {}
 
 permissions:
@@ -32,16 +34,29 @@ jobs:
       PAGES_FROM_ACTIONS: ${{ vars.PAGES_FROM_ACTIONS == 'true' }}
       HAS_GROUPS: ${{ secrets.STAFF_GROUPS != '' }}
     steps:
-      - name: Check the time (runs only at the Eastern-time targets)
+      - name: Check the schedule
         id: gate
+        # Before Election Day and through the county canvass (Nov. 13): 5:37 a.m., 12:17 p.m. and 5:17 p.m.
+        # Election night (7 p.m. Nov. 3 to 4:40 a.m. Nov. 4): every 20 minutes.
+        # Nov. 14-24 (to state certification): once a day, 5:37 a.m. After Nov. 24: no scheduled runs.
+        # Manual runs (Run workflow) always go ahead.
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          DAY=$(TZ=America/New_York date +%F)
           NOW=$((10#$(TZ=America/New_York date +%H) * 60 + 10#$(TZ=America/New_York date +%M)))
           GO=false
-          for T in 337 737 1037; do   # 5:37, 12:17, 17:17 in minutes after midnight
-            if [ $NOW -ge $T ] && [ $NOW -lt $((T + 55)) ]; then GO=true; fi
-          done
-          echo "Eastern time now: $(TZ=America/New_York date +%H:%M); run: $GO"
+          if [[ "$DAY" > "2026-11-24" ]]; then
+            GO=false
+          elif [[ "$DAY" == "2026-11-03" && $NOW -ge 1140 ]] || [[ "$DAY" == "2026-11-04" && $NOW -lt 290 ]]; then
+            GO=true
+          else
+            TARGETS="337 737 1037"   # 5:37, 12:17, 17:17 in minutes after midnight
+            if [[ "$DAY" > "2026-11-13" ]]; then TARGETS="337"; fi
+            for T in $TARGETS; do
+              if [ $NOW -ge $T ] && [ $NOW -lt $((T + 55)) ]; then GO=true; fi
+            done
+          fi
+          echo "Eastern time now: $DAY $(TZ=America/New_York date +%H:%M); run: $GO"
           echo "go=$GO" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
@@ -66,11 +81,25 @@ jobs:
           unzip -o absentee.zip -d raw
           ls -la raw
 
-      - name: Build totals (stops here if anything looks wrong)
+      - name: Download election-night precinct results, once they exist
         if: steps.gate.outputs.go == 'true'
+        run: |
+          URL=https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03/results_pct_20261103.zip
+          if curl -fsSL --retry 2 --retry-delay 20 -o results.zip "$URL"; then
+            curl -fsSI "$URL" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r' > results_modified.txt
+            unzip -o results.zip -d raw_results && ls -la raw_results
+          else
+            echo "No precinct results file posted yet."
+          fi
+
+      - name: Build totals (stops here if anything looks wrong)
+        # Skipped once final turnout has been published (docs/FINAL exists); the site is still republished.
+        if: steps.gate.outputs.go == 'true' && hashFiles('docs/FINAL') == ''
         run: |
           SRC=$(find raw -type f \( -iname '*.csv' -o -iname '*.txt' \) | head -1)
           ASOF=$(TZ=America/New_York date +%F)
+          export RESULTS_FILE=$(find raw_results -type f -iname '*.txt' 2>/dev/null | head -1)
+          export RESULTS_MODIFIED=$(cat results_modified.txt 2>/dev/null)
           python build_data.py "$SRC" "$ASOF" docs "$(cat last_modified.txt)"
 
       - name: Publish
