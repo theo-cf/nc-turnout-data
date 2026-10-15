@@ -1,0 +1,60 @@
+name: Publish final turnout (voter history)
+
+# Run this by hand once, a few weeks after the election, when counties have finished loading Election Day
+# voter history (see README). It rewrites docs/data.json with final turnout for every voter (early, mail and
+# Election Day, with party and age) and final precinct turnout, then marks the data final so the scheduled
+# updates stop changing it. To undo, delete docs/FINAL and run "Update turnout data" by hand.
+
+on:
+  workflow_dispatch:
+    inputs:
+      election:
+        description: Election label in the State Board's voter history file
+        default: '11/03/2026'
+        required: true
+
+permissions:
+  contents: write
+  actions: write   # to start "Update turnout data", which publishes the site
+
+concurrency:
+  group: update-turnout-data
+  cancel-in-progress: false
+
+jobs:
+  final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pandas
+        run: pip install pandas==2.2.3
+
+      - name: Download statewide voter history and voter registration (about 900 MB)
+        run: |
+          mkdir -p big
+          curl -fsSL --retry 3 --retry-delay 30 -o big/ncvhis_Statewide.zip https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvhis_Statewide.zip
+          curl -fsSL --retry 3 --retry-delay 30 -o big/ncvoter_Statewide.zip https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvoter_Statewide.zip
+          ls -la big
+
+      - name: Build final turnout (stops here if anything looks wrong)
+        run: python final_data.py big/ncvhis_Statewide.zip --voters big/ncvoter_Statewide.zip --data docs/data.json --election "${{ inputs.election }}"
+
+      - name: Save
+        run: |
+          rm -rf big
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          git commit -m "Final turnout from voter history (${{ inputs.election }})"
+          git push
+
+      - name: Publish the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update.yml --ref "${{ github.ref_name }}"

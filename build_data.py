@@ -6,6 +6,10 @@ Usage:
 If the State Board's Last-Modified header is given, the as-of date and the "updated" time come from it
 (converted to Eastern time), so the published data says when the State Board posted the file.
 
+Election Day: if the environment variable RESULTS_FILE points to the State Board's precinct results file
+(results_pct_20261103.txt), Election Day votes are added (see election_day.py), and RESULTS_MODIFIED can
+carry that file's Last-Modified header. From Election Day on, turnout by precinct is published too.
+
 Writes <output dir>/data.json and <output dir>/archive/<as-of date>.json.
 Only totals are written. No voter-level information (names, addresses, IDs) is ever saved.
 
@@ -26,7 +30,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from ncsbe import ACCEPTED, KNOWN, NEEDS_CURE, REJECTED, TYPES, norm, num
+from election_day import PRECINCT_MIN, TOP_CONTEST, district_ed, load_lookup, precinct_tables, read_results
+from ncsbe import ACCEPTED, COUNTY_NAME, DISTRICTS, KNOWN, NC_COUNTIES, NEEDS_CURE, REJECTED, TYPES, norm, num
 
 SRC, ASOF, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 UPDATED = None
@@ -34,10 +39,17 @@ if len(sys.argv) > 4 and sys.argv[4].strip():
     posted = parsedate_to_datetime(sys.argv[4].strip()).astimezone(ZoneInfo('America/New_York'))
     ASOF = posted.strftime('%Y-%m-%d')
     UPDATED = posted.isoformat(timespec='minutes')   # e.g. 2026-10-15T05:16-04:00
+RESULTS_FILE = os.environ.get('RESULTS_FILE', '').strip()
+if os.environ.get('RESULTS_MODIFIED', '').strip() and RESULTS_FILE:
+    rposted = parsedate_to_datetime(os.environ['RESULTS_MODIFIED'].strip()).astimezone(ZoneInfo('America/New_York'))
+    if UPDATED is None or rposted.isoformat(timespec='minutes') > UPDATED:
+        UPDATED = rposted.isoformat(timespec='minutes')   # the newer of the two State Board files
+ELECTION_DAY = os.environ.get('ELECTION_DAY_OVERRIDE') or '2026-11-03'   # precinct turnout is published from this date on (override only for tests)
+ED_DROP_LIMIT = 0.90          # stop if Election Day votes fall below 90% of the last published count
 DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last published total
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
-        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name']
+        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc']
 AGE_GROUPS = [(18, 29), (30, 44), (45, 64), (65, 200)]   # 18-29, 30-44, 45-64, 65 and older
 EV_START, EV_DAYS = '2026-10-15', 17                      # in-person early voting, Oct. 15-31
 
@@ -95,7 +107,7 @@ def totals(s):
     }
 
 
-GEOS = [('county', 'county_desc', lambda v: v.title()),
+GEOS = [('county', 'county_desc', lambda v: COUNTY_NAME.get(v.upper(), v.title())),
         ('cd', 'cong_dist_desc', lambda v: f'CD {num(v)}'),
         ('hd', 'nc_house_desc', lambda v: f'HD {num(v)}'),
         ('sd', 'nc_senate_desc', lambda v: f'SD {num(v)}')]
@@ -112,6 +124,14 @@ for key, field, label in GEOS:
         r['cure'] = int((cure[field] == v).sum())
         r['name'] = label(v)
         rows.append(r)
+    # Every county and district gets a row, even before any vote from it shows up (Election Day votes may).
+    have = {r['name'] for r in rows}
+    allnames = [c for c in NC_COUNTIES] if key == 'county' else [f'{key.upper()} {n}' for n in range(1, DISTRICTS[key] + 1)]
+    for n in allnames:
+        if n not in have:
+            r = totals(acc.iloc[0:0])
+            r['cure'], r['name'] = 0, n
+            rows.append(r)
     rows.sort(key=lambda r: (r['name'] if key == 'county' else num(r['name'])))
     out['geo'][key] = rows
     # Voters with no district listed in the State Board file count statewide and in their county only.
@@ -146,12 +166,37 @@ out['sites'] = {}
 for (county, site), s in ev.groupby(['county_desc', 'site']):
     daily = s.day.value_counts()
     p, a = s.party.value_counts(), s.ab.value_counts()
-    out['sites'].setdefault(county.title(), []).append([
+    out['sites'].setdefault(COUNTY_NAME.get(county, county.title()), []).append([
         site, [int(daily.get(d, 0)) for d in ev_days],
         [int(p.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
         [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))]])
 for rows in out['sites'].values():
     rows.sort(key=lambda r: -sum(r[1]))
+
+# ---- Election Day votes (election night on) and turnout by precinct (from Election Day on) ----
+lookup = load_lookup()
+ed_pct = None
+if RESULTS_FILE and os.path.exists(RESULTS_FILE):
+    try:
+        ed_pct = read_results(RESULTS_FILE)
+    except ValueError as e:
+        print(f'WARNING: results file skipped: {e}', file=sys.stderr)   # never let it block early and mail updates
+    if ed_pct is not None and ed_pct.ed.sum() == 0:
+        ed_pct = None
+if ed_pct is not None:
+    out['ed_contest'] = TOP_CONTEST
+    out['state']['ed'] = int(ed_pct.ed.sum())
+    by_county = ed_pct.groupby('county').ed.sum()
+    for r in out['geo']['county']:
+        r['ed'] = int(by_county.get(r['name'].upper(), 0))
+    dist = district_ed(ed_pct, lookup)
+    for k in ('cd', 'hd', 'sd'):
+        for r in out['geo'][k]:
+            r['ed'] = dist[k].get(num(r['name']), 0)
+    out['unassigned_ed'] = {k: dist[k + '_unassigned'] for k in ('cd', 'hd', 'sd')}
+if ASOF >= ELECTION_DAY:
+    out['precincts'] = precinct_tables(acc, ed_pct, lookup)
+    out['precinct_min'] = PRECINCT_MIN
 
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
@@ -160,6 +205,11 @@ if os.path.exists(prev_path):
     pv, nv = prev['state']['vc'], out['state']['vc']
     if pv and nv < pv * DROP_LIMIT:
         fail(f'votes cast fell from {pv:,} to {nv:,} (more than {100 - DROP_LIMIT * 100:.0f}%); keeping the previous data')
+    pe, ne = prev['state'].get('ed') or 0, out['state'].get('ed') or 0
+    if pe and ne < pe * ED_DROP_LIMIT:
+        fail(f'Election Day votes fell from {pe:,} to {ne:,}; keeping the previous data')
+if ed_pct is not None and sum(r['ed'] for r in out['geo']['county']) != out['state']['ed']:
+    fail('Election Day county totals do not add up to the statewide total')
 if sum(sum(r[1]) for rows in out['sites'].values() for r in rows) > out['state']['ev']:
     fail('early voting site totals are larger than early in-person votes')
 for key, _, _ in GEOS:
@@ -172,5 +222,8 @@ for path in (prev_path, os.path.join(OUT, 'archive', ASOF + '.json')):
         json.dump(out, f, separators=(',', ':'))
 
 s = out['state']
-print(f"as of {ASOF}: {s['vc']:,} votes cast ({s['ev']:,} early in person, {s['ml']:,} by mail); "
-      f"{len(cure):,} need a fix; {rejected_total:,} rejected; {sum(len(v) for v in out['sites'].values()):,} early voting sites; places: " + ', '.join(f"{k} {len(v)}" for k, v in out['geo'].items()))
+print(f"as of {ASOF}: {s['vc']:,} votes cast ({s['ev']:,} early in person, {s['ml']:,} by mail)"
+      + (f"; {s['ed']:,} on Election Day" if 'ed' in s else '')
+      + f"; {len(cure):,} need a fix; {rejected_total:,} rejected; {sum(len(v) for v in out['sites'].values()):,} early voting sites"
+      + (f"; precinct tables for {len(out['precincts'])} counties" if 'precincts' in out else '')
+      + '; places: ' + ', '.join(f"{k} {len(v)}" for k, v in out['geo'].items()))

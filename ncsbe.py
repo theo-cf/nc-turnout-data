@@ -19,6 +19,8 @@ def norm(x):
     if pd.isna(x):
         return x
     s = re.sub(r'\s*-\s*', ' - ', str(x).upper().strip())
+    if not s:
+        return float('nan')   # a blank status means nothing has been returned yet
     return s.replace('E - TRANSMISSION', 'E-TRANSMISSION').replace('ONE - STOP', 'ONE-STOP')
 
 
@@ -42,3 +44,4 @@ NC_COUNTIES = [
     'Vance', 'Wake', 'Warren', 'Washington', 'Watauga', 'Wayne', 'Wilkes', 'Wilson', 'Yadkin', 'Yancey',
 ]
 DISTRICTS = {'cd': 14, 'hd': 120, 'sd': 50}
+COUNTY_NAME = {c.upper(): c for c in NC_COUNTIES}   # 'MCDOWELL' -> 'McDowell'
