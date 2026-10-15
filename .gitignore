@@ -9,3 +9,4 @@ __pycache__/
 _site/
 raw_results/
 results_modified.txt
+!precincts.csv
