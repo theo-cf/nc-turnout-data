@@ -20,12 +20,13 @@ status it doesn't recognize, or if total votes cast drop sharply from the last p
 """
 import json
 import os
-import re
 import sys
 from email.utils import parsedate_to_datetime
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+
+from ncsbe import ACCEPTED, KNOWN, NEEDS_CURE, REJECTED, TYPES, norm, num
 
 SRC, ASOF, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 UPDATED = None
@@ -38,28 +39,9 @@ DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last publis
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
         'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status']
 
-# Every return status the State Board documents, grouped.
-ACCEPTED = {'ACCEPTED', 'ACCEPTED - EXCEPTION', 'ACCEPTED - CURED'}
-NEEDS_CURE = {'PENDING CURE', 'PHOTO ID CURABLE', 'ID NOT PROVIDED', 'CONFLICT', 'VOTER SIGNATURE MISSING',
-              'AFFIDAVIT INCOMPLETE', 'PHOTO ID NONCOMPLIANT', 'AFFIDAVIT REVIEW PENDING', 'PENDING'}
-REJECTED = {'AFFIDAVIT DECLINED', 'ASSISTANT INFO INCOMPLETE', 'NOT PROPERLY NOTARIZED', 'NO TIME FOR CURE',
-            'NOT VOTED', 'REJECTED', 'RETURNED AFTER DEADLINE', 'RETURNED UNDELIVERABLE', 'SIGNED BY OTHER',
-            'WITNESS INFO INCOMPLETE', 'WRONG VOTER', 'NO APPLICATION', 'E-TRANSMISSION FAILURE'}
-REPLACED = {'SPOILED - EV', 'SPOILED', 'CANCELLED', 'DUPLICATE'}
-KNOWN = ACCEPTED | NEEDS_CURE | REJECTED | REPLACED
-TYPES = {'MAIL': 'ml', 'ONE-STOP': 'ev'}
-
-
 def fail(msg):
     print('STOPPING: ' + msg, file=sys.stderr)
     sys.exit(1)
-
-
-def norm(x):
-    if pd.isna(x):
-        return x
-    s = re.sub(r'\s*-\s*', ' - ', str(x).upper().strip())
-    return s.replace('E - TRANSMISSION', 'E-TRANSMISSION').replace('ONE - STOP', 'ONE-STOP')
 
 
 df = pd.read_csv(SRC, encoding='iso-8859-1', usecols=COLS, dtype=str)
@@ -106,11 +88,6 @@ def totals(s):
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
         'tev': [int(x) for x in by['ev']] if 'ev' in by else [0] * len(days),   # new votes per day, early in person
     }
-
-
-def num(x):
-    m = re.search(r'(\d+)$', str(x))
-    return int(m.group(1)) if m else 0
 
 
 GEOS = [('county', 'county_desc', lambda v: v.title()),
