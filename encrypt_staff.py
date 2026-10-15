@@ -35,6 +35,8 @@ import unicodedata
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from ncsbe import DISTRICTS, NC_COUNTIES
+
 ITERATIONS = 600_000
 AAD = b'nc-cure-staff-v1'
 MIN_PASSWORD = 16
@@ -72,10 +74,10 @@ def load_groups(argv):
     return groups
 
 
-def check_groups(groups, data):
-    known = {'county': {r['name'].lower() for r in data['geo']['county']}}
-    for k in ('cd', 'hd', 'sd'):
-        known[k] = {int(''.join(ch for ch in r['name'] if ch.isdigit())) for r in data['geo'][k]}
+def check_groups(groups):
+    known = {'county': {c.lower() for c in NC_COUNTIES}}
+    for k, top in DISTRICTS.items():
+        known[k] = set(range(1, top + 1))
     seen = set()
     for n, g in enumerate(groups, 1):
         label = str(g.get('label', '')).strip()
@@ -93,16 +95,21 @@ def check_groups(groups, data):
         if not isinstance(area, dict) or not area or set(area) - set(AREA_KEYS):
             fail(f'group {n} needs "area": "all" or a mix of {", ".join(AREA_KEYS)}')
         for k, vals in area.items():
+            if not isinstance(vals, list) or not vals:
+                fail(f'group {n}: "{k}" must be a list, e.g. ["Orange"] or [4]')
             for v in vals:
-                key = str(v).lower() if k == 'county' else int(v)
+                try:
+                    key = str(v).strip().lower() if k == 'county' else int(v)
+                except (TypeError, ValueError):
+                    key = None
                 if key not in known[k]:
-                    fail(f'group {n}: {k} "{v}" is not in the State Board file')
+                    fail(f'group {n}: {k} "{v}" is not a North Carolina {"county" if k == "county" else "district number"}')
 
 
 def in_area(v, area):
     if area == 'all':
         return True
-    if v['county'].lower() in {str(c).lower() for c in area.get('county', [])}:
+    if v['county'].lower() in {str(c).strip().lower() for c in area.get('county', [])}:
         return True
     return any(v[k] != '' and int(v[k]) in {int(x) for x in area.get(k, [])} for k in ('cd', 'hd', 'sd'))
 
@@ -125,7 +132,7 @@ def main():
     src, out = sys.argv[1], sys.argv[2]
     data = json.load(open(src))
     groups = load_groups(sys.argv)
-    check_groups(groups, data)
+    check_groups(groups)
 
     salt = secrets.token_bytes(16)
     os.makedirs(out, exist_ok=True)

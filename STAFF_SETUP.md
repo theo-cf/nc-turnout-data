@@ -32,7 +32,9 @@ Do steps 1 and 2 together. With the source switched but the variable missing, th
 
 ### 2. Create the access groups
 
-Make a list of groups like this. Partner names stay private because this goes in a secret.
+The easiest way is the **access group builder**: download `staff/access_group_builder.html` from this repo and open it in your browser. It generates strong passwords, checks county names and district numbers, and copies the finished list. It runs entirely in your browser and sends nothing anywhere.
+
+By hand, the list looks like this. Partner names stay private because this goes in a secret.
 
 ```json
 [
