@@ -37,7 +37,9 @@ if len(sys.argv) > 4 and sys.argv[4].strip():
 DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last published total
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
-        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status']
+        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name']
+AGE_GROUPS = [(18, 29), (30, 44), (45, 64), (65, 200)]   # 18-29, 30-44, 45-64, 65 and older
+EV_START, EV_DAYS = '2026-10-15', 17                      # in-person early voting, Oct. 15-31
 
 def fail(msg):
     print('STOPPING: ' + msg, file=sys.stderr)
@@ -71,6 +73,7 @@ acc['kind'] = acc.rtype.map(TYPES)
 acc['when'] = pd.to_datetime(acc.ballot_rtn_dt, format='%m/%d/%Y', errors='coerce')
 acc['prio'] = (acc.kind == 'ev').astype(int)
 acc = acc.sort_values(['prio', 'when'], ascending=[False, False]).drop_duplicates('ncid', keep='first')
+acc['ab'] = pd.cut(pd.to_numeric(acc.age, errors='coerce'), [a - 1 for a, _ in AGE_GROUPS] + [200], labels=False)
 acc['party'] = acc.voter_party_code.where(acc.voter_party_code.isin(['DEM', 'REP', 'UNA']), 'OTH')
 asof_ts = pd.Timestamp(ASOF)
 acc['when'] = acc.when.fillna(asof_ts)
@@ -81,10 +84,12 @@ days = pd.date_range(acc.when.min(), asof_ts, freq='D').strftime('%Y-%m-%d').tol
 def totals(s):
     k = s.kind.value_counts()
     p = s.party.value_counts()
+    a = s.ab.value_counts()
     by = s.groupby(['day', 'kind']).size().unstack(fill_value=0).reindex(days, fill_value=0)
     return {
         'vc': int(len(s)), 'ev': int(k.get('ev', 0)), 'ml': int(k.get('ml', 0)),
         'pty': [int(p.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
+        'age': [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))],   # by age group (voters with no age listed are left out)
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
         'tev': [int(x) for x in by['ev']] if 'ev' in by else [0] * len(days),   # new votes per day, early in person
     }
@@ -112,6 +117,42 @@ for key, field, label in GEOS:
     # Voters with no district listed in the State Board file count statewide and in their county only.
     out['unassigned'][key] = int(acc[field].isna().sum())
 
+# ---- early voting sites: accepted early in-person votes by the site where they were cast ----
+SMALL = {'of', 'the', 'and', 'at', 'for', 'in', 'on', 'a'}
+KEEP_UPPER = {'YMCA', 'YWCA', 'UNC', 'NCCU', 'NCSU', 'ECU', 'WSSU', 'UNCG', 'UNCW', 'UNCC', 'NCA&T', 'A&T', 'VFW', 'AME', 'BOE', 'II', 'III', 'NC', 'USA', 'CC', 'EMS'}
+
+
+def site_label(x):
+    words = ' '.join(str(x).split()).split(' ')
+    out_w = []
+    for i, w in enumerate(words):
+        u = w.upper()
+        if u in KEEP_UPPER:
+            out_w.append(u)
+        elif i and w.lower() in SMALL:
+            out_w.append(w.lower())
+        else:
+            t = w.capitalize()
+            if t.startswith('Mc') and len(t) > 2:
+                t = 'Mc' + t[2:].capitalize()
+            out_w.append(t)
+    return ' '.join(out_w)
+
+
+ev_days = pd.date_range(EV_START, periods=EV_DAYS, freq='D').strftime('%Y-%m-%d').tolist()
+ev = acc[(acc.kind == 'ev') & acc.site_name.notna() & (acc.site_name.str.strip() != '')].copy()
+ev['site'] = ev.site_name.map(site_label)
+out['sites'] = {}
+for (county, site), s in ev.groupby(['county_desc', 'site']):
+    daily = s.day.value_counts()
+    p, a = s.party.value_counts(), s.ab.value_counts()
+    out['sites'].setdefault(county.title(), []).append([
+        site, [int(daily.get(d, 0)) for d in ev_days],
+        [int(p.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
+        [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))]])
+for rows in out['sites'].values():
+    rows.sort(key=lambda r: -sum(r[1]))
+
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
 if os.path.exists(prev_path):
@@ -119,6 +160,8 @@ if os.path.exists(prev_path):
     pv, nv = prev['state']['vc'], out['state']['vc']
     if pv and nv < pv * DROP_LIMIT:
         fail(f'votes cast fell from {pv:,} to {nv:,} (more than {100 - DROP_LIMIT * 100:.0f}%); keeping the previous data')
+if sum(sum(r[1]) for rows in out['sites'].values() for r in rows) > out['state']['ev']:
+    fail('early voting site totals are larger than early in-person votes')
 for key, _, _ in GEOS:
     if sum(r['vc'] for r in out['geo'][key]) + out['unassigned'][key] != out['state']['vc']:
         fail(f'{key} totals do not add up to the statewide total')
@@ -130,4 +173,4 @@ for path in (prev_path, os.path.join(OUT, 'archive', ASOF + '.json')):
 
 s = out['state']
 print(f"as of {ASOF}: {s['vc']:,} votes cast ({s['ev']:,} early in person, {s['ml']:,} by mail); "
-      f"{len(cure):,} need a fix; {rejected_total:,} rejected; places: " + ', '.join(f"{k} {len(v)}" for k, v in out['geo'].items()))
+      f"{len(cure):,} need a fix; {rejected_total:,} rejected; {sum(len(v) for v in out['sites'].values()):,} early voting sites; places: " + ', '.join(f"{k} {len(v)}" for k, v in out['geo'].items()))
