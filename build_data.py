@@ -1,7 +1,10 @@
 """Build the Turnout Tracker data file from the NC State Board of Elections statewide absentee file.
 
 Usage:
-    python build_data.py <absentee csv> <as-of date YYYY-MM-DD> <output dir>
+    python build_data.py <absentee csv> <as-of date YYYY-MM-DD> <output dir> [<file Last-Modified header>]
+
+If the State Board's Last-Modified header is given, the as-of date and the "updated" time come from it
+(converted to Eastern time), so the published data says when the State Board posted the file.
 
 Writes <output dir>/data.json and <output dir>/archive/<as-of date>.json.
 Only totals are written. No voter-level information (names, addresses, IDs) is ever saved.
@@ -19,10 +22,17 @@ import json
 import os
 import re
 import sys
+from email.utils import parsedate_to_datetime
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 SRC, ASOF, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+UPDATED = None
+if len(sys.argv) > 4 and sys.argv[4].strip():
+    posted = parsedate_to_datetime(sys.argv[4].strip()).astimezone(ZoneInfo('America/New_York'))
+    ASOF = posted.strftime('%Y-%m-%d')
+    UPDATED = posted.isoformat(timespec='minutes')   # e.g. 2026-10-15T05:16-04:00
 DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last published total
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
@@ -102,7 +112,7 @@ GEOS = [('county', 'county_desc', lambda v: v.title()),
         ('hd', 'nc_house_desc', lambda v: f'HD {num(v)}'),
         ('sd', 'nc_senate_desc', lambda v: f'SD {num(v)}')]
 
-out = {'asof': ASOF, 'days': days, 'state': totals(acc), 'geo': {}, 'unassigned': {}}
+out = {'asof': ASOF, 'updated': UPDATED, 'days': days, 'state': totals(acc), 'geo': {}, 'unassigned': {}}
 out['state']['g_rej'] = rejected_total
 for key, field, label in GEOS:
     # Every place that appears in the file gets a row, even with zero accepted votes so far.
