@@ -79,10 +79,11 @@ def match_names(names, lookup_names):
     return out
 
 
-def precinct_tables(acc, ed_by_pct, lookup):
+def precinct_tables(acc, ed_by_pct, lookup, reg=None):
     """{County: {'rows': [[name, early, mail, election day], ...] largest first, 'small': [count, early, mail, ed] or None}}.
 
-    acc: accepted votes, one row per voter, with county_desc, precinct_desc and kind ('ev' or 'ml')."""
+    acc: accepted votes, one row per voter, with county_desc, precinct_desc and kind ('ev' or 'ml').
+    reg: optional {COUNTY: {precinct name: registered voters}}; adds a fifth number per row."""
     out = {}
     for county, lk in lookup.groupby('county'):
         a = acc[acc.county_desc == county]
@@ -92,10 +93,11 @@ def precinct_tables(acc, ed_by_pct, lookup):
         rows = {}
         for _, p in lk.iterrows():
             rows[p.code] = {'name': tidy(p['name']), 'ev': int(em.ev.get(p['name'], 0)) if 'ev' in em else 0,
-                            'ml': int(em.ml.get(p['name'], 0)) if 'ml' in em else 0, 'ed': 0}
+                            'ml': int(em.ml.get(p['name'], 0)) if 'ml' in em else 0, 'ed': 0,
+                            'reg': int((reg or {}).get(county, {}).get(p['name'], 0))}
         if ed_by_pct is not None:
             for _, e in ed_by_pct[(ed_by_pct.county == county) & (ed_by_pct.real == 'Y')].iterrows():
-                rows.setdefault(e.code, {'name': tidy(e.code), 'ev': 0, 'ml': 0, 'ed': 0})['ed'] += int(e.ed)
+                rows.setdefault(e.code, {'name': tidy(e.code), 'ev': 0, 'ml': 0, 'ed': 0, 'reg': 0})['ed'] += int(e.ed)
         t = pd.DataFrame(rows.values())
         if t.empty:
             continue
@@ -106,7 +108,9 @@ def precinct_tables(acc, ed_by_pct, lookup):
 
 
 def finish_table(t):
-    """Apply the privacy rule to one county's precincts (DataFrame with name, ev, ml, ed)."""
+    """Apply the privacy rule to one county's precincts (DataFrame with name, ev, ml, ed and optionally reg)."""
+    if 'reg' not in t:
+        t = t.assign(reg=0)
     t = t.assign(tot=t.ev + t.ml + t.ed)
     t = t[t.tot > 0].sort_values(['tot', 'name'], ascending=[False, True])
     if t.empty:
@@ -116,8 +120,8 @@ def finish_table(t):
         small = t.tail(2)          # never one hidden precinct alone: it could be backed out of the county total
     big = t.drop(small.index)
     return {
-        'rows': [[r.name, int(r.ev), int(r.ml), int(r.ed)] for r in big.itertuples()],
-        'small': [int(len(small)), int(small.ev.sum()), int(small.ml.sum()), int(small.ed.sum())] if len(small) else None,
+        'rows': [[r.name, int(r.ev), int(r.ml), int(r.ed), int(r.reg)] for r in big.itertuples()],
+        'small': [int(len(small)), int(small.ev.sum()), int(small.ml.sum()), int(small.ed.sum()), int(small.reg.sum())] if len(small) else None,
     }
 
 

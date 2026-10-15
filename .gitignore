@@ -10,3 +10,4 @@ _site/
 raw_results/
 results_modified.txt
 !precincts.csv
+reg_modified.txt

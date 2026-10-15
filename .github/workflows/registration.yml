@@ -1,0 +1,68 @@
+name: Update registered voters
+
+# The State Board posts its voter registration file once a week. This counts registered voters (active and
+# inactive) by county, district and precinct for the tracker's "% of registered voters", then republishes
+# the tracker. It stops after Election Day, so turnout is always measured against registration as of the
+# election.
+
+on:
+  schedule:
+    - cron: '43 13 * * 1'   # Mondays, 9:43 a.m. EDT / 8:43 a.m. EST, after the weekend posting
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: write   # to start "Update turnout data"
+
+concurrency:
+  group: update-turnout-data
+  cancel-in-progress: false
+
+jobs:
+  registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Stop after Election Day
+        id: gate
+        run: |
+          DAY=$(TZ=America/New_York date +%F)
+          if [[ "${{ github.event_name }}" == "schedule" && "$DAY" > "2026-11-03" ]]; then echo "go=false" >> "$GITHUB_OUTPUT"; else echo "go=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.go == 'true'
+        with:
+          python-version: '3.12'
+
+      - name: Install pandas
+        if: steps.gate.outputs.go == 'true'
+        run: pip install pandas==2.2.3
+
+      - name: Download the statewide voter registration file (about 525 MB)
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          URL=https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvoter_Statewide.zip
+          curl -fsSL --retry 3 --retry-delay 30 -o ncvoter_Statewide.zip "$URL"
+          curl -fsSI "$URL" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r' > reg_modified.txt
+          echo "Registration file last modified: $(cat reg_modified.txt)"
+
+      - name: Count registered voters (stops here if the file looks incomplete)
+        if: steps.gate.outputs.go == 'true'
+        run: python build_registration.py ncvoter_Statewide.zip --modified "$(cat reg_modified.txt)"
+
+      - name: Save and republish
+        if: steps.gate.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -f ncvoter_Statewide.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registration.json
+          if git diff --cached --quiet; then echo "No change since last week."; exit 0; fi
+          git commit -m "Update registered voters ($(TZ=America/New_York date +%F))"
+          git push
+          gh workflow run update.yml --ref "${{ github.ref_name }}"

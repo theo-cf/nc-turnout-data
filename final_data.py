@@ -41,6 +41,7 @@ METHOD = {
 }
 AGE_EDGES = [17, 29, 44, 64, 200]   # 18-29, 30-44, 45-64, 65 and older
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
+REG = {}
 
 
 def fail(msg):
@@ -88,6 +89,9 @@ def main():
     h['ab'] = pd.cut(pd.to_numeric(h.age_at_year_end, errors='coerce'), AGE_EDGES, labels=False)
 
     lookup = load_lookup()
+    reg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'registration.json')
+    global REG
+    REG = json.load(open(reg_path))['precinct'] if os.path.exists(reg_path) else {}
     h = h.merge(lookup.rename(columns={'county': 'county', 'code': 'pct_label'})[['county', 'pct_label', 'name', 'cd', 'hd', 'sd']],
                 on=['county', 'pct_label'], how='left')
     for k, reg in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
@@ -117,6 +121,7 @@ def main():
     for county, s in h[h.pname.fillna('') != ''].groupby('county'):
         t = s.groupby(['pname', 'kind']).size().unstack(fill_value=0).reindex(columns=['ev', 'ml', 'ed'], fill_value=0).reset_index()
         t = t.rename(columns={'pname': 'name'})
+        t['reg'] = t.name.map(lambda n: REG.get(county, {}).get(n, 0))   # registered voters, for turnout %
         t['name'] = t.name.map(tidy)
         table = finish_table(t)
         if table:

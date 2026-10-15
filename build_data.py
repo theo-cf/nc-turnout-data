@@ -175,6 +175,16 @@ for rows in out['sites'].values():
 
 # ---- Election Day votes (election night on) and turnout by precinct (from Election Day on) ----
 lookup = load_lookup()
+
+# ---- registered voters (weekly registration file; see build_registration.py) ----
+REG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'registration.json')
+reg = json.load(open(REG_PATH)) if os.path.exists(REG_PATH) else None
+if reg:
+    out['reg_as_of'] = reg.get('as_of')
+    for r, x in [(out['state'], reg['state'])] + [(r, reg[k].get(r['name'] if k == 'county' else str(num(r['name']))))
+                                                  for k in ('county', 'cd', 'hd', 'sd') for r in out['geo'][k]]:
+        if x:
+            r['reg'], r['rpty'], r['rage'] = x['n'], x['pty'], x['age']
 ed_pct = None
 if RESULTS_FILE and os.path.exists(RESULTS_FILE):
     try:
@@ -195,7 +205,7 @@ if ed_pct is not None:
             r['ed'] = dist[k].get(num(r['name']), 0)
     out['unassigned_ed'] = {k: dist[k + '_unassigned'] for k in ('cd', 'hd', 'sd')}
 if ASOF >= ELECTION_DAY:
-    out['precincts'] = precinct_tables(acc, ed_pct, lookup)
+    out['precincts'] = precinct_tables(acc, ed_pct, lookup, reg['precinct'] if reg else None)
     out['precinct_min'] = PRECINCT_MIN
 
 # ---- safety checks against the last published file ----

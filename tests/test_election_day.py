@@ -22,7 +22,7 @@ ed = pd.DataFrame({'county': ['X'] * 4, 'code': ['A', 'B', 'C', 'D'], 'real': ['
 
 # One precinct under the minimum: it must not be hidden alone, so the next smallest is folded in with it.
 t = precinct_tables(acc_for([('BIG ONE', 30, 5), ('BIG TWO', 20, 5), ('TINY', 1, 0), ('MID', 5, 0)]), ed, lookup)['X']
-assert t['small'][0] == 2, t
+assert t['small'][0] == 2 and len(t['small']) == 5, t
 assert sum(r[1] + r[2] + r[3] for r in t['rows']) + sum(t['small'][1:]) == 30 + 5 + 20 + 5 + 1 + 5 + 50 + 40 + 2 + 20
 assert all(r[1] + r[2] + r[3] >= PRECINCT_MIN for r in t['rows'])
 
