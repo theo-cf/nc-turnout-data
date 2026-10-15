@@ -1,0 +1,52 @@
+name: Update turnout data
+
+on:
+  schedule:
+    # Times are UTC. 13:17 UTC = 9:17 a.m. Eastern (EDT); a second run in the afternoon
+    # picks up the file if the State Board posts late. Unchanged data makes no commit.
+    - cron: '17 13 * * *'
+    - cron: '17 18 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-turnout-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pandas
+        run: pip install pandas==2.2.3
+
+      - name: Download the State Board's statewide absentee file
+        run: |
+          curl -fsSL --retry 3 --retry-delay 30 -o absentee.zip \
+            https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03/absentee_20261103.zip
+          unzip -o absentee.zip -d raw
+          ls -la raw
+
+      - name: Build totals (stops here if anything looks wrong)
+        run: |
+          SRC=$(find raw -type f \( -iname '*.csv' -o -iname '*.txt' \) | head -1)
+          ASOF=$(TZ=America/New_York date +%F)
+          python build_data.py "$SRC" "$ASOF" docs
+
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --cached --quiet; then echo "No change since the last run."; exit 0; fi
+          git commit -m "Update turnout data ($(TZ=America/New_York date +%F))"
+          git push

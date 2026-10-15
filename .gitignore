@@ -1,0 +1,5 @@
+# Raw State Board downloads contain voter-level records and are never committed.
+raw/
+absentee.zip
+*.csv
+*.zip
