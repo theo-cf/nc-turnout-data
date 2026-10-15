@@ -63,7 +63,7 @@ df['when'] = pd.to_datetime(df.ballot_rtn_dt, format='%m/%d/%Y', errors='coerce'
 df['party'] = df.voter_party_code.where(df.voter_party_code.isin(PARTIES[:3]), 'OTH')
 
 mail = df[(df.rtype == 'MAIL') & df.st.notna() & (df.st != 'PENDING')]
-ev_ok = set(df.loc[(df.rtype == 'ONE-STOP') & df.st.isin(ACCEPTED), 'ncid'])
+ev_ok = set(df.loc[(df.rtype.map(TYPES) == 'ev') & df.st.isin(ACCEPTED), 'ncid'])
 ml_ok = set(mail.loc[mail.st.isin(ACCEPTED), 'ncid'])
 waiting = set(mail.loc[mail.st.isin(CURE), 'ncid'])
 rejected = set(mail.loc[mail.st.isin(REJECTED), 'ncid'])
