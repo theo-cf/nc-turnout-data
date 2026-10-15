@@ -77,6 +77,12 @@ if bad_status:
 
 rejected_total = int(df.st.isin(REJECTED).sum())
 
+# ---- mail ballots that need a fix from the voter ----
+# One per voter; 'PENDING' (sent, not yet returned) is not a ballot problem and is excluded.
+# A voter whose vote has already been accepted another way is not counted.
+accepted_ids = set(df.loc[df.st.isin(ACCEPTED), 'ncid'])
+cure = df[df.st.isin(NEEDS_CURE - {'PENDING'}) & ~df.ncid.isin(accepted_ids)].drop_duplicates('ncid')
+
 # ---- votes cast: accepted ballots, one per voter, early in-person preferred ----
 acc = df[df.st.isin(ACCEPTED)].copy()
 acc['kind'] = acc.rtype.map(TYPES)
@@ -114,12 +120,14 @@ GEOS = [('county', 'county_desc', lambda v: v.title()),
 
 out = {'asof': ASOF, 'updated': UPDATED, 'days': days, 'state': totals(acc), 'geo': {}, 'unassigned': {}}
 out['state']['g_rej'] = rejected_total
+out['state']['cure'] = int(len(cure))
 for key, field, label in GEOS:
     # Every place that appears in the file gets a row, even with zero accepted votes so far.
     places = df[field].dropna().unique()
     rows = []
     for v in places:
         r = totals(acc[acc[field] == v])
+        r['cure'] = int((cure[field] == v).sum())
         r['name'] = label(v)
         rows.append(r)
     rows.sort(key=lambda r: (r['name'] if key == 'county' else num(r['name'])))
@@ -145,4 +153,4 @@ for path in (prev_path, os.path.join(OUT, 'archive', ASOF + '.json')):
 
 s = out['state']
 print(f"as of {ASOF}: {s['vc']:,} votes cast ({s['ev']:,} early in person, {s['ml']:,} by mail); "
-      f"{rejected_total:,} rejected; places: " + ', '.join(f"{k} {len(v)}" for k, v in out['geo'].items()))
+      f"{len(cure):,} need a fix; {rejected_total:,} rejected; places: " + ', '.join(f"{k} {len(v)}" for k, v in out['geo'].items()))

@@ -36,11 +36,11 @@ The [NC State Board of Elections absentee data](https://www.ncsbe.gov/results-da
 
 ## How it updates
 
-A scheduled GitHub Actions workflow runs every morning, with a second attempt later in the day in case the State Board posts late. Each run:
+A scheduled GitHub Actions workflow checks for a new State Board file three times a day, at 5:37 a.m., 12:17 p.m. and 5:17 p.m. Eastern. If the file hasn't changed since the last check, nothing is updated. Each run:
 
 1. downloads the State Board's statewide absentee file
 2. checks it before publishing — the run stops, and the previous day's data stays up, if the file is missing or malformed, if it contains a ballot status or ballot type the script doesn't recognize, or if totals drop sharply from the day before
-3. builds and publishes `docs/data.json`
+3. builds and publishes `docs/data.json`, including the time the State Board posted the file
 4. saves a dated copy of the totals in `docs/archive/`
 
 ## Files
