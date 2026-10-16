@@ -24,7 +24,7 @@ from ncsbe import COUNTY_NAME
 COLS = ['county_desc', 'status_cd', 'party_cd', 'age_at_year_end', 'precinct_desc',
         'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv']
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
-AGE_EDGES = [17, 29, 44, 64, 200]   # 18-29, 30-44, 45-64, 65 and older
+AGE_EDGES = [17, 25, 40, 65, 200]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
 
 
 def main():
