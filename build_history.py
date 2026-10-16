@@ -11,7 +11,7 @@ Reads the State Board's statewide voter history and registration files and write
   * by:  birth year (0 if unknown)
 
 With --pool, also writes the number of registered voters (active and inactive) in each party who are
-low-propensity going into 2026 (voted in 0 or 1 of 2020, 2022 and 2024, or New Voters), statewide and by county
+low-propensity going into 2026 (voted in 0 or 1 of 2020, 2022 and 2024, or in 2020 and 2024 but not 2022), statewide and by county
 and district. Those are totals only.
 
 The lookup is voter-level, so it is NEVER committed to this public repository. In GitHub Actions it lives
@@ -72,8 +72,7 @@ def main():
         r = v[v.status_cd.isin(['A', 'I'])]
         b = out.b.reindex(r.index).fillna(0).astype(int)
         n3 = sum(((b & x) > 0).astype(int) for x in (4, 8, 16))
-        new = ((b & 7) == 0) & ((out.reg.reindex(r.index) > 20201103) | (out.by.reindex(r.index) >= 2003))
-        lp = r[(n3 <= 1) | new]
+        lp = r[(n3 <= 1) | ((b & 28) == 20)]   # or voted in 2020 and 2024 but skipped the 2022 midterm
         lp = lp[lp.party_cd.isin(['DEM', 'REP', 'UNA'])]
         cnt = lambda g: [int((g.party_cd == x).sum()) for x in ('DEM', 'REP', 'UNA')]
         P = {'state': cnt(lp), 'county': {COUNTY_NAME.get(c, c.title()): cnt(g) for c, g in lp.groupby('county_desc')}}

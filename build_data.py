@@ -100,9 +100,9 @@ if HAS_HIST:
     _H = pd.read_pickle(HISTORY_FILE)
     _bits = acc.ncid.map(_H.b).fillna(0).astype(int)
     _n3 = sum(((_bits & b) > 0).astype(int) for b in (4, 8, 16))
-    # New Voter: no NC vote on or before Nov. 3, 2020, and registered after it or too young to vote in it.
-    _new = ((_bits & 7) == 0) & ((acc.ncid.map(_H.reg).fillna(0) > 20201103) | (acc.ncid.map(_H.by).fillna(0) >= 2003))
-    acc['low'] = (_n3 <= 1) | _new   # low-propensity: voted in 0 or 1 of the last three Novembers, or a New Voter
+    # low-propensity: voted in 0 or 1 of the last three Novembers (2020, 2022, 2024) in North Carolina, or voted in 2020 and
+    # 2024 but skipped the 2022 midterm
+    acc['low'] = (_n3 <= 1) | ((_bits & 28) == 20)
 days = pd.date_range(acc.when.min(), asof_ts, freq='D').strftime('%Y-%m-%d').tolist() if len(acc) else [ASOF]
 
 

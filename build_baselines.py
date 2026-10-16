@@ -16,7 +16,8 @@ For each year, statewide and for each county:
   * fin / fp / fa: final turnout from the State Board's history_stats file, in total, by party and by age.
   * lp: (with HISTORY_FILE set) low-propensity voters so far, by party (DEM, REP, UNA), on the same days as p:
     voters who cast a ballot in 0 or 1 of the three previous November elections (2016-2020 for 2022,
-    2018-2022 for 2024), or New Voters (not registered or not old enough for all three). Counts only.
+    2018-2022 for 2024) in North Carolina, and for 2022 also voters who cast a ballot in 2016 and 2020 but
+    not 2018 (the midterm-skippers, matching 2026's rule). Counts only.
 Age groups are the State Board's: 18-25, 26-40, 41-65, 66 and older. Counts only.
 """
 import json
@@ -32,9 +33,9 @@ YEARS = {'2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person 
 # Voter propensity: the last three November elections before each year, as bits in build_history.py's lookup
 # (2016 = 1, 2018 = 2, 2020 = 4, 2022 = 8). Optional: set HISTORY_FILE to that private lookup.
 PRIOR = {'2022': (1, 2, 4), '2024': (2, 4, 8)}
-# New Voter, as of each year: no NC vote on or before its first prior election, and registered after that
-# election or too young for it: (bits on or before, date, birth year from).
-NEWV = {'2022': (1, 20161108, 1999), '2024': (3, 20181106, 2001)}
+# Also low-propensity: voted in both presidential elections but skipped the midterm between them (2022 only, the
+# year that lines up with 2026; 2024 has no midterm-skipper equivalent): (bits to check, pattern).
+SKIP = {'2022': (7, 5), '2024': None}
 HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
 HIST = pd.read_pickle(HISTORY_FILE) if HISTORY_FILE else None
 K0, K1 = -14, 19
@@ -76,9 +77,9 @@ def year(label, absentee, vstats, hstats):
     a['ag'] = pd.cut(pd.to_numeric(a.age, errors='coerce'), AGE_EDGES, labels=False)
     if HIST is not None:
         bits = a.ncid.map(HIST.b).fillna(0).astype(int)
-        nb, nd, ny = NEWV[label]
-        new = ((bits & nb) == 0) & ((a.ncid.map(HIST.reg).fillna(0) > nd) | (a.ncid.map(HIST.by).fillna(0) >= ny))
-        a['low'] = (sum(((bits & b) > 0).astype(int) for b in PRIOR[label]) <= 1) | new
+        a['low'] = sum(((bits & b) > 0).astype(int) for b in PRIOR[label]) <= 1
+        if SKIP[label]:
+            a['low'] |= (bits & SKIP[label][0]) == SKIP[label][1]
     v, h = read_stats(vstats), read_stats(hstats)
 
     def cum(s, col=None, vals=None):
