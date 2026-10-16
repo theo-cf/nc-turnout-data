@@ -116,6 +116,13 @@ GEOS = [('county', 'county_desc', lambda v: COUNTY_NAME.get(v.upper(), v.title()
 out = {'asof': ASOF, 'updated': UPDATED, 'days': days, 'state': totals(acc), 'geo': {}, 'unassigned': {}}
 out['state']['g_rej'] = rejected_total
 out['state']['cure'] = int(len(cure))
+# Every returned ballot that was not accepted, statewide, by ballot type and State Board status: [status, ballots, voters with no
+# accepted ballot of any kind]. Shown in "How we count" so readers can see what happened to them.
+_na = df[df.st.notna() & ~df.st.isin(ACCEPTED) & (df.st != 'PENDING')]
+out['not_accepted'] = {
+    t: [[st, int(len(g)), int((~g.drop_duplicates('ncid').ncid.isin(accepted_ids)).sum())]
+        for st, g in sorted(_na[_na.rtype.map(TYPES) == t].groupby('st'), key=lambda x: -len(x[1]))]
+    for t in ('ml', 'ev')}
 for key, field, label in GEOS:
     # Every place that appears in the file gets a row, even with zero accepted votes so far.
     places = df[field].dropna().unique()
