@@ -91,6 +91,18 @@ acc['party'] = acc.voter_party_code.where(acc.voter_party_code.isin(['DEM', 'REP
 asof_ts = pd.Timestamp(ASOF)
 acc['when'] = acc.when.fillna(asof_ts)
 acc['day'] = acc.when.where(acc.when <= asof_ts, asof_ts).dt.strftime('%Y-%m-%d')  # future-dated records count on the file date
+
+# ---- voter propensity: how many of the last three November elections (2020, 2022, 2024) each voter voted in ----
+# HISTORY_FILE is the private lookup from build_history.py (kept out of this repo). Without it, the view is skipped.
+HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
+HAS_HIST = bool(HISTORY_FILE) and os.path.exists(HISTORY_FILE)
+if HAS_HIST:
+    _H = pd.read_pickle(HISTORY_FILE)
+    _bits = acc.ncid.map(_H.b).fillna(0).astype(int)
+    _n3 = sum(((_bits & b) > 0).astype(int) for b in (4, 8, 16))
+    # New Voter: no NC vote on or before Nov. 3, 2020, and registered after it or too young to vote in it.
+    _new = ((_bits & 7) == 0) & ((acc.ncid.map(_H.reg).fillna(0) > 20201103) | (acc.ncid.map(_H.by).fillna(0) >= 2003))
+    acc['low'] = (_n3 <= 1) | _new   # low-propensity: voted in 0 or 1 of the last three Novembers, or a New Voter
 days = pd.date_range(acc.when.min(), asof_ts, freq='D').strftime('%Y-%m-%d').tolist() if len(acc) else [ASOF]
 
 
@@ -105,7 +117,7 @@ def totals(s):
         'age': [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))],   # by age group (voters with no age listed are left out)
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
         'tev': [int(x) for x in by['ev']] if 'ev' in by else [0] * len(days),   # new votes per day, early in person
-    }
+    } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {})   # low-propensity voters by party
 
 
 GEOS = [('county', 'county_desc', lambda v: COUNTY_NAME.get(v.upper(), v.title())),

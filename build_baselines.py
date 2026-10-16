@@ -14,9 +14,13 @@ For each year, statewide and for each county:
   * reg / rp / ra: registered voters as of that election (active and inactive), from the State Board's
     voter_stats file, in total, by party and by age group.
   * fin / fp / fa: final turnout from the State Board's history_stats file, in total, by party and by age.
+  * lp: (with HISTORY_FILE set) low-propensity voters so far, by party (DEM, REP, UNA), on the same days as p:
+    voters who cast a ballot in 0 or 1 of the three previous November elections (2016-2020 for 2022,
+    2018-2022 for 2024), or New Voters (not registered or not old enough for all three). Counts only.
 Age groups are the State Board's: 18-25, 26-40, 41-65, 66 and older. Counts only.
 """
 import json
+import os
 import sys
 import zipfile
 
@@ -25,6 +29,14 @@ import pandas as pd
 from ncsbe import COUNTY_NAME
 
 YEARS = {'2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person early voting
+# Voter propensity: the last three November elections before each year, as bits in build_history.py's lookup
+# (2016 = 1, 2018 = 2, 2020 = 4, 2022 = 8). Optional: set HISTORY_FILE to that private lookup.
+PRIOR = {'2022': (1, 2, 4), '2024': (2, 4, 8)}
+# New Voter, as of each year: no NC vote on or before its first prior election, and registered after that
+# election or too young for it: (bits on or before, date, birth year from).
+NEWV = {'2022': (1, 20161108, 1999), '2024': (3, 20181106, 2001)}
+HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
+HIST = pd.read_pickle(HISTORY_FILE) if HISTORY_FILE else None
 K0, K1 = -14, 19
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
 AGE_EDGES = [17, 25, 40, 65, 200]
@@ -62,6 +74,11 @@ def year(label, absentee, vstats, hstats):
     a['k'] = (a.when - start).dt.days
     a['pp'] = party(a.voter_party_code)
     a['ag'] = pd.cut(pd.to_numeric(a.age, errors='coerce'), AGE_EDGES, labels=False)
+    if HIST is not None:
+        bits = a.ncid.map(HIST.b).fillna(0).astype(int)
+        nb, nd, ny = NEWV[label]
+        new = ((bits & nb) == 0) & ((a.ncid.map(HIST.reg).fillna(0) > nd) | (a.ncid.map(HIST.by).fillna(0) >= ny))
+        a['low'] = (sum(((bits & b) > 0).astype(int) for b in PRIOR[label]) <= 1) | new
     v, h = read_stats(vstats), read_stats(hstats)
 
     def cum(s, col=None, vals=None):
@@ -73,7 +90,8 @@ def year(label, absentee, vstats, hstats):
     def block(s, vs, hs):
         return {'c': cum(s), 'p': cum(s, 'pp', PARTIES), 'a': cum(s, 'ag', range(4)),
                 'reg': int(vs.n.sum()), 'rp': [int(vs.n[vs.pp == x].sum()) for x in PARTIES], 'ra': [int(vs.n[vs.ag == i].sum()) for i in range(4)],
-                'fin': int(hs.n.sum()), 'fp': [int(hs.n[hs.pp == x].sum()) for x in PARTIES], 'fa': [int(hs.n[hs.ag == i].sum()) for i in range(4)]}
+                'fin': int(hs.n.sum()), 'fp': [int(hs.n[hs.pp == x].sum()) for x in PARTIES], 'fa': [int(hs.n[hs.ag == i].sum()) for i in range(4)]} | \
+               ({'lp': [cum(s[(s.pp == x) & s.low]) for x in PARTIES[:3]]} if HIST is not None else {})   # low-propensity voters, by party
 
     out = {'ev_start': YEARS[label], 'k0': K0, 'places': {'North Carolina': block(a, v, h)}}
     for c, s in a.groupby('county_desc'):

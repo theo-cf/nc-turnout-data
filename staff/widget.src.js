@@ -125,6 +125,15 @@
   var PARTY = [['DEM', 'Democratic', 'd'], ['REP', 'Republican', 'r'], ['UNA', 'Unaffiliated', 'u'], ['OTH', 'Other', 'o']];
   // Registered party as the State Board lists it, for each voter's badge.
   var PNAME = { DEM: 'Democrat', REP: 'Republican', UNA: 'Unaffiliated', LIB: 'Libertarian', GRE: 'Green', NLB: 'No Labels', JFA: 'Justice for All', CST: 'Constitution', WTP: 'We the People' };
+  // Voting history in the last three November elections (2020, 2022, 2024): 'nv' New Voter, or '0'..'3' elections voted.
+  function hkey(x) { return !x.h ? '' : x.nv ? 'nv' : String((x.h.match(/Y/g) || []).length); }
+  var HIST = [['low', 'Low propensity (New Voter, 0 or 1 of 3)'], ['nv', 'New Voter'], ['0', 'Voted 0 of 3'], ['1', 'Voted 1 of 3'], ['2', 'Voted 2 of 3'], ['3', 'Voted 3 of 3']];
+  function htag(x) {
+    var k = hkey(x); if (!k) return '';
+    if (k === 'nv') return '<span class="ht hn" title="Not registered in North Carolina, or not old enough, for all of the last three November elections">New Voter</span>';
+    var dots = x.h.split('').map(function (c, i) { return '<i' + (c === 'Y' ? ' class="f"' : '') + ' title="' + ['2020', '2022', '2024'][i] + (c === 'Y' ? ': voted' : ': did not vote') + '"></i>'; }).join('');
+    return '<span class="ht h' + k + '"><span class="dots" aria-hidden="true">' + dots + '</span>Voted ' + k + ' of 3</span>';
+  }
   function pbadge(x) {
     var code = x.pcode || x.party, cls = { DEM: 'd', REP: 'r', UNA: 'u' }[x.party] || 'o';
     return '<span class="pb ' + cls + '">' + esc(PNAME[code] || code) + '</span>';
@@ -140,7 +149,7 @@
     var A = D.access || { area: 'all', desc: 'Statewide', label: '' }, all = A.area === 'all';
     var places = { state: [Object.assign({ name: 'North Carolina' }, D.state)] };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) { places[k] = D.geo[k]; });
-    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', all: false, allPl: false };
+    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) {
       state.sel[k] = places[k].reduce(function (a, r) { return r.wait > a.wait ? r : a; }).name;
     });
@@ -217,6 +226,7 @@
         '<select class="vp" aria-label="Party"><option value="">All parties</option>' + PARTY.map(function (p) { return '<option value="' + p[0] + '"' + (state.party === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select>' +
         '<select class="vs" aria-label="Status"><option value="">All statuses</option>' + D.cure_keys.filter(function (c) { return V.some(function (x) { return x.status === c[0]; }); })
           .map(function (c) { return '<option value="' + c[0] + '"' + (state.status === c[0] ? ' selected' : '') + '>' + esc(STATUS[c[0]]) + '</option>'; }).join('') + '</select>' +
+        (V.some(function (x) { return x.h; }) ? '<select class="vh" aria-label="Voting history"><option value="">All voting histories</option>' + HIST.map(function (h) { return '<option value="' + h[0] + '"' + (state.hist === h[0] ? ' selected' : '') + '>' + h[1] + '</option>'; }).join('') + '</select>' : '') +
         '<button type="button" class="exp">Export CSV</button></div><div class="tw vt"></div><div class="vcount"></div></div>';
       v += whereBlock(k, r, V, partial);
       v += partyBlock(r);
@@ -321,6 +331,7 @@
         return V.filter(function (x) {
           if (state.party && x.party !== state.party) return false;
           if (state.status && x.status !== state.status) return false;
+          if (state.hist) { var hk = hkey(x); if (state.hist === 'low' ? !(hk === 'nv' || hk === '0' || hk === '1') : hk !== state.hist) return false; }
           return words.every(function (w) { return x.hay.indexOf(w) !== -1; });
         }).sort(function (a, b) { return (b.days || 0) - (a.days || 0) || a.name.localeCompare(b.name); });
       }
@@ -331,7 +342,7 @@
         shown.forEach(function (x) {
           var old = x.days !== '' && x.days >= STALE_DAYS;
           t += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' · ' : '') + 'NCID ' + esc(x.ncid) + '</span></td>' +
-            '<td class="l" data-l="Status"><span class="pill">' + esc(STATUS[x.status]) + '</span></td>' +
+            '<td class="l" data-l="Status"><span class="pill">' + esc(STATUS[x.status]) + '</span>' + (htag(x) ? '<br>' + htag(x) : '') + '</td>' +
             '<td data-l="Waiting"><span' + (old ? ' class="old"' : '') + '>' + (x.days === '' ? '' : x.days + (x.days === 1 ? ' day' : ' days')) + '</span>' + (x.returned ? '<span class="vid">since ' + apDate(x.returned) + '</span>' : '') + '</td>' +
             '<td class="l" data-l="Votes in">' + esc(x.county) + ' · ' + esc(x.precinct) + '<span class="vid">CD ' + esc(x.cd) + ' · HD ' + esc(x.hd) + ' · SD ' + esc(x.sd) + '</span></td>' +
             '<td class="l" data-l="Home">' + esc(x.home) + '</td><td class="l' + (x.mail_to ? '' : ' same') + '" data-l="Mailed to">' + (x.mail_to ? esc(x.mail_to) : '<span style="color:var(--mute)">Home address</span>') +
@@ -347,10 +358,13 @@
       qi.addEventListener('input', function () { state.q = qi.value; state.all = false; draw(); });
       vp.addEventListener('change', function () { state.party = vp.value; state.all = false; draw(); });
       vs.addEventListener('change', function () { state.status = vs.value; state.all = false; draw(); });
+      var vh = view.querySelector('.vh'); if (vh) vh.addEventListener('change', function () { state.hist = vh.value; state.all = false; draw(); });
       view.querySelector('.exp').addEventListener('click', function () {
         var cols = [['Name', 'name'], ['NCID', 'ncid'], ['Voter reg number', 'reg'], ['Status', function (x) { return STATUS[x.status]; }], ['Days waiting', 'days'], ['Ballot returned', 'returned'],
           ['Party', function (x) { return x.pcode || x.party; }], ['Age', 'age'], ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'],
-          ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery']];
+          ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery'],
+          ['Voted Nov. 2020 / 2022 / 2024', function (x) { return x.h ? x.h.split('').join(' ') : ''; }],
+          ['Voting history', function (x) { var k = hkey(x); return k === 'nv' ? 'New Voter' : k ? 'Voted ' + k + ' of 3' : ''; }]];
         var lines = [cols.map(function (c) { return c[0]; }).join(',')];
         filtered().forEach(function (x) {
           lines.push(cols.map(function (c) {

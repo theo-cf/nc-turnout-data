@@ -11,3 +11,8 @@ raw_results/
 results_modified.txt
 !precincts.csv
 reg_modified.txt
+
+# Private voting-history lookup (voter-level): never committed.
+*.pkl.gz
+*.pkl
+history/

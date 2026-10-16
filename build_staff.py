@@ -175,6 +175,23 @@ def same(a, b):
     return re.sub(r'[^A-Z0-9]', '', a.upper()) == re.sub(r'[^A-Z0-9]', '', b.upper())
 
 
+# Voting history (optional): HISTORY_FILE is the private lookup from build_history.py. For each voter waiting, which of
+# the last three November elections (2020, 2022, 2024) they voted in, and whether they're a New Voter (no NC vote on or
+# before Nov. 3, 2020, and registered after it or too young for it). Voters not in the lookup count as New Voters.
+HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
+HIST = pd.read_pickle(HISTORY_FILE) if HISTORY_FILE and os.path.exists(HISTORY_FILE) else None
+
+
+def history(ncid):
+    if HIST is None:
+        return {}
+    if ncid not in HIST.index:
+        return {'h': 'NNN', 'nv': 1}
+    b, reg, by = HIST.at[ncid, 'b'], HIST.at[ncid, 'reg'], HIST.at[ncid, 'by']
+    new = (b & 7) == 0 and (reg > 20201103 or by >= 2003)
+    return {'h': ''.join('Y' if b & bit else 'N' for bit in (4, 8, 16)), 'nv': int(bool(new))}
+
+
 voters = []
 for i, r in v[v.grp == 'wait'].iterrows():
     home = addr(r.voter_street_address, r.voter_city, r.voter_state, r.voter_zip)
@@ -192,7 +209,7 @@ for i, r in v[v.grp == 'wait'].iterrows():
         'home': fix_state(title(home)),
         'mail_to': '' if same(mail_to, home) else fix_state(title(mail_to)),
         'delivery': (r.ballot_req_delivery_type or '').title().replace('E-Mail', 'Email'),
-    })
+    } | history(i))
 voters.sort(key=lambda x: (x['county'], x['precinct'], x['name']))
 out['voters'] = voters
 
