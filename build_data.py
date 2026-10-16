@@ -50,7 +50,7 @@ DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last publis
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
         'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc']
-AGE_GROUPS = [(18, 29), (30, 44), (45, 64), (65, 200)]   # 18-29, 30-44, 45-64, 65 and older
+AGE_GROUPS = [(18, 25), (26, 40), (41, 65), (66, 200)]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
 EV_START, EV_DAYS = '2026-10-15', 17                      # in-person early voting, Oct. 15-31
 
 def fail(msg):
