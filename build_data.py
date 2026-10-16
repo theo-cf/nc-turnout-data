@@ -119,10 +119,15 @@ out['state']['cure'] = int(len(cure))
 # Every returned ballot that was not accepted, statewide, by ballot type and State Board status: [status, ballots, voters with no
 # accepted ballot of any kind]. Shown in "How we count" so readers can see what happened to them.
 _na = df[df.st.notna() & ~df.st.isin(ACCEPTED) & (df.st != 'PENDING')]
-out['not_accepted'] = {
-    t: [[st, int(len(g)), int((~g.drop_duplicates('ncid').ncid.isin(accepted_ids)).sum())]
-        for st, g in sorted(_na[_na.rtype.map(TYPES) == t].groupby('st'), key=lambda x: -len(x[1]))]
-    for t in ('ml', 'ev')}
+
+
+def na_table(sub):
+    return {t: [[st, int(len(g)), int((~g.drop_duplicates('ncid').ncid.isin(accepted_ids)).sum())]
+                for st, g in sorted(sub[sub.rtype.map(TYPES) == t].groupby('st'), key=lambda x: (-len(x[1]), x[0]))]
+            for t in ('ml', 'ev')}
+
+
+out['not_accepted'] = na_table(_na)   # statewide; each county and district row gets its own as 'na'
 for key, field, label in GEOS:
     # Every place that appears in the file gets a row, even with zero accepted votes so far.
     places = df[field].dropna().unique()
@@ -131,6 +136,9 @@ for key, field, label in GEOS:
         r = totals(acc[acc[field] == v])
         r['cure'] = int((cure[field] == v).sum())
         r['name'] = label(v)
+        sub = _na[_na[field] == v]
+        if len(sub):
+            r['na'] = na_table(sub)
         rows.append(r)
     # Every county and district gets a row, even before any vote from it shows up (Election Day votes may).
     have = {r['name'] for r in rows}
