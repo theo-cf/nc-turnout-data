@@ -187,7 +187,7 @@ for i, r in v[v.grp == 'wait'].iterrows():
         'ncid': i, 'reg': r.voter_reg_num or '',
         'county': title(r.county_desc), 'precinct': r.precinct_desc or '',
         'cd': num(r.cong_dist_desc) or '', 'hd': num(r.nc_house_desc) or '', 'sd': num(r.nc_senate_desc) or '',
-        'party': r.party, 'age': int(r.age) if str(r.age).isdigit() else '',
+        'party': r.party, 'pcode': r.voter_party_code or '', 'age': int(r.age) if str(r.age).isdigit() else '',
         'status': CURE_KEY[r.cure_st], 'returned': w.strftime('%Y-%m-%d') if pd.notna(w) else '',
         'home': fix_state(title(home)),
         'mail_to': '' if same(mail_to, home) else fix_state(title(mail_to)),

@@ -123,6 +123,12 @@
     sd: function (x) { return 'NC Senate District ' + x.replace(/\D/g, ''); }
   };
   var PARTY = [['DEM', 'Democratic', 'd'], ['REP', 'Republican', 'r'], ['UNA', 'Unaffiliated', 'u'], ['OTH', 'Other', 'o']];
+  // Registered party as the State Board lists it, for each voter's badge.
+  var PNAME = { DEM: 'Democrat', REP: 'Republican', UNA: 'Unaffiliated', LIB: 'Libertarian', GRE: 'Green', NLB: 'No Labels', JFA: 'Justice for All', CST: 'Constitution', WTP: 'We the People' };
+  function pbadge(x) {
+    var code = x.pcode || x.party, cls = { DEM: 'd', REP: 'r', UNA: 'u' }[x.party] || 'o';
+    return '<span class="pb ' + cls + '">' + esc(PNAME[code] || code) + '</span>';
+  }
 
   function render(D) {
     var STATUS = {}; D.cure_keys.forEach(function (k) { STATUS[k[0]] = titleCase(k[1]); });
@@ -324,7 +330,7 @@
         var t = '<table class="cards vtab"><thead><tr><th>Voter</th><th class="l">Status</th><th>Waiting</th><th class="l">Where they vote</th><th class="l">Home address</th><th class="l">Ballot mailed to</th></tr></thead><tbody>';
         shown.forEach(function (x) {
           var old = x.days !== '' && x.days >= STALE_DAYS;
-          t += '<tr><td><span class="vn">' + esc(x.name) + '</span><span class="vid">' + esc(x.party) + (x.age ? ' · ' + esc(x.age) : '') + ' · NCID ' + esc(x.ncid) + '</span></td>' +
+          t += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' · ' : '') + 'NCID ' + esc(x.ncid) + '</span></td>' +
             '<td class="l" data-l="Status"><span class="pill">' + esc(STATUS[x.status]) + '</span></td>' +
             '<td data-l="Waiting"><span' + (old ? ' class="old"' : '') + '>' + (x.days === '' ? '' : x.days + (x.days === 1 ? ' day' : ' days')) + '</span>' + (x.returned ? '<span class="vid">since ' + apDate(x.returned) + '</span>' : '') + '</td>' +
             '<td class="l" data-l="Votes in">' + esc(x.county) + ' · ' + esc(x.precinct) + '<span class="vid">CD ' + esc(x.cd) + ' · HD ' + esc(x.hd) + ' · SD ' + esc(x.sd) + '</span></td>' +
@@ -343,7 +349,7 @@
       vs.addEventListener('change', function () { state.status = vs.value; state.all = false; draw(); });
       view.querySelector('.exp').addEventListener('click', function () {
         var cols = [['Name', 'name'], ['NCID', 'ncid'], ['Voter reg number', 'reg'], ['Status', function (x) { return STATUS[x.status]; }], ['Days waiting', 'days'], ['Ballot returned', 'returned'],
-          ['Party', 'party'], ['Age', 'age'], ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'],
+          ['Party', function (x) { return x.pcode || x.party; }], ['Age', 'age'], ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'],
           ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery']];
         var lines = [cols.map(function (c) { return c[0]; }).join(',')];
         filtered().forEach(function (x) {
