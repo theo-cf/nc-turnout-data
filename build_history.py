@@ -10,11 +10,16 @@ Reads the State Board's statewide voter history and registration files and write
   * reg: registration date as YYYYMMDD (0 if unknown)
   * by:  birth year (0 if unknown)
 
+With --pool, also writes the number of registered voters (active and inactive) in each party who are
+low-propensity going into 2026 (voted in 0 or 1 of 2020, 2022 and 2024, or New Voters), statewide and by county
+and district. Those are totals only.
+
 The lookup is voter-level, so it is NEVER committed to this public repository. In GitHub Actions it lives
 only in the workflow's private build cache (see update.yml) and is rebuilt when the State Board posts new
 weekly files. The tracker publishes totals only.
 """
 import argparse
+import json
 import zipfile
 
 import pandas as pd
@@ -38,13 +43,14 @@ def main():
     ap.add_argument('--history', nargs='+', required=True)
     ap.add_argument('--voters', nargs='+', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--pool', default='')
     a = ap.parse_args()
 
     h = read(a.history, ['ncid', 'election_lbl'], lambda c: c[c.election_lbl.isin(ELECTIONS)])
     h = h.drop_duplicates()
     bits = h.election_lbl.map(ELECTIONS).groupby(h.ncid).sum().astype('uint8')
 
-    v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year'])
+    v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year', 'party_cd', 'county_desc', 'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv'])
     v['rank'] = v.status_cd.map({'A': 0, 'I': 1}).fillna(2)            # prefer the active/inactive registration
     v = v.sort_values('rank').drop_duplicates('ncid').set_index('ncid')
     reg = pd.to_datetime(v.registr_dt, format='%m/%d/%Y', errors='coerce')
@@ -59,6 +65,24 @@ def main():
         if n < 2_500_000:
             raise SystemExit(f'STOPPING: only {n:,} voters in the {lbl} history; the file looks incomplete')
     out.to_pickle(a.out)
+
+    if a.pool:
+        # Registered low-propensity voters by party and place (the denominator for "what share have voted").
+        from ncsbe import COUNTY_NAME
+        r = v[v.status_cd.isin(['A', 'I'])]
+        b = out.b.reindex(r.index).fillna(0).astype(int)
+        n3 = sum(((b & x) > 0).astype(int) for x in (4, 8, 16))
+        new = ((b & 7) == 0) & ((out.reg.reindex(r.index) > 20201103) | (out.by.reindex(r.index) >= 2003))
+        lp = r[(n3 <= 1) | new]
+        lp = lp[lp.party_cd.isin(['DEM', 'REP', 'UNA'])]
+        cnt = lambda g: [int((g.party_cd == x).sum()) for x in ('DEM', 'REP', 'UNA')]
+        P = {'state': cnt(lp), 'county': {COUNTY_NAME.get(c, c.title()): cnt(g) for c, g in lp.groupby('county_desc')}}
+        for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
+            d = pd.to_numeric(lp[col], errors='coerce')
+            P[k] = {str(int(n)): cnt(g) for n, g in lp[d.notna()].groupby(d.dropna().astype(int))}
+        with open(a.pool, 'w') as f:
+            json.dump(P, f, separators=(',', ':'))
+        print(f"low-propensity registered voters (DEM, REP, UNA): {P['state']}")
     print(f'history lookup: {len(out):,} voters; ' + ', '.join(f"{l[-4:]} {int(((out.b & b) > 0).sum()):,}" for l, b in ELECTIONS.items()))
 
 

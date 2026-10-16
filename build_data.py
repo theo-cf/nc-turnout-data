@@ -236,6 +236,17 @@ if ASOF >= ELECTION_DAY:
     out['precincts'] = precinct_tables(acc, ed_pct, lookup, reg['precinct'] if reg else None)
     out['precinct_min'] = PRECINCT_MIN
 
+# ---- registered low-propensity voters by party, for "what share of them have voted" (from build_history.py --pool) ----
+POOL_FILE = os.environ.get('POOL_FILE', '').strip()
+if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
+    _P = json.load(open(POOL_FILE))
+    out['state']['lpr'] = _P['state']
+    for _k in ('county', 'cd', 'hd', 'sd'):
+        for _r in out['geo'][_k]:
+            _x = _P.get(_k, {}).get(_r['name'] if _k == 'county' else str(num(_r['name'])))
+            if _x:
+                _r['lpr'] = _x
+
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
 if os.path.exists(prev_path):
