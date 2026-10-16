@@ -92,6 +92,36 @@ jobs:
             echo "No precinct results file posted yet."
           fi
 
+      # ---------------- Voting history for "Voter Propensity" ----------------
+      # The lookup is voter-level, so it lives only in GitHub's build cache (never in this repo or the site).
+      # It is rebuilt when the State Board posts new weekly history or registration files (about 5 minutes).
+      - name: Check the State Board's weekly history files
+        id: hkey
+        if: steps.gate.outputs.go == 'true'
+        continue-on-error: true
+        run: |
+          H=$(curl -fsSI https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvhis_Statewide.zip | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')
+          V=$(curl -fsSI https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvoter_Statewide.zip | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')
+          echo "key=$(echo "$H|$V|v1" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the voting-history lookup
+        id: hcache
+        if: steps.gate.outputs.go == 'true' && steps.hkey.outcome == 'success'
+        uses: actions/cache@v4
+        with:
+          path: history/lookup.pkl.gz
+          key: vhis-${{ steps.hkey.outputs.key }}
+
+      - name: Build the voting-history lookup (only when the State Board posts new files)
+        if: steps.gate.outputs.go == 'true' && steps.hkey.outcome == 'success' && steps.hcache.outputs.cache-hit != 'true'
+        continue-on-error: true   # without it the tracker still updates; Voter Propensity just isn't refreshed
+        run: |
+          mkdir -p history "$RUNNER_TEMP/vh"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/vh/ncvhis.zip" https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvhis_Statewide.zip
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/vh/ncvoter.zip" https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvoter_Statewide.zip
+          python build_history.py --history "$RUNNER_TEMP/vh/ncvhis.zip" --voters "$RUNNER_TEMP/vh/ncvoter.zip" --out history/lookup.pkl.gz
+          rm -rf "$RUNNER_TEMP/vh"
+
       - name: Build totals (stops here if anything looks wrong)
         # Skipped once final turnout has been published (docs/FINAL exists); the site is still republished.
         if: steps.gate.outputs.go == 'true' && hashFiles('docs/FINAL') == ''
@@ -100,6 +130,7 @@ jobs:
           ASOF=$(TZ=America/New_York date +%F)
           export RESULTS_FILE=$(find raw_results -type f -iname '*.txt' 2>/dev/null | head -1)
           export RESULTS_MODIFIED=$(cat results_modified.txt 2>/dev/null)
+          if [ -f history/lookup.pkl.gz ]; then export HISTORY_FILE=history/lookup.pkl.gz; fi
           python build_data.py "$SRC" "$ASOF" docs "$(cat last_modified.txt)"
 
       - name: Publish
@@ -135,6 +166,7 @@ jobs:
           SRC=$(find raw -type f \( -iname '*.csv' -o -iname '*.txt' \) | head -1)
           PLAIN="$RUNNER_TEMP/staff-plain"
           trap 'rm -rf "$PLAIN"' EXIT
+          if [ -f history/lookup.pkl.gz ]; then export HISTORY_FILE=history/lookup.pkl.gz; fi
           python build_staff.py "$SRC" "$PLAIN" "$(cat last_modified.txt)"
           python encrypt_staff.py "$PLAIN/data.json" _site/vault
 
