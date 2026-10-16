@@ -77,7 +77,8 @@ rejected_total = int(df.st.isin(REJECTED).sum())
 # One per voter; 'PENDING' (sent, not yet returned) is not a ballot problem and is excluded.
 # A voter whose vote has already been accepted another way is not counted.
 accepted_ids = set(df.loc[df.st.isin(ACCEPTED), 'ncid'])
-cure = df[df.st.isin(NEEDS_CURE - {'PENDING'}) & ~df.ncid.isin(accepted_ids)].drop_duplicates('ncid')
+# Mail ballots only: an early in-person ballot marked CONFLICT is a board matter, not a fix the voter makes.
+cure = df[(df.rtype.map(TYPES) == 'ml') & df.st.isin(NEEDS_CURE - {'PENDING'}) & ~df.ncid.isin(accepted_ids)].drop_duplicates('ncid')
 
 # ---- votes cast: accepted ballots, one per voter, early in-person preferred ----
 acc = df[df.st.isin(ACCEPTED)].copy()
@@ -186,7 +187,7 @@ if reg:
         if x:
             r['reg'], r['rpty'], r['rage'] = x['n'], x['pty'], x['age']
 ed_pct = None
-if RESULTS_FILE and os.path.exists(RESULTS_FILE):
+if RESULTS_FILE and os.path.exists(RESULTS_FILE) and ASOF >= ELECTION_DAY:   # the State Board posts a blank results file weeks early
     try:
         ed_pct = read_results(RESULTS_FILE)
     except ValueError as e:
