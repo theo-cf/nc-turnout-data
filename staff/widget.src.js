@@ -171,7 +171,7 @@
 
     var pick = q('.pick'), sel = q('.sel'), view = q('.view');
     q('.lockbtn').addEventListener('click', function () {
-      D = null;
+      D = null; KEY = '';
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
       lockScreen('');
     });
@@ -381,7 +381,7 @@
     /* Links to a view: #cure=county:Orange (or cd:4, hd:22, sd:9). The link opens to the lock screen
        for anyone without a password. */
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
-    function setHash() { try { history.replaceState(null, '', '#cure=' + encodeURIComponent(hashKey()).replace('%3A', ':')); } catch (e) { /* ignore */ } }
+    function setHash() { try { history.replaceState(null, '', '#' + (KEY ? 'key=' + encodeURIComponent(KEY) + '&' : '') + 'cure=' + encodeURIComponent(hashKey()).replace('%3A', ':')); } catch (e) { /* ignore */ } }
     function readHash() {
       var m = /cure=([^&]+)/.exec(location.hash || ''); if (!m) return;
       var p = decodeURIComponent(m[1]).split(':'), k = p[0];
@@ -452,5 +452,13 @@
     setGeo(state.geo);
   }
 
-  lockScreen('');
+  // A link can carry the password after the # (never sent to any server): .../staff/#key=<password>
+  // Opening that link unlocks the tracker with no typing. The key stays in the address so a refresh still works.
+  var KEY = (function () { var m = /(?:^#|&)key=([^&]+)/.exec(location.hash || ''); try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } })();
+  if (KEY) {
+    mount.innerHTML = '<div class="kick">Carolina Forward · Staff and partners</div><p class="lockp">Opening the cure tracker…</p>';
+    unlock(KEY).then(render).catch(function (e) {
+      lockScreen(e && e.missing ? 'The password in this link no longer works. Ask whoever sent it for a new link.' : 'The tracker couldn’t load just now. Check your connection and refresh.');
+    });
+  } else lockScreen('');
 })();
