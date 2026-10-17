@@ -61,13 +61,23 @@ button,input,select{font-family:inherit}
 .dek{max-width:66ch;font-size:15px;color:var(--soft);margin:0}
 
 /* agate stat row */
-.row{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);margin-top:20px}
+.row{display:grid;grid-template-columns:repeat(5,1fr);border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);margin-top:20px}
 .cell{padding:10px 12px 12px 0}
 .cell+.cell{padding-left:14px;border-left:1px solid var(--rule)}
 .cl{font-size:14px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
 .cn{font:600 34px/1.1 "Zilla Slab",Georgia,serif;margin-top:2px;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"lnum" 1,"tnum" 1}
 .cn.fix{color:var(--navy)}
 .cn.zero{color:var(--mute)}
+.cn.ok{color:#1F6B45}
+.ltabs{display:flex;gap:4px;border-bottom:2px solid var(--navy);margin-bottom:12px}
+.ltabs button{background:var(--parch);border:1px solid var(--rule);border-bottom:0;border-radius:3px 3px 0 0;padding:10px 16px 9px;font-size:14px;font-weight:700;color:var(--soft);cursor:pointer}
+.ltabs button b{font-weight:800;margin-left:4px;font-variant-numeric:tabular-nums}
+.ltabs button:hover{background:#ece5d6;color:var(--ink)}
+.ltabs button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.ldek{font-size:14px;color:var(--soft);margin:0 0 12px}
+.sbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-4px 0 12px}
+.sbar select{height:36px;border:1px solid var(--rule);border-radius:2px;background:#fff;padding:0 8px;font-size:14px;color:var(--ink);max-width:100%}
+.sbl{font-size:13px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.4px}
 .cs{font-size:12px;color:var(--mute)}
 
 /* sections and tables */
@@ -134,7 +144,7 @@ details.how p{margin:8px 0 0}
 .hl{font-size:20px}
 .lockrow{flex-direction:column}
 .row{grid-template-columns:repeat(2,1fr)}
-.cell:nth-child(3){padding-left:0;border-left:0}
+.cell:nth-child(odd){padding-left:0;border-left:0}
 .cell:nth-child(n+3){border-top:1px solid var(--rule)}
 .cn{font-size:28px}
 .cl{font-size:12px;letter-spacing:.2px}
@@ -145,6 +155,8 @@ details.how p{margin:8px 0 0}
 .narrow th,.narrow td{padding:7px 4px}
 .narrow th{font-size:11px;letter-spacing:0}
 .vbar .exp{width:100%}
+.ltabs button{flex:1 1 0;padding:10px 6px 9px}
+.sbar select{flex:1 1 140px}
 .cards thead{display:none}
 .cards tr{display:block;border-bottom:1px solid var(--rule);padding:10px 0}
 .cards td{display:flex;justify-content:space-between;gap:14px;border:0;padding:2px 0;text-align:right}
