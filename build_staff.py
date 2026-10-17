@@ -213,6 +213,29 @@ for i, r in v[v.grp == 'wait'].iterrows():
 voters.sort(key=lambda x: (x['county'], x['precinct'], x['name']))
 out['voters'] = voters
 
+# Voters whose mail ballot was accepted after they fixed it (State Board status ACCEPTED - CURED).
+acc_when = acc_rows.set_index('ncid').when.reindex(v.index)
+cured = []
+for i, r in v[(v.grp == 'acc') & (v.acc_st == 'ACCEPTED - CURED')].iterrows():
+    home = addr(r.voter_street_address, r.voter_city, r.voter_state, r.voter_zip)
+    mail_to = addr(r.ballot_mail_street_address, r.ballot_mail_city, r.ballot_mail_state, r.ballot_mail_zip)
+    if not mail_to:
+        mail_to = ', '.join(x for x in (clean(r.other_mail_addr1), clean(r.other_mail_addr2), clean(r.other_city_state_zip)) if x)
+    w = acc_when[i]
+    cured.append({
+        'name': title(clean(r.voter_first_name, r.voter_middle_name, r.voter_last_name)),
+        'ncid': i, 'reg': r.voter_reg_num or '',
+        'county': title(r.county_desc), 'precinct': r.precinct_desc if isinstance(r.precinct_desc, str) else '',
+        'cd': num(r.cong_dist_desc) or '', 'hd': num(r.nc_house_desc) or '', 'sd': num(r.nc_senate_desc) or '',
+        'party': r.party, 'pcode': r.voter_party_code or '', 'age': int(r.age) if str(r.age).isdigit() else '',
+        'returned': w.strftime('%Y-%m-%d') if pd.notna(w) else '',
+        'home': fix_state(title(home)),
+        'mail_to': '' if same(mail_to, home) else fix_state(title(mail_to)),
+        'delivery': (r.ballot_req_delivery_type or '').title().replace('E-Mail', 'Email'),
+    })
+cured.sort(key=lambda x: (x['returned'], x['name']), reverse=True)
+out['cured'] = cured
+
 # ---- safety checks ----
 s = out['state']
 if s['acc'] + s['ip'] + s['wait'] + s['rej'] + s['repl'] != s['n']:

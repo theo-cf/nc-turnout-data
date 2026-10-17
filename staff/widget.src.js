@@ -177,11 +177,13 @@
           .map(function (c) { return '<option value="' + c[0] + '"' + (state.status === c[0] ? ' selected' : '') + '>' + esc(STATUS[c[0]]) + '</option>'; }).join('') + '</select>' +
         (V.some(function (x) { return x.h; }) ? '<select class="vh" aria-label="Voting history"><option value="">All voting histories</option>' + HIST.map(function (h) { return '<option value="' + h[0] + '"' + (state.hist === h[0] ? ' selected' : '') + '>' + h[1] + '</option>'; }).join('') + '</select>' : '') +
         '<button type="button" class="exp">Export CSV</button></div><div class="tw vt"></div><div class="vcount"></div></div>';
+      v += curedBlock(r);
       v += whereBlock(k, r, V, partial);
       v += partyBlock(r);
       v += flagsBlock(k, r);
       view.innerHTML = v;
       wireVoters(V, r);
+      wireCured(r);
       var mb = view.querySelector('.more.pl'); if (mb) mb.addEventListener('click', function () { state.allPl = !state.allPl; show(); });
       each(view.querySelectorAll('tr.go'), function (tr) {
         function go() { state.sel.county = tr.getAttribute('data-c'); setGeo('county'); if (mount.scrollIntoView) mount.scrollIntoView(); }
@@ -189,6 +191,54 @@
         tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
       });
       setHash();
+    }
+    /* Voters whose mail ballot was accepted after they fixed it, most recent first. */
+    function curedList() { return (D.cured || []).filter(inPlace); }
+    function curedBlock(r) {
+      if (!D.cured) return '';
+      var C = curedList();
+      return '<div class="sec"><div class="sech">Successfully cured<span>' + fmt(r.acc_cur) + (r.acc_cur === 1 ? ' voter' : ' voters') + ' here</span></div>' +
+        '<p class="dek" style="margin-top:0">Voters whose mail ballot was accepted after they fixed it (the State Board lists these as Accepted \u2013 Cured). Most recent returns first.</p>' +
+        (C.length ? '<div class="vbar"><button type="button" class="exp cexp">Export CSV</button></div>' : '') + '<div class="tw ct"></div></div>';
+    }
+    function wireCured(r) {
+      var box = view.querySelector('.ct'); if (!box) return;
+      var C = curedList();
+      function draw() {
+        if (!C.length) { box.innerHTML = '<div class="none">No cured ballots here yet.</div>'; return; }
+        var LIM = 25, shown = state.allCured ? C : C.slice(0, LIM);
+        var h = '<table class="cards vtab"><thead><tr><th>Voter</th><th>Returned</th><th class="l">Where they vote</th><th class="l">Home address</th><th class="l">Ballot mailed to</th></tr></thead><tbody>';
+        shown.forEach(function (x) {
+          h += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' \u00B7 ' : '') + 'NCID ' + esc(x.ncid) + '</span></td>' +
+            '<td data-l="Returned">' + (x.returned ? apDate(x.returned) : '') + '</td>' +
+            '<td class="l" data-l="Votes in">' + esc(x.county) + ' \u00B7 ' + esc(x.precinct) + '<span class="vid">CD ' + esc(x.cd) + ' \u00B7 HD ' + esc(x.hd) + ' \u00B7 SD ' + esc(x.sd) + '</span></td>' +
+            '<td class="l" data-l="Home">' + esc(x.home) + '</td><td class="l' + (x.mail_to ? '' : ' same') + '" data-l="Mailed to">' + (x.mail_to ? esc(x.mail_to) : '<span style="color:var(--mute)">Home address</span>') +
+            (x.delivery && x.delivery !== 'Mail' ? '<span class="vid">Sent by ' + esc(x.delivery.toLowerCase()) + '</span>' : '') + '</td></tr>';
+        });
+        h += '</tbody></table>';
+        if (C.length > LIM) h += '<button type="button" class="more cm">' + (state.allCured ? 'Show fewer' : 'Show all ' + fmt(C.length)) + '</button>';
+        box.innerHTML = h;
+        var cm = box.querySelector('.cm'); if (cm) cm.addEventListener('click', function () { state.allCured = !state.allCured; draw(); });
+      }
+      var ex = view.querySelector('.cexp');
+      if (ex) ex.addEventListener('click', function () {
+        var cols = [['Name', 'name'], ['NCID', 'ncid'], ['Voter reg number', 'reg'], ['Ballot returned', 'returned'], ['Party', function (x) { return x.pcode || x.party; }], ['Age', 'age'],
+          ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'], ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery']];
+        var lines = [cols.map(function (c) { return c[0]; }).join(',')];
+        C.forEach(function (x) {
+          lines.push(cols.map(function (c) {
+            var s = String(typeof c[1] === 'function' ? c[1](x) : (x[c[1]] == null ? '' : x[c[1]]));
+            if (/^[=+\-@]/.test(s)) s = "'" + s;
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          }).join(','));
+        });
+        var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'cured-voters-' + LONG[state.geo](r.name).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + D.asof + '.csv';
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); }, 500);
+      });
+      draw();
     }
     function cell(label, n, cls, sub) {
       return '<div class="cell"><div class="cl">' + label + '</div><div class="cn ' + (n ? cls : 'zero') + '">' + fmt(n) + '</div><div class="cs">' + sub + '</div></div>';

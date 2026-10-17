@@ -135,6 +135,7 @@ def totals(s):
     by = s.groupby(['day', 'kind']).size().unstack(fill_value=0).reindex(days, fill_value=0)
     return {
         'vc': int(len(s)), 'ev': int(k.get('ev', 0)), 'ml': int(k.get('ml', 0)),
+        'cured': int(((s.kind == 'ml') & (s.st == 'ACCEPTED - CURED')).sum()),   # mail ballots accepted after the voter fixed them
         'pty': [int(p.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
         'age': [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))],   # by age group (voters with no age listed are left out)
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
