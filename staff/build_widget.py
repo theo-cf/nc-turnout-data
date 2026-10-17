@@ -7,6 +7,7 @@ Defaults: vault url https://theo-cf.github.io/nc-turnout-data/vault/, output dir
 Writes nc-cure-staff.js (upload this to the carolinaforward.org post) and index.html (a standalone
 page that loads the same widget). Neither file contains voter data or passwords.
 """
+import hashlib
 import json
 import os
 import re
@@ -83,8 +84,8 @@ main{max-width:1040px;margin:0 auto;padding:8px 24px 48px}
 <body>
 <div class="mast"><div>Carolina Forward</div></div>
 <main><div class="nc-cure-staff"></div></main>
-<script src="nc-cure-staff.js"></script>
+<script src="nc-cure-staff.js?v=__VER__"></script>
 </body>
 </html>
-''')
+'''.replace('__VER__', hashlib.sha256(js.encode()).hexdigest()[:10]))   # a new script address whenever the code changes, so browsers don't keep an old copy
 print(f'built {SLUG}.js ({len(js):,} bytes) and index.html in {os.path.normpath(OUT)}; vault: {VAULT}')
