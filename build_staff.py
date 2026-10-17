@@ -232,7 +232,7 @@ for i, r in v[(v.grp == 'acc') & (v.acc_st == 'ACCEPTED - CURED')].iterrows():
         'home': fix_state(title(home)),
         'mail_to': '' if same(mail_to, home) else fix_state(title(mail_to)),
         'delivery': (r.ballot_req_delivery_type or '').title().replace('E-Mail', 'Email'),
-    })
+    } | history(i))
 cured.sort(key=lambda x: (x['returned'], x['name']), reverse=True)
 out['cured'] = cured
 

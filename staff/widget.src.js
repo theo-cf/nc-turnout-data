@@ -89,6 +89,21 @@
     var dots = x.h.split('').map(function (c, i) { return '<i' + (c === 'Y' ? ' class="f"' : '') + ' title="' + ['2020', '2022', '2024'][i] + (c === 'Y' ? ': voted' : ': did not vote') + '"></i>'; }).join('');
     return '<span class="ht h' + k + '"><span class="dots" aria-hidden="true">' + dots + '</span>Voted ' + k + ' of 3</span>';
   }
+  /* Sorting the voter lists. 'wait' and 'recent' are the defaults for the two lists. */
+  var SORTS = [['county', 'County and precinct'], ['cd', 'Congressional district'], ['hd', 'NC House district'], ['sd', 'NC Senate district'], ['prop', 'Voter propensity (least likely first)']];
+  function hrank(x) { var k = hkey(x); return k === '' ? 9 : k === 'nv' ? 0.5 : +k; }   // elections voted, of the last three; New Voters between 0 and 1
+  function sortBy(key, first) {
+    function place(a, b) { return a.county.localeCompare(b.county) || String(a.precinct).localeCompare(String(b.precinct)) || a.name.localeCompare(b.name); }
+    return function (a, b) {
+      if (key === 'county') return place(a, b);
+      if (key === 'cd' || key === 'hd' || key === 'sd') return (+a[key] || 999) - (+b[key] || 999) || place(a, b);
+      if (key === 'prop') return hrank(a) - hrank(b) || first(a, b);
+      return first(a, b);
+    };
+  }
+  function sortSelect(cls, cur, defLabel) {
+    return '<select class="' + cls + '" aria-label="Sort by"><option value="">Sort: ' + defLabel + '</option>' + SORTS.map(function (s) { return '<option value="' + s[0] + '"' + (cur === s[0] ? ' selected' : '') + '>Sort: ' + s[1] + '</option>'; }).join('') + '</select>';
+  }
   function pbadge(x) {
     var code = x.pcode || x.party, cls = { DEM: 'd', REP: 'r', UNA: 'u' }[x.party] || 'o';
     return '<span class="pb ' + cls + '">' + esc(PNAME[code] || code) + '</span>';
@@ -104,7 +119,7 @@
     var A = D.access || { area: 'all', desc: 'Statewide', label: '' }, all = A.area === 'all';
     var places = { state: [Object.assign({ name: 'North Carolina' }, D.state)] };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) { places[k] = D.geo[k]; });
-    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false };
+    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false, sort: '', csort: '' };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) {
       state.sel[k] = places[k].reduce(function (a, r) { return r.wait > a.wait ? r : a; }).name;
     });
@@ -169,13 +184,14 @@
         cell('Voted in person', r.ip, '', 'Instead of by mail') +
         cell('Not counted', r.rej, '', 'Rejected') + '</div>';
       v += statusBlock(r);
-      v += '<div class="sec"><div class="sech">Voters<span>Longest waiting first</span></div>' +
+      v += '<div class="sec"><div class="sech">Voters<span class="vsorth">Longest waiting first</span></div>' +
         (partial ? '<p class="part">Your password opens the voter list for <b>' + esc(A.desc) + '</b>. ' + (V.length ? fmt(V.length) + ' of the ' + fmt(r.wait) + ' voters waiting here are in that area.' : 'None of the voters waiting here are in that area.') + '</p>' : '') +
         '<div class="vbar"><label class="sr" for="' + SLUG + '-vq">Search voters</label><input id="' + SLUG + '-vq" type="search" placeholder="Search name, NCID, precinct or address" value="' + esc(state.q) + '">' +
         '<select class="vp" aria-label="Party"><option value="">All parties</option>' + PARTY.map(function (p) { return '<option value="' + p[0] + '"' + (state.party === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select>' +
         '<select class="vs" aria-label="Status"><option value="">All statuses</option>' + D.cure_keys.filter(function (c) { return V.some(function (x) { return x.status === c[0]; }); })
           .map(function (c) { return '<option value="' + c[0] + '"' + (state.status === c[0] ? ' selected' : '') + '>' + esc(STATUS[c[0]]) + '</option>'; }).join('') + '</select>' +
         (V.some(function (x) { return x.h; }) ? '<select class="vh" aria-label="Voting history"><option value="">All voting histories</option>' + HIST.map(function (h) { return '<option value="' + h[0] + '"' + (state.hist === h[0] ? ' selected' : '') + '>' + h[1] + '</option>'; }).join('') + '</select>' : '') +
+        sortSelect('vsort', state.sort, 'Longest waiting') +
         '<button type="button" class="exp">Export CSV</button></div><div class="tw vt"></div><div class="vcount"></div></div>';
       v += curedBlock(r);
       v += whereBlock(k, r, V, partial);
@@ -193,23 +209,26 @@
       setHash();
     }
     /* Voters whose mail ballot was accepted after they fixed it, most recent first. */
-    function curedList() { return (D.cured || []).filter(inPlace); }
+    function curedList() {
+      return (D.cured || []).filter(inPlace).sort(sortBy(state.csort, function (a, b) { return (b.returned || '').localeCompare(a.returned || '') || a.name.localeCompare(b.name); }));
+    }
     function curedBlock(r) {
       if (!D.cured) return '';
       var C = curedList();
       return '<div class="sec"><div class="sech">Successfully cured<span>' + fmt(r.acc_cur) + (r.acc_cur === 1 ? ' voter' : ' voters') + ' here</span></div>' +
-        '<p class="dek" style="margin-top:0">Voters whose mail ballot was accepted after they fixed it (the State Board lists these as Accepted \u2013 Cured). Most recent returns first.</p>' +
-        (C.length ? '<div class="vbar"><button type="button" class="exp cexp">Export CSV</button></div>' : '') + '<div class="tw ct"></div></div>';
+        '<p class="dek" style="margin-top:0">Voters whose mail ballot was accepted after they fixed it (the State Board lists these as Accepted \u2013 Cured).</p>' +
+        (C.length ? '<div class="vbar">' + sortSelect('csort', state.csort, 'Most recent') + '<button type="button" class="exp cexp">Export CSV</button></div>' : '') + '<div class="tw ct"></div></div>';
     }
     function wireCured(r) {
       var box = view.querySelector('.ct'); if (!box) return;
       var C = curedList();
       function draw() {
         if (!C.length) { box.innerHTML = '<div class="none">No cured ballots here yet.</div>'; return; }
+        C = curedList();
         var LIM = 25, shown = state.allCured ? C : C.slice(0, LIM);
         var h = '<table class="cards vtab"><thead><tr><th>Voter</th><th>Returned</th><th class="l">Where they vote</th><th class="l">Home address</th><th class="l">Ballot mailed to</th></tr></thead><tbody>';
         shown.forEach(function (x) {
-          h += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' \u00B7 ' : '') + 'NCID ' + esc(x.ncid) + '</span></td>' +
+          h += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' \u00B7 ' : '') + 'NCID ' + esc(x.ncid) + '</span>' + (htag(x) ? htag(x) : '') + '</td>' +
             '<td data-l="Returned">' + (x.returned ? apDate(x.returned) : '') + '</td>' +
             '<td class="l" data-l="Votes in">' + esc(x.county) + ' \u00B7 ' + esc(x.precinct) + '<span class="vid">CD ' + esc(x.cd) + ' \u00B7 HD ' + esc(x.hd) + ' \u00B7 SD ' + esc(x.sd) + '</span></td>' +
             '<td class="l" data-l="Home">' + esc(x.home) + '</td><td class="l' + (x.mail_to ? '' : ' same') + '" data-l="Mailed to">' + (x.mail_to ? esc(x.mail_to) : '<span style="color:var(--mute)">Home address</span>') +
@@ -220,10 +239,13 @@
         box.innerHTML = h;
         var cm = box.querySelector('.cm'); if (cm) cm.addEventListener('click', function () { state.allCured = !state.allCured; draw(); });
       }
+      var cso = view.querySelector('.csort'); if (cso) cso.addEventListener('change', function () { state.csort = cso.value; state.allCured = false; draw(); });
       var ex = view.querySelector('.cexp');
       if (ex) ex.addEventListener('click', function () {
         var cols = [['Name', 'name'], ['NCID', 'ncid'], ['Voter reg number', 'reg'], ['Ballot returned', 'returned'], ['Party', function (x) { return x.pcode || x.party; }], ['Age', 'age'],
-          ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'], ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery']];
+          ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'], ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery'],
+          ['Voted Nov. 2020 / 2022 / 2024', function (x) { return x.h ? x.h.split('').join(' ') : ''; }],
+          ['Voting history', function (x) { var k = hkey(x); return k === 'nv' ? 'New Voter' : k ? 'Voted ' + k + ' of 3' : ''; }]];
         var lines = [cols.map(function (c) { return c[0]; }).join(',')];
         C.forEach(function (x) {
           lines.push(cols.map(function (c) {
@@ -332,7 +354,7 @@
           if (state.status && x.status !== state.status) return false;
           if (state.hist) { var hk = hkey(x); if (state.hist === 'low' ? !(hk === 'nv' || hk === '0' || hk === '1') : hk !== state.hist) return false; }
           return words.every(function (w) { return x.hay.indexOf(w) !== -1; });
-        }).sort(function (a, b) { return (b.days || 0) - (a.days || 0) || a.name.localeCompare(b.name); });
+        }).sort(sortBy(state.sort, function (a, b) { return (b.days || 0) - (a.days || 0) || a.name.localeCompare(b.name); }));
       }
       function draw() {
         var rows = filtered(), LIM = 25, shown = state.all ? rows : rows.slice(0, LIM);
@@ -351,11 +373,13 @@
         if (rows.length > LIM) t += '<button type="button" class="more vm">' + (state.all ? 'Show fewer' : 'Show all ' + fmt(rows.length)) + '</button>';
         box.innerHTML = t;
         var vm = box.querySelector('.vm'); if (vm) vm.addEventListener('click', function () { state.all = !state.all; draw(); });
-        var cut = rows.length > LIM && !state.all ? ' Showing the ' + LIM + ' waiting longest.' : '';
+        var sh = view.querySelector('.vsorth'); if (sh) sh.textContent = ({ county: 'By county and precinct', cd: 'By congressional district', hd: 'By NC House district', sd: 'By NC Senate district', prop: 'Least likely voters first' })[state.sort] || 'Longest waiting first';
+        var cut = rows.length > LIM && !state.all ? ' Showing the first ' + LIM + (state.sort ? '.' : ', waiting longest.') : '';
         cnt.textContent = (rows.length === V.length ? fmt(V.length) + (V.length === 1 ? ' voter' : ' voters') + ' listed.' : fmt(rows.length) + ' of ' + fmt(V.length) + ' voters match.') + cut + ' Export includes every voter that matches.';
       }
       qi.addEventListener('input', function () { state.q = qi.value; state.all = false; draw(); });
       vp.addEventListener('change', function () { state.party = vp.value; state.all = false; draw(); });
+      var vso = view.querySelector('.vsort'); vso.addEventListener('change', function () { state.sort = vso.value; state.all = false; draw(); });
       vs.addEventListener('change', function () { state.status = vs.value; state.all = false; draw(); });
       var vh = view.querySelector('.vh'); if (vh) vh.addEventListener('change', function () { state.hist = vh.value; state.all = false; draw(); });
       view.querySelector('.exp').addEventListener('click', function () {
