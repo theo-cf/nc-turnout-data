@@ -4,14 +4,12 @@
      nc-cure-staff
    Built by github.com/theo-cf/nc-turnout-data (staff/build_widget.py). Do not edit the built file.
 
-   Privacy: this file contains NO voter data and no passwords. Voter lists load from locked files
-   (AES-256-GCM, key from PBKDF2-SHA256 with 600,000 rounds) that only open with a password the
-   reader types. The password never leaves the reader's device. */
+   This file contains no voter data. The voter list loads from vault/data.json on the Pages site,
+   built from the State Board's public absentee file on each run. */
 (function () {
   'use strict';
   var SLUG = 'nc-cure-staff';
   var VAULT = /*__VAULT__*/'vault/';
-  var AAD = 'nc-cure-staff-v1';
   var STALE_DAYS = 7;   // highlight voters waiting this long or longer
 
   var mount = document.querySelector('div.' + SLUG);
@@ -62,9 +60,7 @@
   function titleCase(s) { return s.toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); }).replace(/\bId\b/g, 'ID'); }
   function q(sel) { return mount.querySelector(sel); }
 
-  /* ---------------- unlocking ---------------- */
-  function b64(s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
-  function hex(u) { var s = ''; for (var i = 0; i < u.length; i++) s += ('0' + u[i].toString(16)).slice(-2); return s; }
+  /* ---------------- loading ---------------- */
   function getJSON(url) {
     return fetch(url, { cache: 'no-cache' }).then(function (r) {
       if (r.status === 404) { var e = new Error('missing'); e.missing = true; throw e; }
@@ -72,47 +68,6 @@
       return r.json();
     });
   }
-  function unlock(password) {
-    var subtle = window.crypto && window.crypto.subtle;
-    if (!subtle || !window.TextEncoder) return Promise.reject(new Error('nocrypto'));
-    var enc = new TextEncoder(), pw = (password.normalize ? password.normalize('NFKC') : password).trim();
-    return getJSON(VAULT + 'index.json').then(function (idx) {
-      return subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']).then(function (base) {
-        return subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(idx.salt), iterations: idx.iter }, base, 384);
-      }).then(function (bits) {
-        bits = new Uint8Array(bits);
-        return Promise.all([subtle.importKey('raw', bits.slice(0, 32), 'AES-GCM', false, ['decrypt']), getJSON(VAULT + hex(bits.slice(32)) + '.json')]);
-      });
-    }).then(function (kf) {
-      return subtle.decrypt({ name: 'AES-GCM', iv: b64(kf[1].iv), additionalData: enc.encode(AAD) }, kf[0], b64(kf[1].ct));
-    }).then(function (plain) { return JSON.parse(new TextDecoder().decode(plain)); });
-  }
-
-  function lockScreen(msg) {
-    mount.innerHTML = '<div class="kick">Carolina Forward · Staff and partners</div>' +
-      '<form class="lock" autocomplete="off"><div class="lockh">Mail ballot cure tracker</div>' +
-      '<p class="lockp">This tool lists voters whose mail ballot needs a fix. Enter the password you were given to open it.</p>' +
-      '<label class="lockl" for="' + SLUG + '-pw">Password</label>' +
-      '<div class="lockrow"><input id="' + SLUG + '-pw" type="password" autocomplete="current-password" spellcheck="false" autocapitalize="off" required>' +
-      '<button type="submit">Unlock</button></div>' +
-      '<div class="lockerr" role="alert">' + esc(msg || '') + '</div>' +
-      '<div class="locknote">Your password never leaves this device. Each password opens only the voters its group is cleared to see.</div></form>';
-    var form = q('.lock'), input = q('#' + SLUG + '-pw'), btn = q('.lock button'), err = q('.lockerr');
-    form.addEventListener('submit', function (ev) {
-      ev.preventDefault();
-      if (!input.value.trim()) return;
-      btn.disabled = true; btn.textContent = 'Unlocking…'; err.textContent = '';
-      unlock(input.value).then(function (D) { input.value = ''; render(D); }).catch(function (e) {
-        btn.disabled = false; btn.textContent = 'Unlock';
-        err.textContent = e && e.missing ? 'That password didn’t work. Check for typos, or ask whoever gave it to you for the current one.'
-          : e && e.message === 'nocrypto' ? 'This browser can’t open the tracker. Try a current version of Chrome, Safari, Firefox or Edge.'
-          : 'The tracker couldn’t load just now. Check your connection and try again.';
-        input.select();
-      });
-    });
-    input.focus({ preventScroll: true });
-  }
-
   /* ---------------- the tracker ---------------- */
   var GEO = [['state', 'Statewide'], ['county', 'County'], ['cd', 'Congress'], ['hd', 'NC House'], ['sd', 'NC Senate']];
   var LONG = {
@@ -166,7 +121,6 @@
 
     var h = '<div class="kick">' + updatedLabel(D.updated, D.asof) + '</div>';
     h += '<div class="warn"><b>Contains voter names and addresses.</b> For cure outreach only. Don’t forward, post or screenshot, and delete exports when you’re done.</div>';
-    h += '<div class="acc"><span>' + (A.label ? esc(A.label) + ' · ' : '') + 'Voter list: <b>' + esc(A.desc) + '</b></span><button type="button" class="lockbtn">Lock</button></div>';
     h += '<div class="tabs" role="group" aria-label="Geography">';
     GEO.forEach(function (g) { h += '<button type="button" data-g="' + g[0] + '" aria-pressed="false">' + g[1] + '</button>'; });
     h += '</div><div class="find"><label class="findl" for="' + SLUG + '-find">Find a county or district</label>' +
@@ -179,17 +133,12 @@
       'otherwise <b>waiting on the voter</b> if a ballot has a status that needs the voter to act; otherwise <b>not counted</b> if it was rejected. Ballots that were only spoiled, cancelled or duplicated are left out of all four.</p>' +
       '<p>Waiting on the voter covers every State Board status that needs the voter to act: ' + D.cure_keys.map(function (k) { return STATUS[k[0]]; }).join(', ') + '. ' +
       'A voter with more than one such ballot is listed under the most recent one. “Days waiting” counts from the day that ballot was returned to the file date.</p>' +
-      '<p>Totals cover the whole state. The voter list covers only the area your password opens. The State Board file doesn’t include phone numbers or say exactly what each “Pending Cure” ballot is missing; the county board’s notice to the voter does. Party is current registration.</p></details>';
+      '<p>Totals and the voter list cover the whole state. The State Board file doesn’t include phone numbers or say exactly what each “Pending Cure” ballot is missing; the county board’s notice to the voter does. Party is current registration.</p></details>';
     h += '<div class="foot"><span>Source: <a href="https://www.ncsbe.gov/results-data/absentee-data" target="_blank" rel="noopener">NC State Board of Elections</a> absentee file. Analysis: Carolina Forward.</span>' +
       '<button type="button" class="copy">Copy link to this view</button></div>';
     mount.innerHTML = h;
 
     var pick = q('.pick'), sel = q('.sel'), view = q('.view');
-    q('.lockbtn').addEventListener('click', function () {
-      D = null; KEY = '';
-      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
-      lockScreen('');
-    });
 
     function sorted(k) {
       var rows = places[k].slice();
@@ -398,8 +347,7 @@
       fill();
     }
 
-    /* Links to a view: #cure=county:Orange (or cd:4, hd:22, sd:9). The link opens to the lock screen
-       for anyone without a password. */
+    /* Links to a view: #cure=county:Orange (or cd:4, hd:22, sd:9). */
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
     function setHash() { try { history.replaceState(null, '', '#' + (KEY ? 'key=' + encodeURIComponent(KEY) + '&' : '') + 'cure=' + encodeURIComponent(hashKey()).replace('%3A', ':')); } catch (e) { /* ignore */ } }
     function readHash() {
@@ -472,13 +420,10 @@
     setGeo(state.geo);
   }
 
-  // A link can carry the password after the # (never sent to any server): .../staff/#key=<password>
-  // Opening that link unlocks the tracker with no typing. The key stays in the address so a refresh still works.
-  var KEY = (function () { var m = /(?:^#|&)key=([^&]+)/.exec(location.hash || ''); try { return m ? decodeURIComponent(m[1]) : ''; } catch (e) { return ''; } })();
-  if (KEY) {
-    mount.innerHTML = '<div class="kick">Carolina Forward · Staff and partners</div><p class="lockp">Opening the cure tracker…</p>';
-    unlock(KEY).then(render).catch(function (e) {
-      lockScreen(e && e.missing ? 'The password in this link no longer works. Ask whoever sent it for a new link.' : 'The tracker couldn’t load just now. Check your connection and refresh.');
-    });
-  } else lockScreen('');
+  // No lock: the tracker loads the published data directly. Old links that still carry #key=... open normally.
+  var KEY = '';
+  mount.innerHTML = '<div class="kick">Carolina Forward · Staff and partners</div><p class="lockp">Opening the cure tracker…</p>';
+  getJSON(VAULT + 'data.json').then(render).catch(function () {
+    mount.innerHTML = '<div class="kick">Carolina Forward · Staff and partners</div><p class="lockp">The tracker couldn’t load just now. Check your connection and refresh.</p>';
+  });
 })();

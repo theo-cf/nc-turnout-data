@@ -146,9 +146,9 @@ jobs:
           git commit -m "Update turnout data ($(TZ=America/New_York date +%F))"
           git push
 
-      # ---------------- Site for GitHub Pages, including the locked staff cure tracker ----------------
-      # The staff data has voter names and addresses. It is built in the runner's temp folder, locked
-      # with the group passwords from the STAFF_GROUPS secret, and only the locked files are published.
+      # ---------------- Site for GitHub Pages, including the staff cure tracker ----------------
+      # The staff data has voter names and addresses from the State Board's public absentee file. It is
+      # built in the runner's temp folder and published, unlocked, only to the Pages site (vault/data.json).
       # Nothing voter-level is committed to this public repo or printed to the log, and the published
       # site keeps no history (each deployment replaces the last).
 
@@ -159,19 +159,17 @@ jobs:
           cp -r docs/. _site/
           python staff/build_widget.py "https://theo-cf.github.io/nc-turnout-data/vault/" _site/staff
 
-      - name: Build and lock the staff cure tracker data
+      - name: Build the staff cure tracker data
         id: staff
-        if: steps.gate.outputs.go == 'true' && env.PAGES_FROM_ACTIONS == 'true' && env.HAS_GROUPS == 'true'
+        if: steps.gate.outputs.go == 'true' && env.PAGES_FROM_ACTIONS == 'true'
         continue-on-error: true   # a staff problem must never hold up the public tracker
-        env:
-          STAFF_GROUPS: ${{ secrets.STAFF_GROUPS }}
         run: |
           SRC=$(find raw -type f \( -iname '*.csv' -o -iname '*.txt' \) | head -1)
           PLAIN="$RUNNER_TEMP/staff-plain"
           trap 'rm -rf "$PLAIN"' EXIT
           if [ -f history/lookup.pkl.gz ]; then export HISTORY_FILE=history/lookup.pkl.gz; fi
           python build_staff.py "$SRC" "$PLAIN" "$(cat last_modified.txt)"
-          python encrypt_staff.py "$PLAIN/data.json" _site/vault
+          mkdir -p _site/vault && cp "$PLAIN/data.json" _site/vault/data.json
 
       - name: Package the site
         id: site
@@ -201,5 +199,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo "::error::The staff cure tracker could not be updated. The public Turnout Tracker was published. Check the 'Build and lock the staff cure tracker data' step (most often a problem with the STAFF_GROUPS secret)."
+          echo "::error::The staff cure tracker could not be updated. The public Turnout Tracker was published. Check the 'Build the staff cure tracker data' step."
           exit 1
