@@ -18,6 +18,8 @@ For each year, statewide and for each county:
     voters who cast a ballot in 0 or 1 of the three previous November elections (2016-2020 for 2022,
     2018-2022 for 2024) in North Carolina, and for 2022 also voters who cast a ballot in 2016 and 2020 but
     not 2018 (the midterm-skippers, matching 2026's rule). Counts only.
+  * dd: early in-person voters on each day of early voting (k = 0 to 16): [DEM, REP, UNA, OTH, the four age groups,
+    and with HISTORY_FILE, low-propensity DEM, REP, UNA].
 Age groups are the State Board's: 18-25, 26-40, 41-65, 66 and older. Counts only.
 """
 import json
@@ -39,6 +41,7 @@ SKIP = {'2022': (7, 5), '2024': None}
 HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
 HIST = pd.read_pickle(HISTORY_FILE) if HISTORY_FILE else None
 K0, K1 = -14, 19
+EV_LEN = 17   # days of in-person early voting in 2022, 2024 and 2026
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
 AGE_EDGES = [17, 25, 40, 65, 200]
 AGE_LABELS = {'Age 18 - 25': 0, 'Age 26 - 40': 1, 'Age 41 - 65': 2, 'Age Over 66': 3}
@@ -92,7 +95,21 @@ def year(label, absentee, vstats, hstats):
         return {'c': cum(s), 'p': cum(s, 'pp', PARTIES), 'a': cum(s, 'ag', range(4)),
                 'reg': int(vs.n.sum()), 'rp': [int(vs.n[vs.pp == x].sum()) for x in PARTIES], 'ra': [int(vs.n[vs.ag == i].sum()) for i in range(4)],
                 'fin': int(hs.n.sum()), 'fp': [int(hs.n[hs.pp == x].sum()) for x in PARTIES], 'fa': [int(hs.n[hs.ag == i].sum()) for i in range(4)]} | \
-               ({'lp': [cum(s[(s.pp == x) & s.low]) for x in PARTIES[:3]]} if HIST is not None else {})   # low-propensity voters, by party
+               ({'lp': [cum(s[(s.pp == x) & s.low]) for x in PARTIES[:3]]} if HIST is not None else {}) | \
+               {'dd': day_detail(s)}   # low-propensity voters, by party; early in-person voters on each day of early voting
+
+    def day_detail(s):
+        # [DEM, REP, UNA, OTH, age 1-4, (low-propensity DEM, REP, UNA)] for early in-person voters on each early voting day
+        e = s[s.ev == 1]
+        res = []
+        for k in range(EV_LEN):
+            x = e[e.k == k]
+            p, ag = x.pp.value_counts(), x.ag.value_counts()
+            row = [int(p.get(v, 0)) for v in PARTIES] + [int(ag.get(i, 0)) for i in range(4)]
+            if HIST is not None:
+                row += [int((x.low & (x.pp == v)).sum()) for v in PARTIES[:3]]
+            res.append(row)
+        return res
 
     out = {'ev_start': YEARS[label], 'k0': K0, 'places': {'North Carolina': block(a, v, h)}}
     for c, s in a.groupby('county_desc'):
@@ -108,6 +125,14 @@ def main():
     res = {}
     for i in range(0, len(args), 4):
         res[args[i]] = year(*args[i:i + 4])
+    try:   # keep the registered low-propensity pools added by add_pool_baseline.py
+        old = json.load(open('docs/baseline.json'))
+        for y in res:
+            for name, p in res[y]['places'].items():
+                if 'lpr' in old.get(y, {}).get('places', {}).get(name, {}):
+                    p['lpr'] = old[y]['places'][name]['lpr']
+    except FileNotFoundError:
+        pass
     with open('docs/baseline.json', 'w') as f:
         json.dump(res, f, separators=(',', ':'))
 

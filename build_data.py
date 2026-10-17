@@ -103,6 +103,28 @@ if HAS_HIST:
     # low-propensity: voted in 0 or 1 of the last three Novembers (2020, 2022, 2024) in North Carolina, or voted in 2020 and
     # 2024 but skipped the 2022 midterm
     acc['low'] = (_n3 <= 1) | ((_bits & 28) == 20)
+# Each full day of in-person early voting (the file date itself is partial and left out), for the day-by-day breakdown.
+EVD_FULL = [d for d in pd.date_range(EV_START, periods=EV_DAYS, freq='D').strftime('%Y-%m-%d') if d < ASOF]
+
+
+def day_detail(s):
+    """Early in-person voters on each full day of early voting: [DEM, REP, UNA, OTH, age 1-4, low-propensity DEM, REP, UNA]."""
+    e = s[s.kind == 'ev']
+    g = {d: x for d, x in e.groupby('day')}
+    res = []
+    for d in EVD_FULL:
+        x = g.get(d)
+        if x is None:
+            res.append([0] * (8 + (3 if HAS_HIST else 0)))
+            continue
+        p, a = x.party.value_counts(), x.ab.value_counts()
+        row = [int(p.get(v, 0)) for v in ['DEM', 'REP', 'UNA', 'OTH']] + [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))]
+        if HAS_HIST:
+            row += [int(x.low[x.party == v].sum()) for v in ['DEM', 'REP', 'UNA']]
+        res.append(row)
+    return res
+
+
 days = pd.date_range(acc.when.min(), asof_ts, freq='D').strftime('%Y-%m-%d').tolist() if len(acc) else [ASOF]
 
 
@@ -117,6 +139,7 @@ def totals(s):
         'age': [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))],   # by age group (voters with no age listed are left out)
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
         'tev': [int(x) for x in by['ev']] if 'ev' in by else [0] * len(days),   # new votes per day, early in person
+        'dd': day_detail(s),   # early in-person voters on each full day of early voting, by party, age and propensity
     } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {})   # low-propensity voters by party
 
 
