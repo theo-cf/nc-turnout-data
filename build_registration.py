@@ -5,7 +5,7 @@ Usage:
 
 Reads the State Board's voter registration file (ncvoter_Statewide.zip, or the 100 county files) and
 writes registration.json: the number of registered voters statewide and by county, congressional
-district, NC House district, NC Senate district and precinct, with party and age breakdowns.
+district, NC House district, NC Senate district and precinct, with party, age, race and ethnicity breakdowns.
 
 Registered voters = ACTIVE + INACTIVE. Inactive voters are still registered and can vote, and counting
 them gives the larger denominator, so turnout percentages are never overstated. Removed, denied and
@@ -19,9 +19,9 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from ncsbe import COUNTY_NAME
+from ncsbe import COUNTY_NAME, ETHS, RACES, eth_code, race_code
 
-COLS = ['county_desc', 'status_cd', 'party_cd', 'age_at_year_end', 'precinct_desc',
+COLS = ['county_desc', 'status_cd', 'party_cd', 'age_at_year_end', 'precinct_desc', 'race_code', 'ethnic_code',
         'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv']
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
 AGE_EDGES = [17, 25, 40, 65, 200]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
@@ -44,15 +44,18 @@ def main():
                     ch['party'] = ch.party_cd.where(ch.party_cd.isin(PARTIES[:3]), 'OTH')
                     ch['ab'] = pd.cut(pd.to_numeric(ch.age_at_year_end, errors='coerce'), AGE_EDGES, labels=False)
                     ch['active'] = ch.status_cd == 'A'
-                    parts.append(ch.drop(columns=['status_cd', 'party_cd', 'age_at_year_end']))
+                    ch['race'] = ch.race_code.map({x: race_code(x) for x in ch.race_code.unique()})
+                    ch['eth'] = ch.ethnic_code.map({x: eth_code(x) for x in ch.ethnic_code.unique()})
+                    parts.append(ch.drop(columns=['status_cd', 'party_cd', 'age_at_year_end', 'race_code', 'ethnic_code']))
     v = pd.concat(parts)
     if len(v) < 1_000_000 and len(a.zips) == 1:
         raise SystemExit(f'STOPPING: only {len(v):,} registered voters; the file looks incomplete')
 
     def counts(s):
-        p, g = s.party.value_counts(), s.ab.value_counts()
+        p, g, rc, ec = s.party.value_counts(), s.ab.value_counts(), s.race.value_counts(), s.eth.value_counts()
         return {'n': int(len(s)), 'active': int(s.active.sum()),
-                'pty': [int(p.get(x, 0)) for x in PARTIES], 'age': [int(g.get(i, 0)) for i in range(4)]}
+                'pty': [int(p.get(x, 0)) for x in PARTIES], 'age': [int(g.get(i, 0)) for i in range(4)],
+                'race': [int(rc.get(x, 0)) for x in RACES], 'eth': [int(ec.get(x, 0)) for x in ETHS]}
 
     out = {'state': counts(v), 'county': {}, 'cd': {}, 'hd': {}, 'sd': {}, 'precinct': {}}
     if a.modified.strip():

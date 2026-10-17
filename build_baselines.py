@@ -18,6 +18,8 @@ For each year, statewide and for each county:
     voters who cast a ballot in 0 or 1 of the three previous November elections (2016-2020 for 2022,
     2018-2022 for 2024) in North Carolina, and for 2022 also voters who cast a ballot in 2016 and 2020 but
     not 2018 (the midterm-skippers, matching 2026's rule). Counts only.
+  * r / e, rr / re, fr / fe: votes so far, registered voters and final turnout by race and ethnicity (ncsbe.RACES, ETHS);
+    ddr: early in-person voters on each day of early voting by race and ethnicity.
   * dd: early in-person voters on each day of early voting (k = 0 to 16): [DEM, REP, UNA, OTH, the four age groups,
     and with HISTORY_FILE, low-propensity DEM, REP, UNA].
 Age groups are the State Board's: 18-25, 26-40, 41-65, 66 and older. Counts only.
@@ -29,7 +31,7 @@ import zipfile
 
 import pandas as pd
 
-from ncsbe import COUNTY_NAME
+from ncsbe import COUNTY_NAME, ETHS, RACES, eth_code, race_code
 
 YEARS = {'2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person early voting
 # Voter propensity: the last three November elections before each year, as bits in build_history.py's lookup
@@ -61,6 +63,8 @@ def read_stats(path):
     d['n'] = pd.to_numeric(d.total_voters, errors='coerce').fillna(0).astype(int)
     d['pp'] = party(d.party_cd)
     d['ag'] = d.age.map(AGE_LABELS)
+    d['rc'] = d.race_code.map({x: race_code(x) for x in d.race_code.unique()})
+    d['ec'] = d.ethnic_code.map({x: eth_code(x) for x in d.ethnic_code.unique()})
     if d.ag.isna().any():
         raise SystemExit(f'STOPPING: unknown age groups in {path}: {sorted(set(d.age[d.ag.isna()]))}')
     return d
@@ -70,7 +74,7 @@ def year(label, absentee, vstats, hstats):
     start = pd.Timestamp(YEARS[label])
     ks = list(range(K0, K1 + 1))
     a = pd.read_csv(absentee, encoding='iso-8859-1', dtype=str, keep_default_na=False,
-                    usecols=['ncid', 'county_desc', 'voter_party_code', 'age', 'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status'])
+                    usecols=['ncid', 'county_desc', 'voter_party_code', 'age', 'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'race', 'ethnicity'])
     a = a[a.ballot_rtn_status.str.upper().str.startswith('ACCEPTED')].copy()
     a['ev'] = a.ballot_req_type.str.upper().isin(['ONE-STOP', 'EARLY VOTING']).astype(int)
     a['when'] = pd.to_datetime(a.ballot_rtn_dt, format='%m/%d/%Y', errors='coerce')
@@ -78,6 +82,8 @@ def year(label, absentee, vstats, hstats):
     a['k'] = (a.when - start).dt.days
     a['pp'] = party(a.voter_party_code)
     a['ag'] = pd.cut(pd.to_numeric(a.age, errors='coerce'), AGE_EDGES, labels=False)
+    a['rc'] = a.race.map({x: race_code(x) for x in a.race.unique()})
+    a['ec'] = a.ethnicity.map({x: eth_code(x) for x in a.ethnicity.unique()})
     if HIST is not None:
         bits = a.ncid.map(HIST.b).fillna(0).astype(int)
         a['low'] = sum(((bits & b) > 0).astype(int) for b in PRIOR[label]) <= 1
@@ -96,7 +102,16 @@ def year(label, absentee, vstats, hstats):
                 'reg': int(vs.n.sum()), 'rp': [int(vs.n[vs.pp == x].sum()) for x in PARTIES], 'ra': [int(vs.n[vs.ag == i].sum()) for i in range(4)],
                 'fin': int(hs.n.sum()), 'fp': [int(hs.n[hs.pp == x].sum()) for x in PARTIES], 'fa': [int(hs.n[hs.ag == i].sum()) for i in range(4)]} | \
                ({'lp': [cum(s[(s.pp == x) & s.low]) for x in PARTIES[:3]]} if HIST is not None else {}) | \
-               {'dd': day_detail(s)}   # low-propensity voters, by party; early in-person voters on each day of early voting
+               {'dd': day_detail(s),   # low-propensity voters, by party; early in-person voters on each day of early voting
+                'r': cum(s, 'rc', RACES), 'e': cum(s, 'ec', ETHS),   # votes so far by race and ethnicity (ncsbe.RACES, ETHS)
+                'rr': [int(vs.n[vs.rc == x].sum()) for x in RACES], 're': [int(vs.n[vs.ec == x].sum()) for x in ETHS],
+                'fr': [int(hs.n[hs.rc == x].sum()) for x in RACES], 'fe': [int(hs.n[hs.ec == x].sum()) for x in ETHS],
+                'ddr': day_race(s)}
+
+    def day_race(s):
+        # [RACES..., ETHS...] for early in-person voters on each day of early voting
+        e = s[s.ev == 1]
+        return [[int(((e.k == k) & (e.rc == v)).sum()) for v in RACES] + [int(((e.k == k) & (e.ec == v)).sum()) for v in ETHS] for k in range(EV_LEN)]
 
     def day_detail(s):
         # [DEM, REP, UNA, OTH, age 1-4, (low-propensity DEM, REP, UNA)] for early in-person voters on each early voting day

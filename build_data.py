@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from election_day import PRECINCT_MIN, TOP_CONTEST, district_ed, load_lookup, precinct_tables, read_results
-from ncsbe import ACCEPTED, COUNTY_NAME, DISTRICTS, KNOWN, NC_COUNTIES, NEEDS_CURE, REJECTED, TYPES, norm, num
+from ncsbe import ACCEPTED, COUNTY_NAME, DISTRICTS, ETHS, KNOWN, NC_COUNTIES, NEEDS_CURE, RACES, REJECTED, TYPES, eth_code, norm, num, race_code
 
 SRC, ASOF, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
 UPDATED = None
@@ -49,7 +49,7 @@ ED_DROP_LIMIT = 0.90          # stop if Election Day votes fall below 90% of the
 DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last published total
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
-        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc']
+        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc', 'race', 'ethnicity']
 AGE_GROUPS = [(18, 25), (26, 40), (41, 65), (66, 200)]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
 EV_START, EV_DAYS = '2026-10-15', 17                      # in-person early voting, Oct. 15-31
 
@@ -88,6 +88,8 @@ acc['prio'] = (acc.kind == 'ev').astype(int)
 acc = acc.sort_values(['prio', 'when'], ascending=[False, False]).drop_duplicates('ncid', keep='first')
 acc['ab'] = pd.cut(pd.to_numeric(acc.age, errors='coerce'), [a - 1 for a, _ in AGE_GROUPS] + [200], labels=False)
 acc['party'] = acc.voter_party_code.where(acc.voter_party_code.isin(['DEM', 'REP', 'UNA']), 'OTH')
+acc['race'] = acc.race.fillna('').map({x: race_code(x) for x in acc.race.fillna('').unique()})        # as listed on the registration (optional)
+acc['eth'] = acc.ethnicity.fillna('').map({x: eth_code(x) for x in acc.ethnicity.fillna('').unique()})
 asof_ts = pd.Timestamp(ASOF)
 acc['when'] = acc.when.fillna(asof_ts)
 acc['day'] = acc.when.where(acc.when <= asof_ts, asof_ts).dt.strftime('%Y-%m-%d')  # future-dated records count on the file date
@@ -125,6 +127,21 @@ def day_detail(s):
     return res
 
 
+def day_race(s):
+    """Early in-person voters on each full day of early voting, by race (RACES) and ethnicity (ETHS)."""
+    e = s[s.kind == 'ev']
+    g = {d: x for d, x in e.groupby('day')}
+    res = []
+    for d in EVD_FULL:
+        x = g.get(d)
+        if x is None:
+            res.append([0] * (len(RACES) + len(ETHS)))
+            continue
+        rc, ec = x.race.value_counts(), x.eth.value_counts()
+        res.append([int(rc.get(v, 0)) for v in RACES] + [int(ec.get(v, 0)) for v in ETHS])
+    return res
+
+
 days = pd.date_range(acc.when.min(), asof_ts, freq='D').strftime('%Y-%m-%d').tolist() if len(acc) else [ASOF]
 
 
@@ -141,6 +158,8 @@ def totals(s):
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
         'tev': [int(x) for x in by['ev']] if 'ev' in by else [0] * len(days),   # new votes per day, early in person
         'dd': day_detail(s),   # early in-person voters on each full day of early voting, by party, age and propensity
+        'race': [int(s.race.eq(x).sum()) for x in RACES], 'eth': [int(s.eth.eq(x).sum()) for x in ETHS],   # by race and ethnicity (ncsbe.RACES, ETHS)
+        'ddr': day_race(s),
     } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {})   # low-propensity voters by party
 
 
@@ -221,7 +240,8 @@ for (county, site), s in ev.groupby(['county_desc', 'site']):
     out['sites'].setdefault(COUNTY_NAME.get(county, county.title()), []).append([
         site, [int(daily.get(d, 0)) for d in ev_days],
         [int(p.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
-        [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))]])
+        [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))],
+        [int(s.race.eq(x).sum()) for x in RACES], [int(s.eth.eq(x).sum()) for x in ETHS]])
 for rows in out['sites'].values():
     rows.sort(key=lambda r: -sum(r[1]))
 
@@ -229,7 +249,7 @@ for rows in out['sites'].values():
 lookup = load_lookup()
 
 # ---- registered voters (weekly registration file; see build_registration.py) ----
-REG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'registration.json')
+REG_PATH = os.environ.get('REG_FILE', '').strip() or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'registration.json')
 reg = json.load(open(REG_PATH)) if os.path.exists(REG_PATH) else None
 if reg:
     out['reg_as_of'] = reg.get('as_of')
@@ -237,6 +257,8 @@ if reg:
                                                   for k in ('county', 'cd', 'hd', 'sd') for r in out['geo'][k]]:
         if x:
             r['reg'], r['rpty'], r['rage'] = x['n'], x['pty'], x['age']
+            if 'race' in x:
+                r['rrace'], r['reth'] = x['race'], x['eth']
 ed_pct = None
 if RESULTS_FILE and os.path.exists(RESULTS_FILE) and ASOF >= ELECTION_DAY:   # the State Board posts a blank results file weeks early
     try:

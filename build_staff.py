@@ -27,7 +27,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from ncsbe import ACCEPTED, KNOWN, NEEDS_CURE, REJECTED, TYPES, norm, num
+from ncsbe import ETHS, RACES, eth_code, race_code, ACCEPTED, KNOWN, NEEDS_CURE, REJECTED, TYPES, norm, num
 
 SRC, OUT = sys.argv[1], sys.argv[2]
 ASOF, UPDATED = pd.Timestamp.now(tz='America/New_York').strftime('%Y-%m-%d'), None
@@ -61,6 +61,8 @@ if set(df.st.dropna()) - KNOWN:
     fail(f'unrecognized ballot status(es): {sorted(set(df.st.dropna()) - KNOWN)}')
 df['when'] = pd.to_datetime(df.ballot_rtn_dt, format='%m/%d/%Y', errors='coerce')
 df['party'] = df.voter_party_code.where(df.voter_party_code.isin(PARTIES[:3]), 'OTH')
+df['rc'] = df.race.fillna('').map({x: race_code(x) for x in df.race.fillna('').unique()})   # race and ethnicity as listed on the registration
+df['ec'] = df.ethnicity.fillna('').map({x: eth_code(x) for x in df.ethnicity.fillna('').unique()})
 
 mail = df[(df.rtype == 'MAIL') & df.st.notna() & (df.st != 'PENDING')]
 ev_ok = set(df.loc[(df.rtype.map(TYPES) == 'ev') & df.st.isin(ACCEPTED), 'ncid'])
@@ -109,6 +111,10 @@ def summary(s):
     out['email'] = int((s.ballot_req_delivery_type == 'E-MAIL').sum())
     out['pn'] = [int((s.party == p).sum()) for p in PARTIES]      # returned mail voters by party
     out['pw'] = [int((w.party == p).sum()) for p in PARTIES]      # waiting on the voter, by party
+    c = s[(s.grp == 'acc') & (s.acc_st == 'ACCEPTED - CURED')]
+    # by race and ethnicity (ncsbe.RACES, ETHS): returned mail voters, waiting on the voter, cured
+    out['rn'], out['rw'], out['rcu'] = ([int((g.rc == x).sum()) for x in RACES] for g in (s, w, c))
+    out['en'], out['ew'], out['ecu'] = ([int((g.ec == x).sum()) for x in ETHS] for g in (s, w, c))
     # waiting on the voter, by status and party: {status key: [DEM, REP, UNA, OTH]}
     out['sp'] = {CURE_KEY[st]: [int((g2.party == p).sum()) for p in PARTIES] for st, g2 in w.groupby('cure_st')}
     return out
@@ -209,6 +215,7 @@ for i, r in v[v.grp == 'wait'].iterrows():
         'home': fix_state(title(home)),
         'mail_to': '' if same(mail_to, home) else fix_state(title(mail_to)),
         'delivery': (r.ballot_req_delivery_type or '').title().replace('E-Mail', 'Email'),
+        'race': r.rc, 'eth': r.ec,
     } | history(i))
 voters.sort(key=lambda x: (x['county'], x['precinct'], x['name']))
 out['voters'] = voters
@@ -232,6 +239,7 @@ for i, r in v[(v.grp == 'acc') & (v.acc_st == 'ACCEPTED - CURED')].iterrows():
         'home': fix_state(title(home)),
         'mail_to': '' if same(mail_to, home) else fix_state(title(mail_to)),
         'delivery': (r.ballot_req_delivery_type or '').title().replace('E-Mail', 'Email'),
+        'race': r.rc, 'eth': r.ec,
     } | history(i))
 cured.sort(key=lambda x: (x['returned'], x['name']), reverse=True)
 out['cured'] = cured

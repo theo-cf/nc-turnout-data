@@ -24,6 +24,31 @@ def norm(x):
     return s.replace('E - TRANSMISSION', 'E-TRANSMISSION').replace('ONE - STOP', 'ONE-STOP')
 
 
+# Race and ethnicity as voters list them on their registration (both optional). Codes are the State Board's.
+RACES = ['B', 'W', 'A', 'I', 'O', 'M', 'P', 'U']   # Black, White, Asian, American Indian, Other, two or more, Pacific Islander, undesignated
+ETHS = ['HL', 'NL', 'UN']                          # Hispanic or Latino, not Hispanic or Latino, left blank
+_RACE_WORDS = {'BLACK OR AFRICAN AMERICAN': 'B', 'WHITE': 'W', 'ASIAN': 'A', 'INDIAN AMERICAN OR ALASKA NATIVE': 'I',
+               'AMERICAN INDIAN OR ALASKA NATIVE': 'I', 'OTHER': 'O', 'TWO OR MORE RACES': 'M', 'MULTI-RACIAL': 'M',
+               'NATIVE HAWAIIAN OR PACIFIC ISLANDER': 'P'}
+
+
+def race_code(x):
+    """A State Board race label (absentee file) or code (registration file) as one of RACES."""
+    s = str(x if not pd.isna(x) else '').strip().strip("'").upper()
+    if s in RACES:
+        return s
+    return _RACE_WORDS.get(s, 'U')
+
+
+def eth_code(x):
+    s = str(x if not pd.isna(x) else '').strip().strip("'").upper()
+    if s in ('HL', 'HISPANIC OR LATINO'):
+        return 'HL'
+    if s in ('NL', 'NOT HISPANIC OR NOT LATINO', 'NOT HISPANIC OR LATINO'):
+        return 'NL'
+    return 'UN'
+
+
 def num(x):
     m = re.search(r'(\d+)$', str(x))
     return int(m.group(1)) if m else 0

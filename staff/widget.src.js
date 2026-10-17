@@ -111,6 +111,12 @@
   }
   function whenLabel(cured) { return cured ? 'Most recent return' : 'Longest waiting'; }
   function sortLabel(k, cured) { return k === 'when' ? whenLabel(cured) : SORTS.filter(function (s) { return s[0] === k; })[0][1]; }
+  /* Race and ethnicity as voters list them on their registration (optional). */
+  var RACE = [['B', 'Black'], ['W', 'White'], ['A', 'Asian'], ['I', 'American Indian'], ['O', 'Other race'], ['M', 'Two or more races'], ['P', 'Pacific Islander'], ['U', 'Undesignated']];
+  var ETH = [['HL', 'Hispanic or Latino'], ['NL', 'Not Hispanic or Latino'], ['UN', 'Left blank']];
+  var RNAME = {}; RACE.forEach(function (r) { RNAME[r[0]] = r[1]; });
+  var ENAME = { HL: 'Hispanic', NL: 'Not Hispanic', UN: 'Ethnicity blank' };
+  function rtag(x) { return x.race ? '<span class="rtag">' + esc(RNAME[x.race] || 'Undesignated') + ' \u00B7 ' + esc(ENAME[x.eth] || 'Ethnicity blank') + '</span>' : ''; }
   function pbadge(x) {
     var code = x.pcode || x.party, cls = { DEM: 'd', REP: 'r', UNA: 'u' }[x.party] || 'o';
     return '<span class="pb ' + cls + '">' + esc(PNAME[code] || code) + '</span>';
@@ -126,7 +132,7 @@
     var A = D.access || { area: 'all', desc: 'Statewide', label: '' }, all = A.area === 'all';
     var places = { state: [Object.assign({ name: 'North Carolina' }, D.state)] };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) { places[k] = D.geo[k]; });
-    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false, list: 'wait', sorts: ['', '', ''] };
+    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false, list: 'wait', sorts: ['', '', ''], race: '', eth: '' };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) {
       state.sel[k] = places[k].reduce(function (a, r) { return r.wait > a.wait ? r : a; }).name;
     });
@@ -195,6 +201,7 @@
       v += listBlock(r);
       v += whereBlock(k, r, V, partial);
       v += partyBlock(r);
+      v += raceBlock(r);
       v += flagsBlock(k, r);
       view.innerHTML = v;
       wireList(r);
@@ -264,6 +271,22 @@
       return t;
     }
 
+    function raceBlock(r) {
+      if (!r.rn || !r.n) return '';
+      function rows(list, n, w, c) {
+        return list.map(function (g, i) {
+          if (!n[i] && !w[i] && !c[i]) return '';
+          return '<tr><td>' + g[1] + '</td><td>' + fmt(n[i]) + '</td><td>' + fmt(w[i]) + '</td><td>' + pct(w[i], n[i]) + '</td><td>' + fmt(c[i]) + '</td></tr>';
+        }).join('');
+      }
+      var head = function (lab) { return '<thead><tr><th>' + lab + '</th><th>Returned</th><th>Waiting</th><th>Rate</th><th>Cured</th></tr></thead>'; };
+      var blank = r.en ? r.en[2] : 0;
+      return '<div class="sec"><div class="sech">By race and ethnicity<span>As listed on the voter\u2019s registration</span></div>' +
+        '<div class="tw"><table class="narrow">' + head('Race') + '<tbody>' + rows(RACE, r.rn, r.rw, r.rcu) +
+        '<tr class="tot"><td>Total</td><td>' + fmt(r.n) + '</td><td>' + fmt(r.wait) + '</td><td>' + pct(r.wait, r.n) + '</td><td>' + fmt(r.acc_cur) + '</td></tr></tbody></table></div>' +
+        '<div class="tw" style="margin-top:14px"><table class="narrow">' + head('Ethnicity') + '<tbody>' + rows(ETH, r.en, r.ew, r.ecu) + '</tbody></table></div>' +
+        '<p class="note">Rate = voters waiting as a share of that group\u2019s returned mail voters. Race and ethnicity are optional on the registration form; ' + pct(blank, r.n) + ' of returned mail voters here left ethnicity blank, so Hispanic and Latino voters are undercounted. Many Hispanic and Latino voters choose \u201cOther\u201d for race.</p></div>';
+    }
     function partyBlock(r) {
       if (!r.n) return '';
       var bar = '', t = '';
@@ -305,6 +328,8 @@
         '<select class="vp" aria-label="Party"><option value="">All parties</option>' + PARTY.map(function (p) { return '<option value="' + p[0] + '"' + (state.party === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select>' +
         (cured ? '' : '<select class="vs" aria-label="Status"><option value="">All statuses</option>' + D.cure_keys.filter(function (c) { return V.some(function (x) { return x.status === c[0]; }); })
           .map(function (c) { return '<option value="' + c[0] + '"' + (state.status === c[0] ? ' selected' : '') + '>' + esc(STATUS[c[0]]) + '</option>'; }).join('') + '</select>') +
+        (V.some(function (x) { return x.race; }) ? '<select class="vr" aria-label="Race"><option value="">All races</option>' + RACE.map(function (g) { return '<option value="' + g[0] + '"' + (state.race === g[0] ? ' selected' : '') + '>' + g[1] + '</option>'; }).join('') + '</select>' +
+          '<select class="ve" aria-label="Ethnicity"><option value="">All ethnicities</option>' + ETH.map(function (g) { return '<option value="' + g[0] + '"' + (state.eth === g[0] ? ' selected' : '') + '>' + g[1] + '</option>'; }).join('') + '</select>' : '') +
         (V.some(function (x) { return x.h; }) ? '<select class="vh" aria-label="Voting history"><option value="">All voting histories</option>' + HIST.map(function (h) { return '<option value="' + h[0] + '"' + (state.hist === h[0] ? ' selected' : '') + '>' + h[1] + '</option>'; }).join('') + '</select>' : '') +
         '<button type="button" class="exp">Export CSV</button></div>' +
         '<div class="sbar"><span class="sbl">Sort by</span>' + opt(0) + '<span class="sbl">then</span>' + opt(1) + '<span class="sbl">then</span>' + opt(2) + '</div>' +
@@ -319,6 +344,8 @@
         return V.filter(function (x) {
           if (state.party && x.party !== state.party) return false;
           if (!cured && state.status && x.status !== state.status) return false;
+          if (state.race && x.race !== state.race) return false;
+          if (state.eth && x.eth !== state.eth) return false;
           if (state.hist) { var hk = hkey(x); if (state.hist === 'low' ? !(hk === 'nv' || hk === '0' || hk === '1') : hk !== state.hist) return false; }
           if (!words.length) return true;
           var hay = x.hay || (x.hay = [x.name, x.ncid, x.county, x.precinct, x.home, x.mail_to].join(' ').toLowerCase());
@@ -336,7 +363,7 @@
         var t = '<table class="cards vtab"><thead><tr><th>Voter</th>' + (cured ? '<th>Returned</th>' : '<th class="l">Status</th><th>Waiting</th>') + '<th class="l">Where they vote</th><th class="l">Home address</th><th class="l">Ballot mailed to</th></tr></thead><tbody>';
         shown.forEach(function (x) {
           var old = !cured && x.days !== '' && x.days >= STALE_DAYS;
-          t += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' · ' : '') + 'NCID ' + esc(x.ncid) + '</span>' + (cured && htag(x) ? htag(x) : '') + '</td>' +
+          t += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.age ? 'Age ' + esc(x.age) + ' · ' : '') + 'NCID ' + esc(x.ncid) + '</span>' + rtag(x) + (cured && htag(x) ? htag(x) : '') + '</td>' +
             (cured ? '<td data-l="Returned">' + (x.returned ? apDate(x.returned) : '') + '</td>'
               : '<td class="l" data-l="Status"><span class="pill">' + esc(STATUS[x.status]) + '</span>' + (htag(x) ? '<br>' + htag(x) : '') + '</td>' +
                 '<td data-l="Waiting"><span' + (old ? ' class="old"' : '') + '>' + (x.days === '' ? '' : x.days + (x.days === 1 ? ' day' : ' days')) + '</span>' + (x.returned ? '<span class="vid">since ' + apDate(x.returned) + '</span>' : '') + '</td>') +
@@ -358,6 +385,8 @@
       vp.addEventListener('change', function () { state.party = vp.value; state.all = false; draw(); });
       if (vs) vs.addEventListener('change', function () { state.status = vs.value; state.all = false; draw(); });
       var vh = view.querySelector('.vh'); if (vh) vh.addEventListener('change', function () { state.hist = vh.value; state.all = false; draw(); });
+      var vr = view.querySelector('.vr'); if (vr) vr.addEventListener('change', function () { state.race = vr.value; state.all = false; draw(); });
+      var ve = view.querySelector('.ve'); if (ve) ve.addEventListener('change', function () { state.eth = ve.value; state.all = false; draw(); });
       each(view.querySelectorAll('.sbar select'), function (s) {
         s.addEventListener('change', function () { state.sorts[+s.getAttribute('data-lvl')] = s.value; state.all = false; draw(); });
       });
@@ -366,6 +395,7 @@
           [['Status', function (x) { return STATUS[x.status]; }], ['Days waiting', 'days'], ['Ballot returned', 'returned']]).concat([
           ['Party', function (x) { return x.pcode || x.party; }], ['Age', 'age'], ['County', 'county'], ['Precinct', 'precinct'], ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'],
           ['Home address', 'home'], ['Ballot mailed to', 'mail_to'], ['Delivery', 'delivery'],
+          ['Race', function (x) { return x.race ? RNAME[x.race] || '' : ''; }], ['Ethnicity', function (x) { return x.eth ? ({ HL: 'Hispanic or Latino', NL: 'Not Hispanic or Latino', UN: 'Left blank' })[x.eth] : ''; }],
           ['Voted Nov. 2020 / 2022 / 2024', function (x) { return x.h ? x.h.split('').join(' ') : ''; }],
           ['Voting history', function (x) { var k = hkey(x); return k === 'nv' ? 'New Voter' : k ? 'Voted ' + k + ' of 3' : ''; }]]);
         var lines = [cols.map(function (c) { return c[0]; }).join(',')];

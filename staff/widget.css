@@ -74,6 +74,7 @@ button,input,select{font-family:inherit}
 .ltabs button b{font-weight:800;margin-left:4px;font-variant-numeric:tabular-nums}
 .ltabs button:hover{background:#ece5d6;color:var(--ink)}
 .ltabs button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.rtag{display:block;width:fit-content;font-size:12px;font-weight:600;background:#F0ECF5;color:#4d2f66;padding:2px 7px;border-radius:3px;margin-top:5px}
 .ldek{font-size:14px;color:var(--soft);margin:0 0 12px}
 .sbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-4px 0 12px}
 .sbar select{height:36px;border:1px solid var(--rule);border-radius:2px;background:#fff;padding:0 8px;font-size:14px;color:var(--ink);max-width:100%}
