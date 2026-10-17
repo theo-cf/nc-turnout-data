@@ -202,7 +202,7 @@ for i, r in v[v.grp == 'wait'].iterrows():
     voters.append({
         'name': title(clean(r.voter_first_name, r.voter_middle_name, r.voter_last_name)),
         'ncid': i, 'reg': r.voter_reg_num or '',
-        'county': title(r.county_desc), 'precinct': r.precinct_desc or '',
+        'county': title(r.county_desc), 'precinct': r.precinct_desc if isinstance(r.precinct_desc, str) else '',   # a few voters have no precinct listed
         'cd': num(r.cong_dist_desc) or '', 'hd': num(r.nc_house_desc) or '', 'sd': num(r.nc_senate_desc) or '',
         'party': r.party, 'pcode': r.voter_party_code or '', 'age': int(r.age) if str(r.age).isdigit() else '',
         'status': CURE_KEY[r.cure_st], 'returned': w.strftime('%Y-%m-%d') if pd.notna(w) else '',
