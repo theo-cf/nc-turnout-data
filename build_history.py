@@ -24,6 +24,7 @@ import zipfile
 
 import pandas as pd
 
+XT_RACES = ['B', 'O', 'A', 'W']   # Black, Other, Asian, White: the race rows on the shareable graphics
 ELECTIONS = {'11/08/2016': 1, '11/06/2018': 2, '11/03/2020': 4, '11/08/2022': 8, '11/05/2024': 16}
 
 
@@ -50,7 +51,8 @@ def main():
     h = h.drop_duplicates()
     bits = h.election_lbl.map(ELECTIONS).groupby(h.ncid).sum().astype('uint8')
 
-    v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year', 'party_cd', 'county_desc', 'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv'])
+    v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year', 'party_cd', 'county_desc', 'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv',
+                                'race_code', 'age_at_year_end'])
     v['rank'] = v.status_cd.map({'A': 0, 'I': 1}).fillna(2)            # prefer the active/inactive registration
     v = v.sort_values('rank').drop_duplicates('ncid').set_index('ncid')
     reg = pd.to_datetime(v.registr_dt, format='%m/%d/%Y', errors='coerce')
@@ -79,6 +81,19 @@ def main():
         for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
             d = pd.to_numeric(lp[col], errors='coerce')
             P[k] = {str(int(n)): cnt(g) for n, g in lp[d.notna()].groupby(d.dropna().astype(int))}
+        # For the shareable graphics, statewide and by county: registered voters by race x age x propensity ('xr', see XT_RACES)
+        # and by party x propensity ('pr': DEM low, DEM regular, REP low, REP regular, UNA low, UNA regular).
+        r = r.assign(low=((n3 <= 1) | ((b & 28) == 20)).values)
+        ri = r.race_code.str.strip().map({x: i for i, x in enumerate(XT_RACES)})
+        ai = pd.cut(pd.to_numeric(r.age_at_year_end, errors='coerce'), [17, 25, 40, 65, 200], labels=False)
+        cell = (ri * 4 + ai) * 2 + (~r.low).astype(int)
+        pc = r.party_cd.map({'DEM': 0, 'REP': 2, 'UNA': 4}) + (~r.low).astype(int)
+
+        def xt(idx, n):
+            c = idx.dropna().astype(int).value_counts()
+            return [int(c.get(i, 0)) for i in range(n)]
+        P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
+        P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
         with open(a.pool, 'w') as f:
             json.dump(P, f, separators=(',', ':'))
         print(f"low-propensity registered voters (DEM, REP, UNA): {P['state']}")

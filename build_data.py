@@ -127,6 +127,19 @@ def day_detail(s):
     return res
 
 
+XT_RACES = ['B', 'O', 'A', 'W']   # race rows on the shareable graphics: Black, Other, Asian, White
+
+
+def xt_counts(s):
+    """Voters by race x age x propensity ('xv': ((race * 4) + age) * 2 + (0 low, 1 regular)) and by party x propensity
+    ('pv': DEM low, DEM regular, REP low, REP regular, UNA low, UNA regular)."""
+    reg = (~s.low).astype(int)
+    ri = s.race.map({x: i for i, x in enumerate(XT_RACES)})
+    cell = ((ri * 4 + s.ab) * 2 + reg).dropna().astype(int).value_counts()
+    pc = (s.party.map({'DEM': 0, 'REP': 2, 'UNA': 4}) + reg).dropna().astype(int).value_counts()
+    return {'xv': [int(cell.get(i, 0)) for i in range(32)], 'pv': [int(pc.get(i, 0)) for i in range(6)]}
+
+
 def day_race(s):
     """Early in-person voters on each full day of early voting, by race (RACES) and ethnicity (ETHS)."""
     e = s[s.kind == 'ev']
@@ -160,7 +173,8 @@ def totals(s):
         'dd': day_detail(s),   # early in-person voters on each full day of early voting, by party, age and propensity
         'race': [int(s.race.eq(x).sum()) for x in RACES], 'eth': [int(s.eth.eq(x).sum()) for x in ETHS],   # by race and ethnicity (ncsbe.RACES, ETHS)
         'ddr': day_race(s),
-    } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {})   # low-propensity voters by party
+    } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {}) \
+      | (xt_counts(s) if HAS_HIST else {})   # low-propensity voters by party; counts for the shareable graphics
 
 
 GEOS = [('county', 'county_desc', lambda v: COUNTY_NAME.get(v.upper(), v.title())),
@@ -292,6 +306,12 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
             _x = _P.get(_k, {}).get(_r['name'] if _k == 'county' else str(num(_r['name'])))
             if _x:
                 _r['lpr'] = _x
+    for _key in ('xr', 'pr'):   # registered voters for the shareable graphics, statewide and by county
+        if _key in _P:
+            out['state'][_key] = _P[_key]['state']
+            for _r in out['geo']['county']:
+                if _r['name'] in _P[_key]['county']:
+                    _r[_key] = _P[_key]['county'][_r['name']]
 
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
