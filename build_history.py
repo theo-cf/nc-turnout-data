@@ -125,6 +125,9 @@ def main():
         if 'nw' in out:   # first-time 2026 registrants (active and inactive), statewide and by county
             n = r[out.nw.reindex(r.index).fillna(0).astype(bool).values]
             P['nw'] = {'state': int(len(n)), 'county': {COUNTY_NAME.get(c, c.title()): int(len(g)) for c, g in n.groupby('county_desc')}}
+            for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
+                d = pd.to_numeric(n[col], errors='coerce')
+                P['nw'][k] = {str(int(x)): int(len(g)) for x, g in n[d.notna()].groupby(d.dropna().astype(int))}
         with open(a.pool, 'w') as f:
             json.dump(P, f, separators=(',', ':'))
         print(f"low-propensity registered voters (DEM, REP, UNA): {P['state']}")

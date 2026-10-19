@@ -72,7 +72,9 @@ def read_stats(path):
     return d
 
 
-def year(label, absentee, vstats, hstats):
+def year(label, absentee, vstats, hstats, geo=None):
+    """One year's baseline, statewide and by county; or, with geo, by today's districts (see build_district_baselines.py).
+    geo: {'a': DataFrame of today's cd/hd/sd for each voter ID that year, 'pct': {"COUNTY|precinct code": [cd, hd, sd]}}"""
     start = pd.Timestamp(YEARS[label])
     ks = list(range(K0, K1 + 1))
     a = pd.read_csv(absentee, encoding='iso-8859-1', dtype=str, keep_default_na=False,
@@ -129,6 +131,18 @@ def year(label, absentee, vstats, hstats):
             res.append(row)
         return res
 
+    if geo is not None:
+        a = a.join(geo['a'], on='ncid')
+        for d in (v, h):
+            m = (d.county_desc.str.strip().str.upper() + '|' + d.precinct_abbrv.str.strip()).map(geo['pct'])
+            for i, kind in enumerate(('cd', 'hd', 'sd')):
+                d[kind] = m.str[i]
+        out = {'ev_start': YEARS[label], 'k0': K0, 'districts': {}}
+        for kind, pre in (('cd', 'CD'), ('hd', 'HD'), ('sd', 'SD')):
+            out['districts'][kind] = {f'{pre} {int(n)}': block(s, v[v[kind] == n], h[h[kind] == n]) for n, s in a.dropna(subset=[kind]).groupby(kind)}
+        print(f"{label}: ballots placed in today's districts {a.cd.notna().mean():.2%}; registered {v.n[v.cd.notna()].sum() / v.n.sum():.2%}; "
+              f"final turnout {h.n[h.cd.notna()].sum() / h.n.sum():.2%}")
+        return out
     out = {'ev_start': YEARS[label], 'k0': K0, 'places': {'North Carolina': block(a, v, h)}}
     for c, s in a.groupby('county_desc'):
         out['places'][place(c)] = block(s, v[v.county_desc == c], h[h.county_desc == c])

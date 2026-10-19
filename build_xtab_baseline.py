@@ -1,7 +1,12 @@
-"""Build the 2022 comparison for the Turnout Tracker's shareable graphics (docs/xtab2022.json). Run once.
+"""Build a past-year comparison for the Turnout Tracker's shareable graphics (docs/xtab<year>.json). Run once per year.
 
 Usage:
-    HISTORY_FILE=<lookup.pkl.gz> python build_xtab_baseline.py <absentee_20221108.csv> <VR_Snapshot_20221108.zip>
+    HISTORY_FILE=<lookup.pkl.gz> python build_xtab_baseline.py 2022 <absentee_20221108.csv> <VR_Snapshot_20221108.zip>
+    python build_xtab_baseline.py 2018 <absentee_20181106_w_ethnicity.csv> <VR_Snapshot_20181106.zip>
+
+2018 has no propensity split (it needs 2012-2016 voting history, which the State Board no longer publishes): every
+voter is counted as "regular", and the tracker draws 2018's graphics for all voters. Its days are lined up by days
+before Election Day, as in build_baselines.py (day 0 is Thursday, Oct. 18, 2018).
 
 Statewide and for each county, writes:
   * v[k]:  accepted early and mail voters so far at the end of day k of early voting (k = 0 is Oct. 20, 2022, the first
@@ -24,7 +29,7 @@ import pandas as pd
 from ncsbe import COUNTY_NAME, race_code
 
 XT_RACES = ['B', 'O', 'A', 'W']
-EV_START = pd.Timestamp('2022-10-20')
+EV_STARTS = {'2018': '2018-10-18', '2022': '2022-10-20'}
 KS = list(range(0, 20))
 
 
@@ -47,8 +52,10 @@ def counts(series, n):
 
 
 def main():
-    H = pd.read_pickle(os.environ['HISTORY_FILE']).b
-    absentee, snap = sys.argv[1], sys.argv[2]
+    label, absentee, snap = sys.argv[1], sys.argv[2], sys.argv[3]
+    EV_START = pd.Timestamp(EV_STARTS[label])
+    H = pd.read_pickle(os.environ['HISTORY_FILE']).b if label == '2022' else None
+    low = (lambda ids: low22(ids.map(H).fillna(0).astype(int))) if H is not None else (lambda ids: pd.Series(False, index=ids.index))
     a = pd.read_csv(absentee, encoding='iso-8859-1', dtype=str, keep_default_na=False,
                     usecols=['ncid', 'county_desc', 'voter_party_code', 'race', 'age', 'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status'])
     a = a[a.ballot_rtn_status.str.upper().str.startswith('ACCEPTED')].copy()
@@ -58,7 +65,7 @@ def main():
     a['k'] = (a.when - EV_START).dt.days
     a['race'] = a.race.map({x: race_code(x) for x in a.race.unique()})
     a['party'] = a.voter_party_code.str.strip()
-    a['low'] = low22(a.ncid.map(H).fillna(0).astype(int))
+    a['low'] = low(a.ncid)
     a = cells(a, 'age')
 
     parts = []
@@ -71,22 +78,22 @@ def main():
     r = pd.concat(parts).drop_duplicates('ncid')
     r['race'] = r.race_code.map({x: race_code(x) for x in r.race_code.unique()})
     r['party'] = r.party_cd
-    r['low'] = low22(r.ncid.map(H).fillna(0).astype(int))
+    r['low'] = low(r.ncid)
     r = cells(r, 'age')
 
     def place(av, rv):
         return {'v': [counts(av.cell[av.k <= k], 32) for k in KS], 'pv': [counts(av.pc[av.k <= k], 6) for k in KS],
                 'r': counts(rv.cell, 32), 'pr': counts(rv.pc, 6)}
 
-    out = {'ev_start': '2022-10-20', 'places': {'North Carolina': place(a, r)}}
+    out = {'ev_start': EV_STARTS[label], 'places': {'North Carolina': place(a, r)}}
     rg = dict(tuple(r.groupby('county_desc')))
     for c, g in a.groupby('county_desc'):
         rv = rg.get(c, rg.get(c.upper()))
         if rv is not None:
             out['places'][COUNTY_NAME.get(c.upper(), c.title())] = place(g, rv)
     st = out['places']['North Carolina']
-    print(f"2022 statewide through day 2: {sum(st['v'][2]):,} voters in graphic cells; registered {sum(st['r']):,}; counties {len(out['places']) - 1}")
-    with open('docs/xtab2022.json', 'w') as f:
+    print(f"{label} statewide through day 2: {sum(st['v'][2]):,} voters in graphic cells; registered {sum(st['r']):,}; counties {len(out['places']) - 1}")
+    with open(f'docs/xtab{label}.json', 'w') as f:
         json.dump(out, f, separators=(',', ':'))
 
 

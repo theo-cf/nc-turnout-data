@@ -322,6 +322,10 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
         out['state']['nwr'] = _P['nw']['state']
         for _r in out['geo']['county']:
             _r['nwr'] = _P['nw']['county'].get(_r['name'], 0)
+        for _k in ('cd', 'hd', 'sd'):
+            if _k in _P['nw']:
+                for _r in out['geo'][_k]:
+                    _r['nwr'] = _P['nw'][_k].get(str(num(_r['name'])), 0)
     for _key in ('xr', 'pr'):   # registered voters for the shareable graphics, statewide and by county
         if _key in _P:
             out['state'][_key] = _P[_key]['state']
