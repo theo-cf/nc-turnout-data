@@ -33,22 +33,23 @@ import pandas as pd
 
 from ncsbe import COUNTY_NAME, ETHS, RACES, eth_code, race_code
 
-YEARS = {'2018': '2018-10-18', '2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person early voting
+YEARS = {'2018': '2018-10-18', '2020': '2020-10-15', '2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person early voting
+# 2020's ran Oct. 15-31, the same dates as 2026; it has no propensity either (it needs 2014 history).
 # 2018's early voting ran 18 days, from Wednesday, Oct. 17. Its years are lined up by days before Election Day, which also
 # lines up the weekdays: day 0 is Thursday, Oct. 18, and Oct. 17's votes count toward the totals from day -1 on.
 # Voter propensity: the last three November elections before each year, as bits in build_history.py's lookup
 # (2016 = 1, 2018 = 2, 2020 = 4, 2022 = 8). Optional: set HISTORY_FILE to that private lookup.
-PRIOR = {'2018': None, '2022': (1, 2, 4), '2024': (2, 4, 8)}   # 2018 needs 2012-2016 history, which the State Board no longer publishes
+PRIOR = {'2018': None, '2020': None, '2022': (1, 2, 4), '2024': (2, 4, 8)}   # 2018 needs 2012-2016 history, which the State Board no longer publishes
 # Also low-propensity: voted in both presidential elections but skipped the midterm between them (2022 only, the
 # year that lines up with 2026; 2024 has no midterm-skipper equivalent): (bits to check, pattern).
-SKIP = {'2018': None, '2022': (7, 5), '2024': None}
+SKIP = {'2018': None, '2020': None, '2022': (7, 5), '2024': None}
 HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
 HIST = pd.read_pickle(HISTORY_FILE) if HISTORY_FILE else None
 K0, K1 = -14, 19
 EV_LEN = 17   # days of in-person early voting in 2022, 2024 and 2026
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
 AGE_EDGES = [17, 25, 40, 65, 200]
-AGE_LABELS = {'Age 18 - 25': 0, 'Age 26 - 40': 1, 'Age 41 - 65': 2, 'Age Over 66': 3, 'Age < 18 Or Invalid Birth Dates': -1}   # the last appears in 2018's files; counted in totals only
+AGE_LABELS = {'Age 18 - 25': 0, 'Age 26 - 40': 1, 'Age 41 - 65': 2, 'Age Over 66': 3, 'Age < 18 Or Invalid Birth Dates': -1, 'Invalid Birth Dates': -1}   # the last appears in 2018's files; counted in totals only
 
 
 def party(s):

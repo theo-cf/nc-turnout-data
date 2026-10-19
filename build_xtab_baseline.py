@@ -2,9 +2,10 @@
 
 Usage:
     HISTORY_FILE=<lookup.pkl.gz> python build_xtab_baseline.py 2022 <absentee_20221108.csv> <VR_Snapshot_20221108.zip>
-    python build_xtab_baseline.py 2018 <absentee_20181106_w_ethnicity.csv> <VR_Snapshot_20181106.zip>
+    HISTORY_FILE=<lookup.pkl.gz> python build_xtab_baseline.py 2024 <absentee_20241105.csv> <VR_Snapshot_20241105.zip>
+    python build_xtab_baseline.py 2018 <absentee_20181106_w_ethnicity.csv> <VR_Snapshot_20181106.zip>   (and 2020)
 
-2018 has no propensity split (it needs 2012-2016 voting history, which the State Board no longer publishes): every
+2018 and 2020 have no propensity split (it needs 2012-2016 voting history, which the State Board no longer publishes): every
 voter is counted as "regular", and the tracker draws 2018's graphics for all voters. Its days are lined up by days
 before Election Day, as in build_baselines.py (day 0 is Thursday, Oct. 18, 2018).
 
@@ -29,7 +30,10 @@ import pandas as pd
 from ncsbe import COUNTY_NAME, race_code
 
 XT_RACES = ['B', 'O', 'A', 'W']
-EV_STARTS = {'2018': '2018-10-18', '2022': '2022-10-20'}
+_h = os.environ.pop('HISTORY_FILE', None)   # build_baselines would load the lookup a second time on import
+from build_baselines import PRIOR, SKIP, YEARS as EV_STARTS  # noqa: E402
+if _h:
+    os.environ['HISTORY_FILE'] = _h
 KS = list(range(0, 20))
 
 
@@ -54,8 +58,16 @@ def counts(series, n):
 def main():
     label, absentee, snap = sys.argv[1], sys.argv[2], sys.argv[3]
     EV_START = pd.Timestamp(EV_STARTS[label])
-    H = pd.read_pickle(os.environ['HISTORY_FILE']).b if label == '2022' else None
-    low = (lambda ids: low22(ids.map(H).fillna(0).astype(int))) if H is not None else (lambda ids: pd.Series(False, index=ids.index))
+    H = pd.read_pickle(os.environ['HISTORY_FILE']).b if PRIOR[label] else None
+
+    def low(ids):   # the same rule as build_baselines.py; years without enough history count everyone as regular
+        if H is None:
+            return pd.Series(False, index=ids.index)
+        b = ids.map(H).fillna(0).astype(int)
+        lo = sum(((b & x) > 0).astype(int) for x in PRIOR[label]) <= 1
+        if SKIP[label]:
+            lo |= (b & SKIP[label][0]) == SKIP[label][1]
+        return lo
     a = pd.read_csv(absentee, encoding='iso-8859-1', dtype=str, keep_default_na=False,
                     usecols=['ncid', 'county_desc', 'voter_party_code', 'race', 'age', 'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status'])
     a = a[a.ballot_rtn_status.str.upper().str.startswith('ACCEPTED')].copy()

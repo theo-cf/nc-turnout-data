@@ -98,7 +98,11 @@ def main():
         today[k] = [int(grp[c].mode().iat[0]) for c in ('cd', 'hd', 'sd')]
     split = {c: int((t.groupby('k')[c].nunique() > 1).sum()) for c in ('cd', 'hd', 'sd')}
     print(f'today: {len(today)} precincts; split between districts: {split}')
-    res = {'today': today}
+    try:   # keep years built earlier
+        res = json.load(open('docs/precinct_xwalk.json'))
+    except FileNotFoundError:
+        res = {}
+    res['today'] = today
     args = sys.argv[2:]
     for i in range(0, len(args), 2):
         out, fb, un = year(args[i + 1], cur, today)
