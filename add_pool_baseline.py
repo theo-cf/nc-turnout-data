@@ -19,10 +19,10 @@ import pandas as pd
 
 from ncsbe import COUNTY_NAME
 
-PRIOR = {'2022': (1, 2, 4), '2024': (2, 4, 8)}
-# Also low-propensity: voted in both presidential elections but skipped the midterm between them (2022 only, the
-# year that lines up with 2026; 2024 has no midterm-skipper equivalent): (bits to check, pattern).
-SKIP = {'2022': (7, 5), '2024': None}
+_h = os.environ.pop('HISTORY_FILE', None)   # build_baselines would load the lookup a second time on import
+from build_baselines import PRIOR, SKIP  # noqa: E402  (the same rules as the vote counts, every year)
+if _h:
+    os.environ['HISTORY_FILE'] = _h
 PARTIES = ['DEM', 'REP', 'UNA']
 
 

@@ -24,7 +24,7 @@ import pandas as pd
 
 from build_baselines import K0, K1, YEARS, place
 
-PRIOR_BITS = {'2018': 0, '2020': 1 | 2, '2022': 1 | 2 | 4, '2024': 1 | 2 | 4 | 8}   # history lookup bits for Novembers before each year (2016 = 1)
+PRIOR_BITS = {'2018': 32 | 64 | 1, '2020': 64 | 1 | 2, '2022': 1 | 2 | 4, '2024': 1 | 2 | 4 | 8}   # history lookup bits for Novembers before each year (2016 = 1)
 HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
 HIST = pd.read_pickle(HISTORY_FILE).b if HISTORY_FILE else None
 
