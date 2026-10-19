@@ -33,20 +33,22 @@ import pandas as pd
 
 from ncsbe import COUNTY_NAME, ETHS, RACES, eth_code, race_code
 
-YEARS = {'2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person early voting
+YEARS = {'2018': '2018-10-18', '2022': '2022-10-20', '2024': '2024-10-17'}   # first day of in-person early voting
+# 2018's early voting ran 18 days, from Wednesday, Oct. 17. Its years are lined up by days before Election Day, which also
+# lines up the weekdays: day 0 is Thursday, Oct. 18, and Oct. 17's votes count toward the totals from day -1 on.
 # Voter propensity: the last three November elections before each year, as bits in build_history.py's lookup
 # (2016 = 1, 2018 = 2, 2020 = 4, 2022 = 8). Optional: set HISTORY_FILE to that private lookup.
-PRIOR = {'2022': (1, 2, 4), '2024': (2, 4, 8)}
+PRIOR = {'2018': None, '2022': (1, 2, 4), '2024': (2, 4, 8)}   # 2018 needs 2012-2016 history, which the State Board no longer publishes
 # Also low-propensity: voted in both presidential elections but skipped the midterm between them (2022 only, the
 # year that lines up with 2026; 2024 has no midterm-skipper equivalent): (bits to check, pattern).
-SKIP = {'2022': (7, 5), '2024': None}
+SKIP = {'2018': None, '2022': (7, 5), '2024': None}
 HISTORY_FILE = os.environ.get('HISTORY_FILE', '').strip()
 HIST = pd.read_pickle(HISTORY_FILE) if HISTORY_FILE else None
 K0, K1 = -14, 19
 EV_LEN = 17   # days of in-person early voting in 2022, 2024 and 2026
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
 AGE_EDGES = [17, 25, 40, 65, 200]
-AGE_LABELS = {'Age 18 - 25': 0, 'Age 26 - 40': 1, 'Age 41 - 65': 2, 'Age Over 66': 3}
+AGE_LABELS = {'Age 18 - 25': 0, 'Age 26 - 40': 1, 'Age 41 - 65': 2, 'Age Over 66': 3, 'Age < 18 Or Invalid Birth Dates': -1}   # the last appears in 2018's files; counted in totals only
 
 
 def party(s):
@@ -84,7 +86,8 @@ def year(label, absentee, vstats, hstats):
     a['ag'] = pd.cut(pd.to_numeric(a.age, errors='coerce'), AGE_EDGES, labels=False)
     a['rc'] = a.race.map({x: race_code(x) for x in a.race.unique()})
     a['ec'] = a.ethnicity.map({x: eth_code(x) for x in a.ethnicity.unique()})
-    if HIST is not None:
+    lowok = HIST is not None and PRIOR[label] is not None
+    if lowok:
         bits = a.ncid.map(HIST.b).fillna(0).astype(int)
         a['low'] = sum(((bits & b) > 0).astype(int) for b in PRIOR[label]) <= 1
         if SKIP[label]:
@@ -101,7 +104,7 @@ def year(label, absentee, vstats, hstats):
         return {'c': cum(s), 'p': cum(s, 'pp', PARTIES), 'a': cum(s, 'ag', range(4)),
                 'reg': int(vs.n.sum()), 'rp': [int(vs.n[vs.pp == x].sum()) for x in PARTIES], 'ra': [int(vs.n[vs.ag == i].sum()) for i in range(4)],
                 'fin': int(hs.n.sum()), 'fp': [int(hs.n[hs.pp == x].sum()) for x in PARTIES], 'fa': [int(hs.n[hs.ag == i].sum()) for i in range(4)]} | \
-               ({'lp': [cum(s[(s.pp == x) & s.low]) for x in PARTIES[:3]]} if HIST is not None else {}) | \
+               ({'lp': [cum(s[(s.pp == x) & s.low]) for x in PARTIES[:3]]} if lowok else {}) | \
                {'dd': day_detail(s),   # low-propensity voters, by party; early in-person voters on each day of early voting
                 'r': cum(s, 'rc', RACES), 'e': cum(s, 'ec', ETHS),   # votes so far by race and ethnicity (ncsbe.RACES, ETHS)
                 'rr': [int(vs.n[vs.rc == x].sum()) for x in RACES], 're': [int(vs.n[vs.ec == x].sum()) for x in ETHS],
@@ -121,7 +124,7 @@ def year(label, absentee, vstats, hstats):
             x = e[e.k == k]
             p, ag = x.pp.value_counts(), x.ag.value_counts()
             row = [int(p.get(v, 0)) for v in PARTIES] + [int(ag.get(i, 0)) for i in range(4)]
-            if HIST is not None:
+            if lowok:
                 row += [int((x.low & (x.pp == v)).sum()) for v in PARTIES[:3]]
             res.append(row)
         return res
@@ -140,8 +143,10 @@ def main():
     res = {}
     for i in range(0, len(args), 4):
         res[args[i]] = year(*args[i:i + 4])
-    try:   # keep the registered low-propensity pools added by add_pool_baseline.py
+    try:   # keep the other years, and the registered low-propensity pools added by add_pool_baseline.py
         old = json.load(open('docs/baseline.json'))
+        res = {y: old[y] for y in old if y not in res} | res
+        res = {y: res[y] for y in sorted(res)}
         for y in res:
             for name, p in res[y]['places'].items():
                 if 'lpr' in old.get(y, {}).get('places', {}).get(name, {}):

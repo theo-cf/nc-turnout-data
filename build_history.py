@@ -9,6 +9,10 @@ Reads the State Board's statewide voter history and registration files and write
          (2016 = 1, 2018 = 2, 2020 = 4, 2022 = 8, 2024 = 16)
   * reg: registration date as YYYYMMDD (0 if unknown)
   * by:  birth year (0 if unknown)
+  * nw:  (with --snap) 1 if the voter's current registration is their first in North Carolina and was made in 2026:
+         registered in 2026, not in the State Board's November 2024 registration snapshot under any county, and no
+         voting history. Voters in the 2024 snapshot but no longer registered are added with b = 0 and nw = 0, so that
+         any voter ID missing from the lookup is a registration newer than these files.
 
 With --pool, also writes the number of registered voters (active and inactive) in each party who are
 low-propensity going into 2026 (voted in 0 or 1 of 2020, 2022 and 2024, or in 2020 and 2024 but not 2022), statewide and by county
@@ -39,12 +43,25 @@ def read(paths, cols, keep=None):
     return pd.concat(parts)
 
 
+def snap_ids(path):
+    """Every voter ID in a State Board registration snapshot (any county, any status)."""
+    import io
+    ids = []
+    with zipfile.ZipFile(path) as z, z.open(z.namelist()[0]) as fb:
+        enc = 'utf-16' if fb.peek(2)[:2] in (b'\xff\xfe', b'\xfe\xff') else 'latin-1'
+        for ch in pd.read_csv(io.TextIOWrapper(fb, encoding=enc), sep='\t', dtype=str, keep_default_na=False, usecols=['ncid'], chunksize=2_000_000):
+            ids.append(ch.ncid.str.strip().unique())
+    import numpy as np
+    return pd.Index(np.concatenate(ids)).unique()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--history', nargs='+', required=True)
     ap.add_argument('--voters', nargs='+', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--pool', default='')
+    ap.add_argument('--snap', default='', help='VR_Snapshot_20241105.zip, for first-time registrants')
     a = ap.parse_args()
 
     h = read(a.history, ['ncid', 'election_lbl'], lambda c: c[c.election_lbl.isin(ELECTIONS)])
@@ -60,6 +77,17 @@ def main():
     out['b'] = bits.reindex(out.index).fillna(0).astype('uint8')
     out['reg'] = reg.dt.strftime('%Y%m%d').reindex(out.index).fillna('0').astype('int32')
     out['by'] = pd.to_numeric(v.birth_year, errors='coerce').reindex(out.index).fillna(0).astype('int16')
+    if a.snap:
+        snap = snap_ids(a.snap)
+        cur = v.status_cd.isin(['A', 'I']) & (reg.dt.year == 2026)
+        nw = cur & ~v.index.isin(snap)
+        nw &= (out.b.reindex(v.index).fillna(0) == 0).values
+        out['nw'] = 0
+        out.loc[v.index[nw], 'nw'] = 1
+        out['nw'] = out.nw.astype('uint8')
+        extra = snap.difference(out.index)
+        out = pd.concat([out, pd.DataFrame({'b': 0, 'reg': 0, 'by': 0, 'nw': 0}, index=extra).astype(out.dtypes.to_dict())])
+        print(f'first-time 2026 registrants: {int(nw.sum()):,}; 2024 snapshot voters added: {len(extra):,}')
 
     # Sanity checks: each November must have millions of voters, or the history file is incomplete.
     for lbl, bit in ELECTIONS.items():
@@ -94,6 +122,9 @@ def main():
             return [int(c.get(i, 0)) for i in range(n)]
         P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
+        if 'nw' in out:   # first-time 2026 registrants (active and inactive), statewide and by county
+            n = r[out.nw.reindex(r.index).fillna(0).astype(bool).values]
+            P['nw'] = {'state': int(len(n)), 'county': {COUNTY_NAME.get(c, c.title()): int(len(g)) for c, g in n.groupby('county_desc')}}
         with open(a.pool, 'w') as f:
             json.dump(P, f, separators=(',', ':'))
         print(f"low-propensity registered voters (DEM, REP, UNA): {P['state']}")

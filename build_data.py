@@ -49,7 +49,7 @@ ED_DROP_LIMIT = 0.90          # stop if Election Day votes fall below 90% of the
 DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last published total
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
-        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc', 'race', 'ethnicity']
+        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc', 'race', 'ethnicity', 'sdr']
 AGE_GROUPS = [(18, 25), (26, 40), (41, 65), (66, 200)]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
 EV_START, EV_DAYS = '2026-10-15', 17                      # in-person early voting, Oct. 15-31
 
@@ -89,6 +89,7 @@ acc = acc.sort_values(['prio', 'when'], ascending=[False, False]).drop_duplicate
 acc['ab'] = pd.cut(pd.to_numeric(acc.age, errors='coerce'), [a - 1 for a, _ in AGE_GROUPS] + [200], labels=False)
 acc['party'] = acc.voter_party_code.where(acc.voter_party_code.isin(['DEM', 'REP', 'UNA']), 'OTH')
 acc['race'] = acc.race.fillna('').map({x: race_code(x) for x in acc.race.fillna('').unique()})        # as listed on the registration (optional)
+acc['sdr'] = acc.sdr.fillna('').str.strip().str.upper().eq('Y')   # registered (or updated their address) and voted the same day
 acc['eth'] = acc.ethnicity.fillna('').map({x: eth_code(x) for x in acc.ethnicity.fillna('').unique()})
 asof_ts = pd.Timestamp(ASOF)
 acc['when'] = acc.when.fillna(asof_ts)
@@ -105,6 +106,14 @@ if HAS_HIST:
     # low-propensity: voted in 0 or 1 of the last three Novembers (2020, 2022, 2024) in North Carolina, or voted in 2020 and
     # 2024 but skipped the 2022 midterm
     acc['low'] = (_n3 <= 1) | ((_bits & 28) == 20)
+    # First-time North Carolina registrants this year (see build_history.py --snap): flagged in the lookup, or not in it at all
+    # (registered after the State Board's weekly file, including same-day registrants).
+    HAS_NW = 'nw' in _H.columns
+    if HAS_NW:
+        acc['unk'] = ~acc.ncid.isin(_H.index)
+        acc['nw'] = acc.ncid.map(_H.nw).fillna(0).astype(int).eq(1) | acc.unk
+else:
+    HAS_NW = False
 # Each full day of in-person early voting (the file date itself is partial and left out), for the day-by-day breakdown.
 EVD_FULL = [d for d in pd.date_range(EV_START, periods=EV_DAYS, freq='D').strftime('%Y-%m-%d') if d < ASOF]
 
@@ -174,7 +183,10 @@ def totals(s):
         'race': [int(s.race.eq(x).sum()) for x in RACES], 'eth': [int(s.eth.eq(x).sum()) for x in ETHS],   # by race and ethnicity (ncsbe.RACES, ETHS)
         'ddr': day_race(s),
     } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {}) \
-      | (xt_counts(s) if HAS_HIST else {})   # low-propensity voters by party; counts for the shareable graphics
+      | (xt_counts(s) if HAS_HIST else {}) \
+      | ({'nv': [int(s.nw.sum()), int(s.sdr.sum()), int((s.nw & s.sdr).sum()), int(s.unk.sum())]} if HAS_NW else {})
+    # low-propensity voters by party; counts for the shareable graphics; new voters: first-time registrants who have voted,
+    # same-day registrants, first-time same-day registrants, first-time registrants newer than the registration file
 
 
 GEOS = [('county', 'county_desc', lambda v: COUNTY_NAME.get(v.upper(), v.title())),
@@ -306,6 +318,10 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
             _x = _P.get(_k, {}).get(_r['name'] if _k == 'county' else str(num(_r['name'])))
             if _x:
                 _r['lpr'] = _x
+    if HAS_NW and 'nw' in _P:   # first-time 2026 registrants in the registration file, statewide and by county
+        out['state']['nwr'] = _P['nw']['state']
+        for _r in out['geo']['county']:
+            _r['nwr'] = _P['nw']['county'].get(_r['name'], 0)
     for _key in ('xr', 'pr'):   # registered voters for the shareable graphics, statewide and by county
         if _key in _P:
             out['state'][_key] = _P[_key]['state']
