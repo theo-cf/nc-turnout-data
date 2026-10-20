@@ -58,3 +58,39 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run update.yml --ref "${{ github.ref_name }}"
+
+      # Keeps one copy of the final 2026 absentee file on the ncsbe-source-files branch, next to the other
+      # State Board files (see that branch's README). Files over 100 MB are split into parts GitHub accepts.
+      # Only the README and checksum list are downloaded from that branch, not the big files already on it.
+      # If this step fails, the final turnout above is already saved and published; it can be rerun by hand.
+      - name: Save a copy of the final absentee file to the ncsbe-source-files branch
+        continue-on-error: true
+        run: |
+          DAY=$(TZ=America/New_York date +%F)
+          NAME="ncsbe_absentee_2026-11-03_general_final_as_of_${DAY}.zip"
+          mkdir -p arch && cd arch
+          curl -fsSL --retry 3 --retry-delay 30 -o "$NAME" https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03/absentee_20261103.zip
+          SUM=$(sha256sum "$NAME" | cut -d' ' -f1)
+          git clone --quiet --filter=blob:none --no-checkout --depth 1 --branch ncsbe-source-files \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" branch
+          cd branch
+          git sparse-checkout set --no-cone README.md SHA256SUMS.txt
+          git checkout --quiet ncsbe-source-files
+          if [ $(stat -c %s "../$NAME") -gt 95000000 ]; then split -b 90m -d -a 2 "../$NAME" "$NAME.part"; else cp "../$NAME" .; fi
+          echo "$SUM  $NAME" >> SHA256SUMS.txt
+          python - "$NAME" "$DAY" <<'PY'
+          import sys
+          name, day = sys.argv[1], sys.argv[2]
+          s = open('README.md').read()
+          line = (f"- `{name}`: the final 2026 file, saved automatically on {day} when final turnout was published "
+                  "(the State Board's `absentee_20261103.csv`). Bigger than 100 MB? It's in numbered parts; see above.\n")
+          key = "older days can't be downloaded again.\n"
+          s = s.replace(key, key + line, 1) if key in s else s + "\n" + line
+          open('README.md', 'w').write(s)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --sparse README.md SHA256SUMS.txt "$NAME"*
+          git commit --quiet -m "Final 2026 absentee file ($DAY)"
+          git push --quiet origin ncsbe-source-files
+          echo "Saved $NAME to the ncsbe-source-files branch."
