@@ -5,9 +5,8 @@ Usage:
     HISTORY_FILE=<lookup.pkl.gz> python build_xtab_baseline.py 2024 <absentee_20241105.csv> <VR_Snapshot_20241105.zip>
     python build_xtab_baseline.py 2018 <absentee_20181106_w_ethnicity.csv> <VR_Snapshot_20181106.zip>   (and 2020)
 
-2018 and 2020 have no propensity split (it needs 2012-2016 voting history, which the State Board no longer publishes): every
-voter is counted as "regular", and the tracker draws 2018's graphics for all voters. Its days are lined up by days
-before Election Day, as in build_baselines.py (day 0 is Thursday, Oct. 18, 2018).
+2018 and 2020 use the same propensity rule with longer lookbacks (2012 and 2014 history from an archived State Board
+file). 2018's days are lined up by days before Election Day, as in build_baselines.py (day 0 is Thursday, Oct. 18, 2018).
 
 Statewide and for each county, writes:
   * v[k]:  accepted early and mail voters so far at the end of day k of early voting (k = 0 is Oct. 20, 2022, the first
@@ -84,7 +83,7 @@ def main():
     with zipfile.ZipFile(snap) as z, z.open(z.namelist()[0]) as fb:
         enc = 'utf-16' if fb.peek(2)[:2] in (b'\xff\xfe', b'\xfe\xff') else 'latin-1'
         for ch in pd.read_csv(io.TextIOWrapper(fb, encoding=enc), sep='\t', dtype=str, keep_default_na=False, chunksize=1_000_000,
-                              usecols=['county_desc', 'ncid', 'status_cd', 'party_cd', 'race_code', 'age']):
+                              usecols=['county_desc', 'ncid', 'status_cd', 'party_cd', 'race_code', 'age', 'precinct_abbrv']):
             ch = ch.apply(lambda c: c.str.strip())
             parts.append(ch[ch.status_cd.isin(['A', 'I'])])
     r = pd.concat(parts).drop_duplicates('ncid')
@@ -107,6 +106,25 @@ def main():
     print(f"{label} statewide through day 2: {sum(st['v'][2]):,} voters in graphic cells; registered {sum(st['r']):,}; counties {len(out['places']) - 1}")
     with open(f'docs/xtab{label}.json', 'w') as f:
         json.dump(out, f, separators=(',', ':'))
+
+    # The same for today's districts (docs/xtab_districts<year>.json): voters are placed through their precinct at the
+    # time, using docs/precinct_xwalk.json (build_district_xwalk.py), and ballots follow their voter.
+    import gc
+    xw = json.load(open('docs/precinct_xwalk.json'))[label]
+    key = (r.county_desc.str.upper() + '|' + r.precinct_abbrv).astype('category')
+    r = pd.DataFrame({'cell': r.cell.astype('float32').values, 'pc': r.pc.astype('float32').values}, index=r.ncid.values)
+    for i, kind in enumerate(('cd', 'hd', 'sd')):
+        r[kind] = key.map({k: v[i] for k, v in xw.items()}).astype('float32').values
+    del key
+    a = a[['ncid', 'k', 'cell', 'pc']].join(r[['cd', 'hd', 'sd']], on='ncid')
+    gc.collect()
+    od = {'ev_start': EV_STARTS[label], 'districts': {}}
+    for kind, pre in (('cd', 'CD'), ('hd', 'HD'), ('sd', 'SD')):
+        rgd = dict(tuple(r.dropna(subset=[kind]).groupby(kind)))
+        od['districts'][kind] = {f'{pre} {int(n)}': place(g, rgd[n]) for n, g in a.dropna(subset=[kind]).groupby(kind) if n in rgd}
+    with open(f'docs/xtab_districts{label}.json', 'w') as f:
+        json.dump(od, f, separators=(',', ':'))
+    print(f"{label} districts: {', '.join(k + ' ' + str(len(v)) for k, v in od['districts'].items())}")
 
 
 if __name__ == '__main__':

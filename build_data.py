@@ -30,7 +30,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from election_day import PRECINCT_MIN, TOP_CONTEST, district_ed, load_lookup, precinct_tables, read_results
+from election_day import PRECINCT_MIN, TOP_CONTEST, district_ed, district_tables, load_lookup, precinct_tables, read_results
 from ncsbe import ACCEPTED, COUNTY_NAME, DISTRICTS, ETHS, KNOWN, NC_COUNTIES, NEEDS_CURE, RACES, REJECTED, TYPES, eth_code, norm, num, race_code
 
 SRC, ASOF, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -136,6 +136,17 @@ def day_detail(s):
     return res
 
 
+def day_new(s):
+    """For each full day of early voting: [first-time registrants, same-day registrants, first-time same-day registrants]
+    among all ballots accepted that day (early in person and mail), to match the past years' day-by-day counts."""
+    g = {d: x for d, x in s.groupby('day')}
+    res = []
+    for d in EVD_FULL:
+        x = g.get(d)
+        res.append([0, 0, 0] if x is None else [int(x.nw.sum()), int(x.sdr.sum()), int((x.nw & x.sdr).sum())])
+    return res
+
+
 XT_RACES = ['B', 'O', 'A', 'W']   # race rows on the shareable graphics: Black, Other, Asian, White
 
 
@@ -184,7 +195,8 @@ def totals(s):
         'ddr': day_race(s),
     } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {}) \
       | (xt_counts(s) if HAS_HIST else {}) \
-      | ({'nv': [int(s.nw.sum()), int(s.sdr.sum()), int((s.nw & s.sdr).sum()), int(s.unk.sum())]} if HAS_NW else {})
+      | ({'nv': [int(s.nw.sum()), int(s.sdr.sum()), int((s.nw & s.sdr).sum()), int(s.unk.sum())]} if HAS_NW else {}) \
+      | ({'dn': day_new(s)} if HAS_NW else {})
     # low-propensity voters by party; counts for the shareable graphics; new voters: first-time registrants who have voted,
     # same-day registrants, first-time same-day registrants, first-time registrants newer than the registration file
 
@@ -306,6 +318,7 @@ if ed_pct is not None:
     out['unassigned_ed'] = {k: dist[k + '_unassigned'] for k in ('cd', 'hd', 'sd')}
 if ASOF >= ELECTION_DAY:
     out['precincts'] = precinct_tables(acc, ed_pct, lookup, reg['precinct'] if reg else None)
+    out['dprecincts'] = district_tables(acc, ed_pct, lookup, reg['precinct'] if reg else None)   # today's districts
     out['precinct_min'] = PRECINCT_MIN
 
 # ---- registered low-propensity voters by party, for "what share of them have voted" (from build_history.py --pool) ----
@@ -332,6 +345,11 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
             for _r in out['geo']['county']:
                 if _r['name'] in _P[_key]['county']:
                     _r[_key] = _P[_key]['county'][_r['name']]
+            for _k in ('cd', 'hd', 'sd'):
+                for _r in out['geo'][_k]:
+                    _x = _P[_key].get(_k, {}).get(str(num(_r['name'])))
+                    if _x:
+                        _r[_key] = _x
 
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')

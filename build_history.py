@@ -122,6 +122,10 @@ def main():
             return [int(c.get(i, 0)) for i in range(n)]
         P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
+        for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):   # the same, by today's districts
+            d = pd.to_numeric(r[col], errors='coerce')
+            P['xr'][k] = {str(int(n)): xt(cell[g.index], 32) for n, g in r[d.notna()].groupby(d.dropna().astype(int))}
+            P['pr'][k] = {str(int(n)): xt(pc[g.index], 6) for n, g in r[d.notna()].groupby(d.dropna().astype(int))}
         if 'nw' in out:   # first-time 2026 registrants (active and inactive), statewide and by county
             n = r[out.nw.reindex(r.index).fillna(0).astype(bool).values]
             P['nw'] = {'state': int(len(n)), 'county': {COUNTY_NAME.get(c, c.title()): int(len(g)) for c, g in n.groupby('county_desc')}}

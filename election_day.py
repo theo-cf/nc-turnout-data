@@ -85,6 +85,18 @@ def precinct_tables(acc, ed_by_pct, lookup, reg=None):
     acc: accepted votes, one row per voter, with county_desc, precinct_desc and kind ('ev' or 'ml').
     reg: optional {COUNTY: {precinct name: registered voters}}; adds a fifth number per row."""
     out = {}
+    for county, rows in county_rows(acc, ed_by_pct, lookup, reg):
+        t = pd.DataFrame(rows.values())
+        if t.empty:
+            continue
+        table = finish_table(t)
+        if table:
+            out[COUNTY_NAME.get(county, county.title())] = table
+    return out
+
+
+def county_rows(acc, ed_by_pct, lookup, reg=None):
+    """(COUNTY, {precinct code: {name, ev, ml, ed, reg, cd, hd, sd}}) for each county, with today's districts from precincts.csv."""
     for county, lk in lookup.groupby('county'):
         a = acc[acc.county_desc == county]
         names = match_names(a.precinct_desc.dropna().unique(), lk.name)
@@ -94,16 +106,31 @@ def precinct_tables(acc, ed_by_pct, lookup, reg=None):
         for _, p in lk.iterrows():
             rows[p.code] = {'name': tidy(p['name']), 'ev': int(em.ev.get(p['name'], 0)) if 'ev' in em else 0,
                             'ml': int(em.ml.get(p['name'], 0)) if 'ml' in em else 0, 'ed': 0,
-                            'reg': int((reg or {}).get(county, {}).get(p['name'], 0))}
+                            'reg': int((reg or {}).get(county, {}).get(p['name'], 0)), 'cd': p.cd, 'hd': p.hd, 'sd': p.sd}
         if ed_by_pct is not None:
             for _, e in ed_by_pct[(ed_by_pct.county == county) & (ed_by_pct.real == 'Y')].iterrows():
-                rows.setdefault(e.code, {'name': tidy(e.code), 'ev': 0, 'ml': 0, 'ed': 0, 'reg': 0})['ed'] += int(e.ed)
-        t = pd.DataFrame(rows.values())
-        if t.empty:
-            continue
-        table = finish_table(t)
-        if table:
-            out[COUNTY_NAME.get(county, county.title())] = table
+                rows.setdefault(e.code, {'name': tidy(e.code), 'ev': 0, 'ml': 0, 'ed': 0, 'reg': 0, 'cd': '', 'hd': '', 'sd': ''})['ed'] += int(e.ed)
+        yield county, rows
+
+
+def district_tables(acc, ed_by_pct, lookup, reg=None):
+    """{'cd'|'hd'|'sd': {'HD 47': table}}: the precincts that make up each of today's districts, named "Precinct (County)" when
+    a district spans counties. A precinct split by district lines counts in the district where most of its voters are."""
+    recs = []
+    for county, rows in county_rows(acc, ed_by_pct, lookup, reg):
+        for r in rows.values():
+            recs.append(dict(r, county=COUNTY_NAME.get(county, county.title())))
+    d = pd.DataFrame(recs)
+    out = {}
+    for k, pre in (('cd', 'CD'), ('hd', 'HD'), ('sd', 'SD')):
+        out[k] = {}
+        n = pd.to_numeric(d[k], errors='coerce')
+        for num, g in d[n.notna()].groupby(n.dropna().astype(int)):
+            multi = g.county.nunique() > 1
+            g = g.assign(name=g.name + (' (' + g.county + ')' if multi else ''))
+            table = finish_table(g[['name', 'ev', 'ml', 'ed', 'reg']])
+            if table:
+                out[k][f'{pre} {num}'] = table
     return out
 
 
