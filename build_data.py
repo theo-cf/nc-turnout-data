@@ -193,6 +193,9 @@ def totals(s):
         'dd': day_detail(s),   # early in-person voters on each full day of early voting, by party, age and propensity
         'race': [int(s.race.eq(x).sum()) for x in RACES], 'eth': [int(s.eth.eq(x).sum()) for x in ETHS],   # by race and ethnicity (ncsbe.RACES, ETHS)
         'ddr': day_race(s),
+        # party by race: [DEM, REP, UNA] voters for Black, White, Asian and American Indian voters (race), then Hispanic or Latino (ethnicity)
+        'gp': [[int((s.race.eq(g) & s.party.eq(x)).sum()) for x in ['DEM', 'REP', 'UNA']] for g in ['B', 'W', 'A', 'I']]
+              + [[int((s.eth.eq('HL') & s.party.eq(x)).sum()) for x in ['DEM', 'REP', 'UNA']]],
     } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {}) \
       | (xt_counts(s) if HAS_HIST else {}) \
       | ({'nv': [int(s.nw.sum()), int(s.sdr.sum()), int((s.nw & s.sdr).sum()), int(s.unk.sum())]} if HAS_NW else {}) \
