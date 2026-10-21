@@ -69,7 +69,7 @@ def main():
     bits = h.election_lbl.map(ELECTIONS).groupby(h.ncid).sum().astype('uint8')
 
     v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year', 'party_cd', 'county_desc', 'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv',
-                                'race_code', 'ethnic_code', 'age_at_year_end'])
+                                'race_code', 'ethnic_code', 'age_at_year_end', 'precinct_abbrv', 'precinct_desc'])
     v['rank'] = v.status_cd.map({'A': 0, 'I': 1}).fillna(2)            # prefer the active/inactive registration
     v = v.sort_values('rank').drop_duplicates('ncid').set_index('ncid')
     reg = pd.to_datetime(v.registr_dt, format='%m/%d/%Y', errors='coerce')
@@ -122,6 +122,27 @@ def main():
             return [int(c.get(i, 0)) for i in range(n)]
         P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
+        # By precinct, for the precinct map layer: registered voters [all, DEM, REP, UNA] and low-propensity ones [DEM, REP, UNA];
+        # the precinct name each code goes by in the absentee file; and each precinct's district (where most of its voters are).
+        cn = r.county_desc.str.strip().str.upper().map(lambda c: COUNTY_NAME.get(c, c.title()))
+        key = (cn + '|' + r.precinct_abbrv.str.strip()).astype('category')
+        ok = (r.precinct_abbrv.str.strip() != '').values
+        kk, party, low = key[ok], r.party_cd[ok].values, r.low[ok].values
+        reg = pd.crosstab(kk.values, party)
+        lowc = pd.crosstab(kk.values[low], party[low])
+        def top(col):   # the most common value of a column in each precinct
+            t = pd.DataFrame({'k': kk.values, 'v': col[ok].str.strip().values})
+            t = t[t.v != '']
+            return t.groupby(['k', 'v'], observed=True).size().reset_index().sort_values(0).drop_duplicates('k', keep='last').set_index('k').v
+        dist = {c: pd.to_numeric(top(r[c]), errors='coerce') for c in ('cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv')}
+        names = top(r.precinct_desc)
+        pct = {}
+        for k in reg.index:
+            c, p = k.split('|', 1)
+            g = lambda tab, x: int(tab.at[k, x]) if (k in tab.index and x in tab.columns) else 0
+            dd = [None if pd.isna(dist[col].get(k)) else int(dist[col].get(k)) for col in dist]
+            pct.setdefault(c, {})[p] = [int(reg.loc[k].sum())] + [g(reg, x) for x in ('DEM', 'REP', 'UNA')] + [g(lowc, x) for x in ('DEM', 'REP', 'UNA')] + [dd, str(names.get(k, ''))]
+        P['pct'] = pct
         # Hispanic or Latino registered voters (the ethnicity question) by propensity: [low, regular], for the county map
         hl = r.ethnic_code.str.strip().eq('HL')
         hc = (~r.low).astype(int)[hl.values]

@@ -356,6 +356,24 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
                     if _x:
                         _r[_key] = _x
 
+# ---- precinct map layer: early and mail votes by the voter's home precinct (docs/pct.json, loaded only when a precinct map
+# is opened). Precinct codes and registration come from the pool (build_history.py --pool); the absentee file only names the
+# precinct, so names are matched to codes within each county. Precincts with fewer than PRECINCT_MIN votes get no vote counts.
+PCT = None
+if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pct' in _P:
+    _byname = {c: {v[8]: k for k, v in ps.items() if v[8]} for c, ps in _P['pct'].items()}
+    _cn = acc.county_desc.str.strip().str.upper().map(lambda c: COUNTY_NAME.get(c, c.title()))
+    _code = [(_byname.get(c) or {}).get(n) for c, n in zip(_cn, acc.precinct_desc.fillna('').str.strip())]
+    _pv = pd.DataFrame({'c': _cn.values, 'p': _code, 'party': acc.party.values, 'low': acc.low.values}).dropna(subset=['p'])
+    PCT = {'asof': ASOF, 'min': PRECINCT_MIN, 'matched': round(len(_pv) / max(len(acc), 1), 4), 'c': {}}
+    for (c, p), g in _pv.groupby(['c', 'p']):
+        if len(g) >= PRECINCT_MIN:
+            PCT['c'].setdefault(c, {})[p] = [int(len(g))] + [int((g.party == x).sum()) for x in ('DEM', 'REP', 'UNA')] + \
+                [int(((g.party == x) & g.low).sum()) for x in ('DEM', 'REP', 'UNA')]
+    PCT['reg'] = {c: {p: v[:8] for p, v in ps.items()} for c, ps in _P['pct'].items()}   # registered [all, D, R, U, low D, R, U, [cd, hd, sd]]
+    if PCT['matched'] < 0.95:
+        print(f"WARNING: only {PCT['matched']:.1%} of votes matched to a precinct code", file=sys.stderr)
+
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
 if os.path.exists(prev_path):
@@ -374,6 +392,9 @@ for key, _, _ in GEOS:
     if sum(r['vc'] for r in out['geo'][key]) + out['unassigned'][key] != out['state']['vc']:
         fail(f'{key} totals do not add up to the statewide total')
 
+if PCT is not None:
+    with open(os.path.join(OUT, 'pct.json'), 'w') as f:
+        json.dump(PCT, f, separators=(',', ':'))
 os.makedirs(os.path.join(OUT, 'archive'), exist_ok=True)
 for path in (prev_path, os.path.join(OUT, 'archive', ASOF + '.json')):
     with open(path, 'w') as f:
