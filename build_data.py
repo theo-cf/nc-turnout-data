@@ -157,7 +157,9 @@ def xt_counts(s):
     ri = s.race.map({x: i for i, x in enumerate(XT_RACES)})
     cell = ((ri * 4 + s.ab) * 2 + reg).dropna().astype(int).value_counts()
     pc = (s.party.map({'DEM': 0, 'REP': 2, 'UNA': 4}) + reg).dropna().astype(int).value_counts()
-    return {'xv': [int(cell.get(i, 0)) for i in range(32)], 'pv': [int(pc.get(i, 0)) for i in range(6)]}
+    hl = s.eth.eq('HL')   # Hispanic or Latino voters (ethnicity) by propensity: [low, regular]
+    return {'xv': [int(cell.get(i, 0)) for i in range(32)], 'pv': [int(pc.get(i, 0)) for i in range(6)],
+            'hv': [int((hl & s.low).sum()), int((hl & ~s.low).sum())]}
 
 
 def day_race(s):
@@ -342,7 +344,7 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
             if _k in _P['nw']:
                 for _r in out['geo'][_k]:
                     _r['nwr'] = _P['nw'][_k].get(str(num(_r['name'])), 0)
-    for _key in ('xr', 'pr'):   # registered voters for the shareable graphics, statewide and by county
+    for _key in ('xr', 'pr', 'hr'):   # registered voters for the shareable graphics and the county map, statewide and by county
         if _key in _P:
             out['state'][_key] = _P[_key]['state']
             for _r in out['geo']['county']:

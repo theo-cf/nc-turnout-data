@@ -102,7 +102,7 @@ jobs:
         run: |
           H=$(curl -fsSI https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvhis_Statewide.zip | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')
           V=$(curl -fsSI https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvoter_Statewide.zip | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')
-          echo "key=$(echo "$H|$V|v7" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+          echo "key=$(echo "$H|$V|v8" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
 
       - name: Restore the voting-history lookup
         id: hcache

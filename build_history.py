@@ -69,7 +69,7 @@ def main():
     bits = h.election_lbl.map(ELECTIONS).groupby(h.ncid).sum().astype('uint8')
 
     v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year', 'party_cd', 'county_desc', 'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv',
-                                'race_code', 'age_at_year_end'])
+                                'race_code', 'ethnic_code', 'age_at_year_end'])
     v['rank'] = v.status_cd.map({'A': 0, 'I': 1}).fillna(2)            # prefer the active/inactive registration
     v = v.sort_values('rank').drop_duplicates('ncid').set_index('ncid')
     reg = pd.to_datetime(v.registr_dt, format='%m/%d/%Y', errors='coerce')
@@ -122,6 +122,10 @@ def main():
             return [int(c.get(i, 0)) for i in range(n)]
         P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
+        # Hispanic or Latino registered voters (the ethnicity question) by propensity: [low, regular], for the county map
+        hl = r.ethnic_code.str.strip().eq('HL')
+        hc = (~r.low).astype(int)[hl.values]
+        P['hr'] = {'state': xt(hc, 2), 'county': {COUNTY_NAME.get(c, c.title()): xt(hc[g.index], 2) for c, g in r[hl.values].groupby('county_desc')}}
         for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):   # the same, by today's districts
             d = pd.to_numeric(r[col], errors='coerce')
             P['xr'][k] = {str(int(n)): xt(cell[g.index], 32) for n, g in r[d.notna()].groupby(d.dropna().astype(int))}
