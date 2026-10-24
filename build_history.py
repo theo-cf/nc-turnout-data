@@ -26,6 +26,7 @@ import argparse
 import json
 import zipfile
 
+import numpy as np
 import pandas as pd
 
 XT_RACES = ['B', 'O', 'A', 'W']   # Black, Other, Asian, White: the race rows on the shareable graphics

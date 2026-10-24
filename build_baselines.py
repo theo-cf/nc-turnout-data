@@ -100,6 +100,10 @@ def year(label, absentee, vstats, hstats, geo=None):
         a['low'] = sum(((bits & b) > 0).astype(int) for b in PRIOR[label]) <= 1
         if SKIP[label]:
             a['low'] |= (bits & SKIP[label][0]) == SKIP[label][1]
+    if geo is not None and geo.get('free_hist'):   # the history lookup isn't needed again in this run: free its memory
+        globals()['HIST'] = None
+        import gc
+        gc.collect()
     v, h = read_stats(vstats), read_stats(hstats)
 
     def cum(s, col=None, vals=None):

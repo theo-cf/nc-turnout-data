@@ -50,6 +50,8 @@ def write_files(label, pieces):
     for pair, rows in pieces.items():
         k1, k2 = pair.split('|')
         for kk, tb in rows.items():
+            if not tb.get('reg'):   # a stray ballot whose county and district don't overlap in that year's registration: skip
+                continue
             n1, n2 = kk.split('|')
             files.setdefault((k1, n1), {}).setdefault(k2, {})[n2] = tb
             files.setdefault((k2, n2), {}).setdefault(k1, {})[n1] = tb
@@ -78,8 +80,8 @@ def main():
     r['county'] = r.k.astype(str).str.split('|').str[0].map(bb.place).astype('category')
     r = r.drop(columns=['k', 'first'])
     gc.collect()
-    res = bb.year(label, absentee, vstats, hstats, geo={'a': r[['cd', 'hd', 'sd']], 'pct': pct, 'pairs': pairs})
-    if bb.HIST is not None and bb.PRIOR[label]:   # registered low-propensity voters by party in each piece
+    lpr = {}   # registered low-propensity voters by party in each piece, first, so the snapshot can be let go
+    if bb.HIST is not None and bb.PRIOR[label]:
         bits = r.index.to_series().map(bb.HIST.b).fillna(0).astype(int).values
         low = sum(((bits & x) > 0).astype(int) for x in bb.PRIOR[label]) <= 1
         if bb.SKIP[label]:
@@ -92,10 +94,16 @@ def main():
             l1, l2 = lab(k1), lab(k2)
             ok = l1.notna() & l2.notna() & (l1 != 'nan')
             t = pd.crosstab((l1[ok] + '|' + l2[ok]).values, lp.party[ok].values)
-            for kk in t.index:
-                d = res['pieces'][k1 + '|' + k2].get(kk)
-                if d is not None:
-                    d['lpr'] = [int(t.at[kk, x]) if x in t.columns else 0 for x in ('DEM', 'REP', 'UNA')]
+            lpr[k1 + '|' + k2] = {kk: [int(t.at[kk, x]) if x in t.columns else 0 for x in ('DEM', 'REP', 'UNA')] for kk in t.index}
+        del lp, bits, low
+    ga = r[['cd', 'hd', 'sd']].copy()
+    del r
+    gc.collect()
+    res = bb.year(label, absentee, vstats, hstats, geo={'a': ga, 'pct': pct, 'pairs': pairs, 'free_hist': True})
+    for pair, rows in res['pieces'].items():
+        for kk, d in rows.items():
+            if kk in lpr.get(pair, {}):
+                d['lpr'] = lpr[pair][kk]
     pieces = {pair: {kk: trim(b) for kk, b in rows.items()} for pair, rows in res['pieces'].items()}
     if os.environ.get('PART_OUT'):   # one part of a year built in several runs (to stay within memory); see --merge
         with open(os.environ['PART_OUT'], 'w') as f:
