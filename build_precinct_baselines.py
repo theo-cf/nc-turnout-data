@@ -15,8 +15,10 @@ ballots (one per voter, counted as in build_baselines.py) are placed the same wa
 rounded at the end.
 
 Each county file: {"y": year, "k0": first day, "p": {"<today's precinct code>": [[reg all, DEM, REP, low-propensity DEM,
-low-propensity REP], c, D, R, lpD, lpR]}}, where c, D, R, lpD and lpR are votes so far (all, DEM, REP, low-propensity DEM
-and REP) at the end of each day from k0 (14 days before early voting began) through Election Day, as in baseline.json.
+low-propensity REP], c, D, R, lpD, lpR, days, lpO]}}, where c, D, R, lpD and lpR are votes so far (all, DEM, REP, low-propensity DEM
+and REP) at the end of each day from k0 (14 days before early voting began) through Election Day, as in baseline.json, and
+days lists the early in-person votes cast on each day of early voting [all, DEM, REP, low-propensity DEM, REP, other], and
+lpO is low-propensity voters of other parties and none so far (for the low-propensity margin).
 Low-propensity uses the same rule as build_baselines.py (needs HISTORY_FILE). Counts only.
 """
 import gc
@@ -72,7 +74,7 @@ def ballots(label, path):
     k = (a.when - pd.Timestamp(bb.YEARS[label])).dt.days.clip(lower=bb.K0)
     out = pd.DataFrame({'k': k.fillna(bb.K1).astype(int).values,
                         'pp': a.voter_party_code.str.strip().map({'DEM': 0, 'REP': 1}).fillna(2).astype('int8').values,
-                        'low': low_flags(label, a.ncid).values}, index=a.ncid.str.strip().values)
+                        'low': low_flags(label, a.ncid).values, 'ev': a.ev.astype('int8').values}, index=a.ncid.str.strip().values)
     return out[out.k <= bb.K1]
 
 
@@ -109,13 +111,13 @@ def main():
             d['new'] = d.new.fillna('')
             regs.append(d.groupby(['old', 'new', 'pp', 'low']).size().rename('n').reset_index())
             hit = d.join(B, how='inner', rsuffix='_b')   # this year's voters: where they were placed, with their ballot's day
-            bal.append(hit.groupby(['old', 'new', 'pp_b', 'low_b', 'k']).size().rename('n').reset_index().rename(columns={'pp_b': 'pp', 'low_b': 'low'}))
+            bal.append(hit.groupby(['old', 'new', 'pp_b', 'low_b', 'k', 'ev']).size().rename('n').reset_index().rename(columns={'pp_b': 'pp', 'low_b': 'low'}))
             del d, m, hit
             gc.collect()
     del cur
     gc.collect()
     R = pd.concat(regs).groupby(['old', 'new', 'pp', 'low']).n.sum().reset_index()
-    V = pd.concat(bal).groupby(['old', 'new', 'pp', 'low', 'k']).n.sum().reset_index()
+    V = pd.concat(bal).groupby(['old', 'new', 'pp', 'low', 'k', 'ev']).n.sum().reset_index()
     print(f"{label}: {R.n.sum():,} registered, {R.n[R.new != ''].sum() / R.n.sum():.1%} at the same address today; "
           f"{V.n.sum():,} of {len(B):,} ballots matched to the snapshot", flush=True)
 
@@ -137,7 +139,7 @@ def main():
         return both.groupby(['new'] + cols).x.sum()
 
     rg = spread(R, ['pp', 'low']).unstack(['pp', 'low'], fill_value=0)
-    vt = spread(V, ['pp', 'low', 'k']).unstack(['pp', 'low', 'k'], fill_value=0)
+    vt = spread(V, ['pp', 'low', 'k', 'ev']).unstack(['pp', 'low', 'k', 'ev'], fill_value=0)
     print(f"{label}: {len(lost)} past precincts not placed ({R.n[R.old.isin(lost)].sum():,} voters); "
           f"{rg.values.sum():,.0f} registered and {vt.values.sum():,.0f} ballots placed in {len(rg):,} of today's precincts", flush=True)
 
@@ -155,6 +157,22 @@ def main():
             byk = s.groupby(level=2).sum() if len(s) else pd.Series(dtype=float)
             cum = np.cumsum([byk.get(k, 0.0) for k in KS])
             row.append([int(round(x)) for x in cum])
+        # early in-person votes on each day of early voting (k = 0-16): [all, DEM, REP, low-propensity DEM, REP], for the one-day view
+        day = []
+        for k in range(bb.EV_LEN):
+            if v is None:
+                day.append([0, 0, 0, 0, 0, 0]); continue
+            e = v[[i for i in v.index if i[2] == k and i[3] == 1]]
+            f = lambda pp=None, low=None: int(round(sum(x for i, x in e.items() if (pp is None or i[0] == pp) and (low is None or i[1] == low))))
+            day.append([f(), f(0), f(1), f(0, True), f(1, True), f(2, True)])
+        row.append(day)
+        # low-propensity voters of other parties and none so far (for the low-propensity margin's total)
+        if v is None:
+            row.append([0] * len(KS))
+        else:
+            s2 = v[[i for i in v.index if i[0] == 2 and i[1]]]
+            byk = s2.groupby(level=2).sum() if len(s2) else pd.Series(dtype=float)
+            row.append([int(round(x)) for x in np.cumsum([byk.get(k, 0.0) for k in KS])])
         out.setdefault(place(c), {})[p] = row
     d = os.path.join('docs', 'pct_base', label)
     os.makedirs(d, exist_ok=True)

@@ -157,6 +157,40 @@ def main():
             for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
                 d = pd.to_numeric(n[col], errors='coerce')
                 P['nw'][k] = {str(int(x)): int(len(g)) for x, g in n[d.notna()].groupby(d.dropna().astype(int))}
+        # Pieces: where a county and a district, or two kinds of district, overlap ("Wake|4" under "county|cd"), for showing only
+        # the part of a place inside the one picked. Registered voters [all; DEM, REP, UNA, other; four age groups; races; ethnicities],
+        # low-propensity ones by party, and the race x age x propensity, party x propensity and Hispanic counts above.
+        from ncsbe import ETHS, RACES, eth_code, race_code
+        loc = pd.DataFrame({'county': r.county_desc.str.strip().str.upper().map(lambda c: COUNTY_NAME.get(c, c.title())).values,
+                            'cd': pd.to_numeric(r.cong_dist_abbrv, errors='coerce').values, 'hd': pd.to_numeric(r.nc_house_abbrv, errors='coerce').values,
+                            'sd': pd.to_numeric(r.nc_senate_abbrv, errors='coerce').values}, index=r.index)
+        pty = r.party_cd.where(r.party_cd.isin(['DEM', 'REP', 'UNA']), 'OTH').map({'DEM': 0, 'REP': 1, 'UNA': 2, 'OTH': 3})
+        rc = r.race_code.str.strip().map({x: race_code(x) for x in r.race_code.str.strip().unique()}).map({x: i for i, x in enumerate(RACES)})
+        ec = r.ethnic_code.str.strip().map({x: eth_code(x) for x in r.ethnic_code.str.strip().unique()}).map({x: i for i, x in enumerate(ETHS)})
+        lpp = r.party_cd.map({'DEM': 0, 'REP': 1, 'UNA': 2}).where(r.low)
+        def lab(k):
+            x = loc[k]
+            return x if k == 'county' else x.map(lambda n: None if pd.isna(n) else str(int(n)))
+        attrs = [('pty', pty, 4), ('age', ai, 4), ('race', rc, len(RACES)), ('eth', ec, len(ETHS)), ('lpr', lpp, 3), ('xr', cell, 32), ('pr', pc, 6),
+                 ('hr', hc.reindex(r.index), 2)]
+        attrs = [(nm, pd.to_numeric(x, errors='coerce').values, n) for nm, x, n in attrs]
+        pieces = {}
+        for k1, k2 in (('county', 'cd'), ('county', 'hd'), ('county', 'sd'), ('cd', 'hd'), ('cd', 'sd'), ('hd', 'sd')):
+            key = lab(k1) + '|' + lab(k2)
+            codes, uniq = pd.factorize(key)   # missing district -> NaN key -> code -1
+            ok = codes >= 0
+            G = len(uniq)
+            res = {u: {'n': 0} for u in uniq}
+            nn = np.bincount(codes[ok], minlength=G)
+            for gi, u in enumerate(uniq):
+                res[u]['n'] = int(nn[gi])
+            for nm, x, n in attrs:
+                m = ok & ~np.isnan(x)
+                t = np.bincount(codes[m] * n + x[m].astype(int), minlength=G * n).reshape(G, n)
+                for gi, u in enumerate(uniq):
+                    res[u][nm] = [int(y) for y in t[gi]]
+            pieces[k1 + '|' + k2] = res
+        P['pieces'] = pieces
         with open(a.pool, 'w') as f:
             json.dump(P, f, separators=(',', ':'))
         print(f"low-propensity registered voters (DEM, REP, UNA): {P['state']}")

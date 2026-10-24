@@ -274,6 +274,13 @@ def site_label(x):
 
 
 ev_days = pd.date_range(EV_START, periods=EV_DAYS, freq='D').strftime('%Y-%m-%d').tolist()
+
+
+def site_days(s):
+    """[DEM, REP, UNA, OTH] voters at a site on each day of early voting, for the tracker's one-day view"""
+    t = s.groupby(['day', 'party']).size()
+    return [[int(t.get((d, x), 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']] for d in ev_days]
+
 ev = acc[(acc.kind == 'ev') & acc.site_name.notna() & (acc.site_name.str.strip() != '')].copy()
 ev['site'] = ev.site_name.map(site_label)
 out['sites'] = {}
@@ -284,7 +291,8 @@ for (county, site), s in ev.groupby(['county_desc', 'site']):
         site, [int(daily.get(d, 0)) for d in ev_days],
         [int(p.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
         [int(a.get(i, 0)) for i in range(len(AGE_GROUPS))],
-        [int(s.race.eq(x).sum()) for x in RACES], [int(s.eth.eq(x).sum()) for x in ETHS]])
+        [int(s.race.eq(x).sum()) for x in RACES], [int(s.eth.eq(x).sum()) for x in ETHS],
+        site_days(s)])
 for rows in out['sites'].values():
     rows.sort(key=lambda r: -sum(r[1]))
 
@@ -374,6 +382,72 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pct' in _P:
     if PCT['matched'] < 0.95:
         print(f"WARNING: only {PCT['matched']:.1%} of votes matched to a precinct code", file=sys.stderr)
 
+# ---- pieces: where a county and a district, or two kinds of district, overlap (docs/pieces.json, loaded when a place is picked).
+# The tracker shows only the part of each county or district inside the place picked: votes from the absentee file by the
+# ballot's county and districts, registered voters from the pool (build_history.py --pool). Also the early voting sites
+# used by each district's voters, with only those voters' votes.
+PIECES = None
+if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pieces' in _P:
+    _loc = pd.DataFrame({'county': acc.county_desc.str.strip().str.upper().map(lambda c: COUNTY_NAME.get(c, c.title())).values,
+                         'cd': acc.cong_dist_desc.map(lambda v: num(v) or None if pd.notna(v) else None).values,
+                         'hd': acc.nc_house_desc.map(lambda v: num(v) or None if pd.notna(v) else None).values,
+                         'sd': acc.nc_senate_desc.map(lambda v: num(v) or None if pd.notna(v) else None).values},
+                        index=acc.index)
+    PIECES = {'asof': ASOF, 'p': {}, 'sites': {}}
+    for k1, k2 in (('county', 'cd'), ('county', 'hd'), ('county', 'sd'), ('cd', 'hd'), ('cd', 'sd'), ('hd', 'sd')):
+        lab = lambda k: _loc[k] if k == 'county' else _loc[k].map(lambda x: None if x is None or pd.isna(x) else str(int(x)))
+        key = (lab(k1) + '|' + lab(k2)).dropna()
+        regs = _P['pieces'].get(k1 + '|' + k2, {})
+        res = {}
+        for kk, sub in acc.loc[key.index].groupby(key.values):
+            row = totals(sub)
+            x = regs.get(kk)
+            if x:
+                row.update({'reg': x['n'], 'rpty': x['pty'], 'rage': x['age'], 'rrace': x['race'], 'reth': x['eth'], 'lpr': x['lpr'],
+                            'xr': x['xr'], 'pr': x['pr'], 'hr': x['hr']})
+            res[kk] = row
+        for kk, x in regs.items():   # a piece with registered voters but no votes yet
+            if kk not in res:
+                res[kk] = {'vc': 0, 'reg': x['n'], 'rpty': x['pty'], 'rage': x['age'], 'rrace': x['race'], 'reth': x['eth'], 'lpr': x['lpr']}
+        PIECES['p'][k1 + '|' + k2] = res
+    _ev = ev.join(_loc[['cd', 'hd', 'sd']])
+    for k in ('cd', 'hd', 'sd'):
+        dk = {}
+        for (n, county, site), s in _ev.dropna(subset=[k]).groupby([k, 'county_desc', 'site']):
+            daily = s.day.value_counts()
+            p_, a_ = s.party.value_counts(), s.ab.value_counts()
+            dk.setdefault(str(int(n)), {}).setdefault(COUNTY_NAME.get(county, county.title()), []).append([
+                site, [int(daily.get(d, 0)) for d in ev_days], [int(p_.get(x, 0)) for x in ['DEM', 'REP', 'UNA', 'OTH']],
+                [int(a_.get(i, 0)) for i in range(len(AGE_GROUPS))], [int(s.race.eq(x).sum()) for x in RACES], [int(s.eth.eq(x).sum()) for x in ETHS],
+                site_days(s)])
+        for cs in dk.values():
+            for rows in cs.values():
+                rows.sort(key=lambda r: -sum(r[1]))
+        PIECES['sites'][k] = dk
+    _chk = sum(r['vc'] for r in PIECES['p']['county|cd'].values())
+    if abs(_chk - out['state']['vc'] + out['unassigned']['cd']) > 0:
+        print(f"WARNING: county x congressional district pieces add to {_chk:,}, not {out['state']['vc'] - out['unassigned']['cd']:,}", file=sys.stderr)
+
+# ---- one day of early in-person votes by home precinct (docs/pct_days.json, for the precinct map's one-day view):
+# [votes, DEM, REP, UNA, low-propensity DEM, REP, UNA] on each full day of early voting; null under PRECINCT_MIN votes.
+PCT_DAYS = None
+if PCT is not None:
+    _pd = pd.DataFrame({'c': _cn.values, 'p': _code, 'party': acc.party.values, 'low': acc.low.values, 'kind': acc.kind.values, 'day': acc.day.values}).dropna(subset=['p'])
+    _pd = _pd[_pd.kind == 'ev']
+    PCT_DAYS = {'asof': ASOF, 'min': PRECINCT_MIN, 'days': EVD_FULL, 'c': {}}
+    _g = {k: g for k, g in _pd.groupby(['c', 'p'])}
+    for (c, p), g in _g.items():
+        byd = {d: x for d, x in g.groupby('day')}
+        arr = []
+        for d in EVD_FULL:
+            x = byd.get(d)
+            if x is None or len(x) < PRECINCT_MIN:
+                arr.append(None)
+            else:
+                arr.append([int(len(x))] + [int((x.party == y).sum()) for y in ('DEM', 'REP', 'UNA')] + [int(((x.party == y) & x.low).sum()) for y in ('DEM', 'REP', 'UNA')])
+        if any(a is not None for a in arr):
+            PCT_DAYS['c'].setdefault(c, {})[p] = arr
+
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
 if os.path.exists(prev_path):
@@ -395,6 +469,27 @@ for key, _, _ in GEOS:
 if PCT is not None:
     with open(os.path.join(OUT, 'pct.json'), 'w') as f:
         json.dump(PCT, f, separators=(',', ':'))
+if PCT_DAYS is not None:
+    with open(os.path.join(OUT, 'pct_days.json'), 'w') as f:
+        json.dump(PCT_DAYS, f, separators=(',', ':'))
+if PIECES is not None:   # one file per place: docs/pieces/<county|cd|hd|sd>/<name>.json with its pieces in each other layer, and its sites
+    import shutil
+    _pdir = os.path.join(OUT, 'pieces')
+    shutil.rmtree(_pdir, ignore_errors=True)
+    _files = {}
+    for pair, rows in PIECES['p'].items():
+        k1, k2 = pair.split('|')
+        for kk, row in rows.items():
+            n1, n2 = kk.split('|')
+            _files.setdefault((k1, n1), {}).setdefault(k2, {})[n2] = row
+            _files.setdefault((k2, n2), {}).setdefault(k1, {})[n1] = row
+    for (k, n), inner in _files.items():
+        os.makedirs(os.path.join(_pdir, k), exist_ok=True)
+        body = {'asof': ASOF, 'p': inner}
+        if k != 'county':
+            body['sites'] = PIECES['sites'].get(k, {}).get(n, {})
+        with open(os.path.join(_pdir, k, n + '.json'), 'w') as f:
+            json.dump(body, f, separators=(',', ':'))
 os.makedirs(os.path.join(OUT, 'archive'), exist_ok=True)
 for path in (prev_path, os.path.join(OUT, 'archive', ASOF + '.json')):
     with open(path, 'w') as f:

@@ -91,6 +91,9 @@ def year(label, absentee, vstats, hstats, geo=None):
     a['ag'] = pd.cut(pd.to_numeric(a.age, errors='coerce'), AGE_EDGES, labels=False)
     a['rc'] = a.race.map({x: race_code(x) for x in a.race.unique()})
     a['ec'] = a.ethnicity.map({x: eth_code(x) for x in a.ethnicity.unique()})
+    a = a.drop(columns=['voter_party_code', 'age', 'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'race', 'ethnicity', 'when'])   # keep memory down
+    for col in ('county_desc', 'pp', 'rc', 'ec'):
+        a[col] = a[col].astype('category')
     lowok = HIST is not None and PRIOR[label] is not None
     if lowok:
         bits = a.ncid.map(HIST.b).fillna(0).astype(int)
@@ -140,6 +143,34 @@ def year(label, absentee, vstats, hstats, geo=None):
             m = (d.county_desc.str.strip().str.upper() + '|' + d.precinct_abbrv.str.strip()).map(geo['pct'])
             for i, kind in enumerate(('cd', 'hd', 'sd')):
                 d[kind] = m.str[i]
+        if geo.get('pairs'):   # pieces: where a county and a district, or two kinds of district, overlap (build_piece_baselines.py)
+            a['county'] = a.county_desc.astype(str).map(place)
+            for d in (v, h):
+                d['county'] = d.county_desc.map(place)
+
+            def key(df, k1, k2):
+                def lab(k):
+                    x = df[k]
+                    return x.where(x.notna(), None) if k == 'county' else x.map(lambda n: None if pd.isna(n) else str(int(n)))
+                l1, l2 = lab(k1), lab(k2)
+                ok = l1.notna() & l2.notna()
+                return (l1[ok] + '|' + l2[ok])
+
+            def gpb(s):   # party by race on each day: gp[group][party][day], groups B, W, A, I, then Hispanic or Latino
+                return [[cum(s[((s.ec == 'HL') if g == 'HL' else (s.rc == g)) & (s.pp == x)]) for x in PARTIES[:3]] for g in ('B', 'W', 'A', 'I', 'HL')]
+            out = {'ev_start': YEARS[label], 'k0': K0, 'pieces': {}}
+            for k1, k2 in geo['pairs']:
+                kv, kh, ka = key(v, k1, k2), key(h, k1, k2), key(a, k1, k2)
+                vg = {k: g for k, g in v.loc[kv.index].groupby(kv.values)}
+                hg = {k: g for k, g in h.loc[kh.index].groupby(kh.values)}
+                res = {}
+                for kk, s in a.loc[ka.index].groupby(ka.values):
+                    b = block(s, vg.get(kk, v.iloc[:0]), hg.get(kk, h.iloc[:0]))
+                    b['gp'] = gpb(s)
+                    res[kk] = b
+                out['pieces'][k1 + '|' + k2] = res
+                print(f"{label} {k1}|{k2}: {len(res)} pieces, {sum(b['c'][-1] for b in res.values()):,} votes by Election Day", flush=True)
+            return out
         out = {'ev_start': YEARS[label], 'k0': K0, 'districts': {}}
         for kind, pre in (('cd', 'CD'), ('hd', 'HD'), ('sd', 'SD')):
             out['districts'][kind] = {f'{pre} {int(n)}': block(s, v[v[kind] == n], h[h[kind] == n]) for n, s in a.dropna(subset=[kind]).groupby(kind)}
