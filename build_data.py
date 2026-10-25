@@ -181,6 +181,26 @@ def day_race(s):
 days = pd.date_range(acc.when.min(), asof_ts, freq='D').strftime('%Y-%m-%d').tolist() if len(acc) else [ASOF]
 
 
+def through_days(s):
+    """Votes so far at the end of each full day of early voting (early in person and mail, by the day each was accepted):
+    [all, DEM, REP, UNA, OTH, low-propensity DEM, REP, UNA, early in person, mail], for the tracker's "through a day" view."""
+    if not len(s):
+        return [[0] * 10 for _ in EVD_FULL]
+    cols = pd.DataFrame({'day': s.day.values, 'n': 1})
+    for v in ['DEM', 'REP', 'UNA', 'OTH']:
+        cols[v] = (s.party == v).values.astype(int)
+    for v in ['DEM', 'REP', 'UNA']:
+        cols['l' + v] = ((s.party == v) & s.low).values.astype(int) if HAS_HIST else 0
+    cols['ev'] = (s.kind == 'ev').values.astype(int)
+    cols['ml'] = (s.kind == 'ml').values.astype(int)
+    byday = cols.groupby('day').sum().sort_index().cumsum()
+    out = []
+    for d in EVD_FULL:
+        x = byday[byday.index <= d]
+        out.append([int(v) for v in x.iloc[-1]] if len(x) else [0] * 10)
+    return out
+
+
 def totals(s):
     k = s.kind.value_counts()
     p = s.party.value_counts()
@@ -194,6 +214,7 @@ def totals(s):
         'tml': [int(x) for x in by['ml']] if 'ml' in by else [0] * len(days),   # new votes per day, by mail
         'tev': [int(x) for x in by['ev']] if 'ev' in by else [0] * len(days),   # new votes per day, early in person
         'dd': day_detail(s),   # early in-person voters on each full day of early voting, by party, age and propensity
+        'cdd': through_days(s),   # votes so far at the end of each full day of early voting
         'race': [int(s.race.eq(x).sum()) for x in RACES], 'eth': [int(s.eth.eq(x).sum()) for x in ETHS],   # by race and ethnicity (ncsbe.RACES, ETHS)
         'ddr': day_race(s),
         # party by race: [DEM, REP, UNA] voters for Black, White, Asian and American Indian voters (race), then Hispanic or Latino (ethnicity)
@@ -437,8 +458,24 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pieces' in _P:
 PCT_DAYS = None
 if PCT is not None:
     _pd = pd.DataFrame({'c': _cn.values, 'p': _code, 'party': acc.party.values, 'low': acc.low.values, 'kind': acc.kind.values, 'day': acc.day.values}).dropna(subset=['p'])
+    _pt = _pd.copy()   # all votes, for "through a day"
     _pd = _pd[_pd.kind == 'ev']
-    PCT_DAYS = {'asof': ASOF, 'min': PRECINCT_MIN, 'days': EVD_FULL, 'c': {}}
+    PCT_DAYS = {'asof': ASOF, 'min': PRECINCT_MIN, 'days': EVD_FULL, 'c': {}, 't': {}}
+    _pt['n'] = 1
+    for y in ('DEM', 'REP', 'UNA'):
+        _pt[y] = (_pt.party == y).astype(int)
+        _pt['l' + y] = ((_pt.party == y) & _pt.low).astype(int)
+    _tc = ['n', 'DEM', 'REP', 'UNA', 'lDEM', 'lREP', 'lUNA']
+    _cum = _pt.groupby(['c', 'p', 'day'])[_tc].sum().groupby(level=[0, 1]).cumsum()
+    for (c, p), g in _cum.groupby(level=[0, 1]):   # votes so far at the end of each day: [votes, D, R, U, low D, R, U]; null under the minimum
+        g = g.droplevel([0, 1])
+        arr = []
+        for d in EVD_FULL:
+            x = g[g.index <= d]
+            v = [int(q) for q in x.iloc[-1]] if len(x) else None
+            arr.append(v if v and v[0] >= PRECINCT_MIN else None)
+        if any(a is not None for a in arr):
+            PCT_DAYS['t'].setdefault(c, {})[p] = arr
     _g = {k: g for k, g in _pd.groupby(['c', 'p'])}
     for (c, p), g in _g.items():
         byd = {d: x for d, x in g.groupby('day')}
