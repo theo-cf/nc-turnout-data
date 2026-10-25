@@ -23,6 +23,7 @@ The script stops with an error, and publishes nothing, if the file contains a ba
 status it doesn't recognize, or if total votes cast drop sharply from the last published file.
 """
 import json
+import re
 import os
 import sys
 from email.utils import parsedate_to_datetime
@@ -253,6 +254,7 @@ for key, field, label in GEOS:
 
 # ---- early voting sites: accepted early in-person votes by the site where they were cast ----
 SMALL = {'of', 'the', 'and', 'at', 'for', 'in', 'on', 'a'}
+NOT_ACRONYM = {'mt', 'st', 'dr', 'jr', 'sr', 'ft', 'rd', 'ln', 'hwy', 'pkwy', 'blvd', 'ct', 'pl', 'sq', 'bldg', 'ctr', 'rm', 'mr', 'ms', 'mrs', 'nd', 'th'}
 KEEP_UPPER = {'YMCA', 'YWCA', 'UNC', 'NCCU', 'NCSU', 'ECU', 'WSSU', 'UNCG', 'UNCW', 'UNCC', 'NCA&T', 'A&T', 'VFW', 'AME', 'BOE', 'II', 'III', 'NC', 'USA', 'CC', 'EMS'}
 
 
@@ -261,8 +263,10 @@ def site_label(x):
     out_w = []
     for i, w in enumerate(words):
         u = w.upper()
-        if u in KEEP_UPPER:
-            out_w.append(u)
+        core = re.sub(r'[^A-Za-z.]', '', w)
+        if u in KEEP_UPPER or re.fullmatch(r'(?:[A-Za-z]\.){2,}', core) or \
+                (len(core) >= 2 and core.isalpha() and not re.search('[aeiouyAEIOUY]', core) and core.lower() not in NOT_ACRONYM):
+            out_w.append(u)   # initials (W.E.) and vowel-less acronyms (CCCC, DSS) stay capitals
         elif i and w.lower() in SMALL:
             out_w.append(w.lower())
         else:
