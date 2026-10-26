@@ -393,14 +393,30 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
 # is opened). Precinct codes and registration come from the pool (build_history.py --pool); the absentee file only names the
 # precinct, so names are matched to codes within each county. Precincts with fewer than PRECINCT_MIN votes get no vote counts.
 PCT = None
+
+
+def also_hide(counts):
+    """The precinct to hide besides the ones under PRECINCT_MIN, so a county never has exactly one hidden precinct with votes:
+    one hidden count could be worked out from the county total, which the tracker publishes. counts: {precinct: votes}, for one
+    county (and one day, for the day-by-day files). Same rule as election_day.finish_table."""
+    voted = {p: n for p, n in counts.items() if n > 0}
+    small = [p for p, n in voted.items() if n < PRECINCT_MIN]
+    if len(small) != 1 or len(voted) < 2:
+        return None
+    shown = sorted((n, p) for p, n in voted.items() if n >= PRECINCT_MIN)
+    return shown[0][1] if shown else None
+
+
 if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pct' in _P:
     _byname = {c: {v[8]: k for k, v in ps.items() if v[8]} for c, ps in _P['pct'].items()}
     _cn = acc.county_desc.str.strip().str.upper().map(lambda c: COUNTY_NAME.get(c, c.title()))
     _code = [(_byname.get(c) or {}).get(n) for c, n in zip(_cn, acc.precinct_desc.fillna('').str.strip())]
     _pv = pd.DataFrame({'c': _cn.values, 'p': _code, 'party': acc.party.values, 'low': acc.low.values}).dropna(subset=['p'])
     PCT = {'asof': ASOF, 'min': PRECINCT_MIN, 'matched': round(len(_pv) / max(len(acc), 1), 4), 'c': {}}
+    _n = _pv.groupby(['c', 'p']).size()
+    _extra = {c: also_hide(g.droplevel(0).to_dict()) for c, g in _n.groupby(level=0)}
     for (c, p), g in _pv.groupby(['c', 'p']):
-        if len(g) >= PRECINCT_MIN:
+        if len(g) >= PRECINCT_MIN and _extra.get(c) != p:
             PCT['c'].setdefault(c, {})[p] = [int(len(g))] + [int((g.party == x).sum()) for x in ('DEM', 'REP', 'UNA')] + \
                 [int(((g.party == x) & g.low).sum()) for x in ('DEM', 'REP', 'UNA')]
     PCT['reg'] = {c: {p: v[:8] for p, v in ps.items()} for c, ps in _P['pct'].items()}   # registered [all, D, R, U, low D, R, U, [cd, hd, sd]]
@@ -474,8 +490,7 @@ if PCT is not None:
             x = g[g.index <= d]
             v = [int(q) for q in x.iloc[-1]] if len(x) else None
             arr.append(v if v and v[0] >= PRECINCT_MIN else None)
-        if any(a is not None for a in arr):
-            PCT_DAYS['t'].setdefault(c, {})[p] = arr
+        PCT_DAYS['t'].setdefault(c, {})[p] = arr
     _g = {k: g for k, g in _pd.groupby(['c', 'p'])}
     for (c, p), g in _g.items():
         byd = {d: x for d, x in g.groupby('day')}
@@ -486,8 +501,24 @@ if PCT is not None:
                 arr.append(None)
             else:
                 arr.append([int(len(x))] + [int((x.party == y).sum()) for y in ('DEM', 'REP', 'UNA')] + [int(((x.party == y) & x.low).sum()) for y in ('DEM', 'REP', 'UNA')])
-        if any(a is not None for a in arr):
-            PCT_DAYS['c'].setdefault(c, {})[p] = arr
+        PCT_DAYS['c'].setdefault(c, {})[p] = arr
+    # never exactly one hidden precinct with votes in a county on any day, as in pct.json (the counts under the minimum are
+    # already null, so the raw counts for the rule come from the data frames)
+    _cn_t = {}   # votes so far at the end of each day, and votes on each day, per precinct
+    for (c, p), g in _cum['n'].groupby(level=[0, 1]):
+        g = g.droplevel([0, 1]); _cn_t.setdefault(c, {})[p] = [int(g[g.index <= d].iloc[-1]) if (g.index <= d).any() else 0 for d in EVD_FULL]
+    _cn_d = {}
+    for (c, p, d), n in _pd.groupby(['c', 'p', 'day']).size().items():
+        if d in EVD_FULL:
+            _cn_d.setdefault(c, {}).setdefault(p, [0] * len(EVD_FULL))[EVD_FULL.index(d)] = int(n)
+    for key, cnts in (('t', _cn_t), ('c', _cn_d)):
+        for c, ps in PCT_DAYS[key].items():
+            for i in range(len(EVD_FULL)):
+                x = also_hide({p: v[i] for p, v in cnts.get(c, {}).items()})
+                if x is not None and x in ps:
+                    ps[x][i] = None
+        PCT_DAYS[key] = {c: {p: a for p, a in ps.items() if any(v is not None for v in a)} for c, ps in PCT_DAYS[key].items()}
+        PCT_DAYS[key] = {c: ps for c, ps in PCT_DAYS[key].items() if ps}
 
 # ---- safety checks against the last published file ----
 prev_path = os.path.join(OUT, 'data.json')
