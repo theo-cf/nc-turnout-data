@@ -43,7 +43,7 @@ def main():
             parts.append(ch[ch.status_cd.isin(['A', 'I'])])
     r = pd.concat(parts).drop_duplicates('ncid').set_index('ncid')
     del parts
-    reg = pd.to_numeric(r.registr_dt.str.replace('-', '').str[:8], errors='coerce').fillna(0).astype(int)
+    reg = pd.to_datetime(r.registr_dt, format='mixed', errors='coerce').dt.strftime('%Y%m%d').fillna('0').astype(int)   # 2024's snapshot writes MM/DD/YYYY, the others YYYY-MM-DD
     age = pd.to_numeric(r.age, errors='coerce')
     young = (age - (year - first_year)) < 18          # too young to vote in the first of the three elections
     bits = r.index.to_series().map(H).fillna(0).astype(int)
