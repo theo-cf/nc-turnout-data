@@ -122,6 +122,10 @@ def main():
             c = idx.dropna().astype(int).value_counts()
             return [int(c.get(i, 0)) for i in range(n)]
         P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
+        # Registered voters by party x voting-history group (ncsbe.history_tier), statewide and by county, for the pyramid
+        from ncsbe import history_tier, tier_counts
+        tt = history_tier(b, out.reg.reindex(r.index).fillna(0).astype(int), out.by.reindex(r.index).fillna(0).astype(int) >= 2003, 2026)
+        P['tr'] = {'state': tier_counts(r.party_cd, tt), 'county': {COUNTY_NAME.get(c, c.title()): tier_counts(r.party_cd[g.index], tt[g.index]) for c, g in r.groupby('county_desc')}}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
         # By precinct, for the precinct map layer: registered voters [all, DEM, REP, UNA] and low-propensity ones [DEM, REP, UNA];
         # the precinct name each code goes by in the absentee file; and each precinct's district (where most of its voters are).

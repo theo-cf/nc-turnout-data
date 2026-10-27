@@ -71,3 +71,37 @@ NC_COUNTIES = [
 ]
 DISTRICTS = {'cd': 14, 'hd': 120, 'sd': 50}
 COUNTY_NAME = {c.upper(): c for c in NC_COUNTIES}   # 'MCDOWELL' -> 'McDowell'
+
+
+# ---- voting-history groups for the tracker's "Whose unreliable voters are showing up?" pyramid ----
+# Each voter falls in one group, by the three November general elections before the election year:
+#   0 voted in all 3, 1 voted in 2 of 3, 2 voted in 1 of 3, 3 voted in 0 of 3,
+#   4 new: hadn't voted in North Carolina by the first of the three (or the two before it), and either registered after it or
+#     was too young to vote in it. New voters' later history is ignored, so the four other groups are people eligible for all three.
+# Bits are those of build_history.py's lookup (2016 = 1, 2018 = 2, 2020 = 4, 2022 = 8, 2024 = 16; the extended lookup adds
+# 2012 = 32, 2014 = 64). TIER_RULES[year] = (the three elections' bits, oldest first; the first one's date; bits of it and the two before).
+TIER_RULES = {
+    2026: ((4, 8, 16), 20201103, 4 | 2 | 1),
+    2024: ((2, 4, 8), 20181106, 2 | 1 | 64),
+    2022: ((1, 2, 4), 20161108, 1 | 64 | 32),
+    2020: ((64, 1, 2), 20141104, 64 | 32),
+    2018: ((32, 64, 1), 20121106, 32),
+}
+TIER_PARTIES = ['DEM', 'REP', 'UNA']
+
+
+def history_tier(bits, reg_ymd, young, year):
+    """Group (0-4, see above) for each voter. bits: lookup bits; reg_ymd: registration date as YYYYMMDD (0 if unknown);
+    young: True where the voter was too young for the first of the three elections. All pandas Series on one index."""
+    three, first_day, before = TIER_RULES[year]
+    n3 = sum(((bits & b) > 0).astype(int) for b in three)
+    new = ((bits & before) == 0) & ((reg_ymd > first_day) | young)
+    return (3 - n3).where(~new, 4).astype(int)
+
+
+def tier_counts(party, tier):
+    """[DEM all 3, 2 of 3, 1 of 3, 0 of 3, new, REP ..., UNA ...]: 15 counts."""
+    pi = party.map({p: i for i, p in enumerate(TIER_PARTIES)})
+    cell = (pi * 5 + tier).dropna().astype(int)
+    c = cell.value_counts()
+    return [int(c.get(i, 0)) for i in range(15)]
