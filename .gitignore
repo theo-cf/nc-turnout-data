@@ -16,3 +16,8 @@ reg_modified.txt
 *.pkl.gz
 *.pkl
 history/
+
+# Built widgets and test output
+widget/out/
+widget/test/shots/
+widget/test/page.html
