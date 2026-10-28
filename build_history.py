@@ -92,7 +92,7 @@ def main():
         out.loc[v.index[nw], 'nw'] = 1
         out['nw'] = out.nw.astype('uint8')
         extra = snap.difference(out.index)
-        out = pd.concat([out, pd.DataFrame({'b': 0, 'reg': 0, 'by': 0, 'nw': 0}, index=extra).astype(out.dtypes.to_dict())])
+        out = pd.concat([out, pd.DataFrame({c: 0 for c in out.columns}, index=extra).astype(out.dtypes.to_dict())])
         print(f'first-time 2026 registrants: {int(nw.sum()):,}; 2024 snapshot voters added: {len(extra):,}')
 
     # Sanity checks: each November must have millions of voters, or the history file is incomplete.
