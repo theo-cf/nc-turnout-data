@@ -135,6 +135,11 @@ def main():
         ed = r[out.e22.reindex(r.index).fillna(0).astype(bool).values]
         cnt3 = lambda g: [int((g.party_cd == x).sum()) for x in ('DEM', 'REP', 'UNA')]
         P['e22'] = {'state': cnt3(ed), 'county': {COUNTY_NAME.get(c, c.title()): cnt3(g) for c, g in ed.groupby('county_desc')}}
+        for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):   # the same two, by today's districts
+            d = pd.to_numeric(r[col], errors='coerce')
+            P['tr'][k] = {str(int(x)): tier_counts(r.party_cd[g.index], tt[g.index]) for x, g in r[d.notna()].groupby(d.dropna().astype(int))}
+            d = pd.to_numeric(ed[col], errors='coerce')
+            P['e22'][k] = {str(int(x)): cnt3(g) for x, g in ed[d.notna()].groupby(d.dropna().astype(int))}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
         # By precinct, for the precinct map layer: registered voters [all, DEM, REP, UNA] and low-propensity ones [DEM, REP, UNA];
         # the precinct name each code goes by in the absentee file; and each precinct's district (where most of its voters are).

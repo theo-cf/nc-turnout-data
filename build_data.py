@@ -387,11 +387,21 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
         for _r in out['geo']['county']:
             if _r['name'] in _P['e22']['county']:
                 _r['e22r'] = _P['e22']['county'][_r['name']]
+        for _k in ('cd', 'hd', 'sd'):
+            for _r in out['geo'][_k]:
+                _x = _P['e22'].get(_k, {}).get(str(num(_r['name'])))
+                if _x:
+                    _r['e22r'] = _x
     if 'tr' in _P:   # registered voters by party x voting-history group, statewide and by county, for the pyramid
         out['state']['tr'] = _P['tr']['state']
         for _r in out['geo']['county']:
             if _r['name'] in _P['tr']['county']:
                 _r['tr'] = _P['tr']['county'][_r['name']]
+        for _k in ('cd', 'hd', 'sd'):   # and by today's districts
+            for _r in out['geo'][_k]:
+                _x = _P['tr'].get(_k, {}).get(str(num(_r['name'])))
+                if _x:
+                    _r['tr'] = _x
     for _key in ('xr', 'pr', 'hr'):   # registered voters for the shareable graphics and the county map, statewide and by county
         if _key in _P:
             out['state'][_key] = _P[_key]['state']
