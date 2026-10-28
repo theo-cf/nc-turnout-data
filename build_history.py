@@ -127,6 +127,9 @@ def main():
             c = idx.dropna().astype(int).value_counts()
             return [int(c.get(i, 0)) for i in range(n)]
         P['xr'] = {'state': xt(cell, 32), 'county': {COUNTY_NAME.get(c, c.title()): xt(cell[g.index], 32) for c, g in r.groupby('county_desc')}}
+        # The same cells once per party ('xpr': party * 32 + cell; DEM, REP, UNA), for the crosstabs' party filter
+        pcell = r.party_cd.map({'DEM': 0, 'REP': 1, 'UNA': 2}) * 32 + cell
+        P['xpr'] = {'state': xt(pcell, 96), 'county': {COUNTY_NAME.get(c, c.title()): xt(pcell[g.index], 96) for c, g in r.groupby('county_desc')}}
         # Registered voters by party x voting-history group (ncsbe.history_tier), statewide and by county, for the pyramid
         from ncsbe import history_tier, tier_counts
         tt = history_tier(b, out.reg.reindex(r.index).fillna(0).astype(int), out.by.reindex(r.index).fillna(0).astype(int) >= 2003, 2026)
@@ -169,6 +172,7 @@ def main():
         for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):   # the same, by today's districts
             d = pd.to_numeric(r[col], errors='coerce')
             P['xr'][k] = {str(int(n)): xt(cell[g.index], 32) for n, g in r[d.notna()].groupby(d.dropna().astype(int))}
+            P['xpr'][k] = {str(int(n)): xt(pcell[g.index], 96) for n, g in r[d.notna()].groupby(d.dropna().astype(int))}
             P['pr'][k] = {str(int(n)): xt(pc[g.index], 6) for n, g in r[d.notna()].groupby(d.dropna().astype(int))}
         if 'nw' in out:   # first-time 2026 registrants (active and inactive), statewide and by county
             n = r[out.nw.reindex(r.index).fillna(0).astype(bool).values]

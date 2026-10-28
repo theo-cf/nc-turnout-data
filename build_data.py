@@ -164,7 +164,8 @@ def xt_counts(s):
     cell = ((ri * 4 + s.ab) * 2 + reg).dropna().astype(int).value_counts()
     pc = (s.party.map({'DEM': 0, 'REP': 2, 'UNA': 4}) + reg).dropna().astype(int).value_counts()
     hl = s.eth.eq('HL')   # Hispanic or Latino voters (ethnicity) by propensity: [low, regular]
-    return {'xv': [int(cell.get(i, 0)) for i in range(32)], 'pv': [int(pc.get(i, 0)) for i in range(6)],
+    xp = (s.party.map({'DEM': 0, 'REP': 1, 'UNA': 2}) * 32 + (ri * 4 + s.ab) * 2 + reg).dropna().astype(int).value_counts()   # the same cells once per party
+    return {'xv': [int(cell.get(i, 0)) for i in range(32)], 'xpv': [int(xp.get(i, 0)) for i in range(96)], 'pv': [int(pc.get(i, 0)) for i in range(6)],
             'hv': [int((hl & s.low).sum()), int((hl & ~s.low).sum())]}
 
 
@@ -402,7 +403,7 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
                 _x = _P['tr'].get(_k, {}).get(str(num(_r['name'])))
                 if _x:
                     _r['tr'] = _x
-    for _key in ('xr', 'pr', 'hr'):   # registered voters for the shareable graphics and the county map, statewide and by county
+    for _key in ('xr', 'xpr', 'pr', 'hr'):   # registered voters for the shareable graphics and the county map, statewide and by county
         if _key in _P:
             out['state'][_key] = _P[_key]['state']
             for _r in out['geo']['county']:
@@ -467,6 +468,7 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pieces' in _P:
         res = {}
         for kk, sub in acc.loc[key.index].groupby(key.values):
             row = totals(sub)
+            row.pop('xpv', None)   # the crosstabs' party filter is for whole places only
             x = regs.get(kk)
             if x:
                 row.update({'reg': x['n'], 'rpty': x['pty'], 'rage': x['age'], 'rrace': x['race'], 'reth': x['eth'], 'lpr': x['lpr'],

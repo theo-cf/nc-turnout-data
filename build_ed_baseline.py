@@ -1,16 +1,19 @@
 """2022 benchmark for the Turnout Tracker's "2022 Election Day voters" chart (docs/edbase2022.json). Run once.
 
 Usage:
-    python build_ed_baseline.py <ncvhis_20221108.zip> <absentee_20221108.csv>
+    python build_ed_baseline.py <ncvhis_20221108.zip> <absentee_20221108.csv> <VR_Snapshot_20221108.zip>
 
 The 2026 chart shows what share of each party's early and mail votes so far came from people who voted on Election Day
 in the previous midterm (2022). This file holds the same share for 2022 (votes from 2018 Election Day voters), at the
 end of each day of early voting, so the tracker can compare at the same point.
 Election Day = in person, curbside, provisional or transfer ballots on Nov. 6, 2018, from the history file as it stood
-on Nov. 8, 2022 (so it covers the voters registered at the time). Statewide and for each county; counts only:
+on Nov. 8, 2022 (so it covers the voters registered at the time). Statewide and for each county ('places'), and for
+today's districts ('districts': voters placed through their precinct on Election Day 2022, from the snapshot and
+docs/precinct_xwalk.json, as in build_xtab_baseline.py); counts only:
   * v[k]: accepted early and mail voters so far at the end of day k of early voting (k = 0 is Oct. 20, 2022), [DEM, REP, UNA]
   * e[k]: of those, how many voted on Election Day 2018
 """
+import io
 import json
 import sys
 import zipfile
@@ -25,7 +28,7 @@ PARTIES = ['DEM', 'REP', 'UNA']
 
 
 def main():
-    hist, absentee = sys.argv[1], sys.argv[2]
+    hist, absentee, snap = sys.argv[1], sys.argv[2], sys.argv[3]
     ed = set()
     with zipfile.ZipFile(hist) as z, z.open(z.namelist()[0]) as f:
         for ch in pd.read_csv(f, sep='\t', dtype=str, encoding='latin-1', usecols=['ncid', 'election_lbl', 'voting_method'],
@@ -55,6 +58,23 @@ def main():
     out = {'ev_start': EV_START, 'places': {'North Carolina': place(a)}}
     for c, g in a.groupby('county_desc'):
         out['places'][COUNTY_NAME.get(c.upper(), c.title())] = place(g)
+    parts = []
+    with zipfile.ZipFile(snap) as z, z.open(z.namelist()[0]) as fb:
+        enc = 'utf-16' if fb.peek(2)[:2] in (b'\xff\xfe', b'\xfe\xff') else 'latin-1'
+        for ch in pd.read_csv(io.TextIOWrapper(fb, encoding=enc), sep='\t', dtype=str, keep_default_na=False, chunksize=1_000_000,
+                              usecols=['county_desc', 'ncid', 'status_cd', 'precinct_abbrv']):
+            ch = ch.apply(lambda c: c.str.strip())
+            parts.append(ch[ch.status_cd.isin(['A', 'I'])])
+    r = pd.concat(parts).drop_duplicates('ncid').set_index('ncid')
+    del parts
+    xw = json.load(open('docs/precinct_xwalk.json'))['2022']
+    key = r.county_desc.str.upper() + '|' + r.precinct_abbrv
+    a['ncid'] = a.ncid.str.strip()
+    out['districts'] = {}
+    for i, (kind, pre) in enumerate((('cd', 'CD'), ('hd', 'HD'), ('sd', 'SD'))):
+        d = a.ncid.map(key.map({k: v[i] for k, v in xw.items()}))
+        out['districts'][kind] = {f'{pre} {int(n)}': place(g) for n, g in a[d.notna()].groupby(d.dropna())}
+    print('districts', {k: len(v) for k, v in out['districts'].items()})
     st = out['places']['North Carolina']
     print('statewide by day 12:', st['v'][12], st['e'][12], [round(e / v * 100, 1) for e, v in zip(st['e'][12], st['v'][12])],
           '; counties', len(out['places']) - 1)

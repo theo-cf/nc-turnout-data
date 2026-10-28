@@ -5,7 +5,8 @@ Usage:
     (and the same for 2018, 2020 and 2024)
 
 The extended lookup is build_history.py's, plus 2012 and 2014 from the archived history file (see build_baselines.py).
-Statewide and for each county, writes:
+Statewide and for each county ('places'), and for today's districts ('districts', placed through each voter's
+precinct at the time with docs/precinct_xwalk.json), writes:
   * v[k]: accepted early and mail voters so far at the end of day k of early voting (k = 0 is its first day, k = 19 is
           Election Day; 2018 is lined up by days before Election Day, as in build_baselines.py), by party x voting-history
           group (ncsbe.tier_counts: DEM all 3, 2 of 3, 1 of 3, 0 of 3, new, then REP, then UNA).
@@ -38,7 +39,7 @@ def main():
     with zipfile.ZipFile(snap) as z, z.open(z.namelist()[0]) as fb:
         enc = 'utf-16' if fb.peek(2)[:2] in (b'\xff\xfe', b'\xfe\xff') else 'latin-1'
         for ch in pd.read_csv(io.TextIOWrapper(fb, encoding=enc), sep='\t', dtype=str, keep_default_na=False, chunksize=1_000_000,
-                              usecols=['county_desc', 'ncid', 'status_cd', 'party_cd', 'age', 'registr_dt']):
+                              usecols=['county_desc', 'ncid', 'status_cd', 'party_cd', 'age', 'registr_dt', 'precinct_abbrv']):
             ch = ch.apply(lambda c: c.str.strip())
             parts.append(ch[ch.status_cd.isin(['A', 'I'])])
     r = pd.concat(parts).drop_duplicates('ncid').set_index('ncid')
@@ -49,6 +50,8 @@ def main():
     bits = r.index.to_series().map(H).fillna(0).astype(int)
     r['tier'] = history_tier(bits, reg, young.fillna(False), year)
     r['party'] = r.party_cd
+    del reg, age, young, bits
+    r = r[['county_desc', 'party', 'tier', 'precinct_abbrv']].astype({'county_desc': 'category', 'tier': 'int8', 'precinct_abbrv': 'category'})   # keeps memory down
 
     a = pd.read_csv(absentee, encoding='iso-8859-1', dtype=str, keep_default_na=False,
                     usecols=['ncid', 'county_desc', 'voter_party_code', 'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status'])
@@ -64,12 +67,26 @@ def main():
         return {'v': [tier_counts(av.party[av.k <= k], av.tier[av.k <= k]) for k in KS], 'r': tier_counts(rv.party, rv.tier)}
 
     out = {'ev_start': EV_STARTS[label], 'places': {'North Carolina': place(a, r)}}
-    rg = dict(tuple(r.groupby('county_desc')))
+    rg = dict(tuple(r.groupby('county_desc', observed=True)))
     for c, g in a.groupby('county_desc'):
         rv = rg.get(c, rg.get(c.upper()))
         if rv is not None:
             out['places'][COUNTY_NAME.get(c.upper(), c.title())] = place(g, rv)
+    # Today's districts ('districts'), through each voter's precinct at the time (docs/precinct_xwalk.json, as in
+    # build_xtab_baseline.py); ballots follow their voter, and voters missing from the snapshot can't be placed
+    del rg
+    xw = json.load(open('docs/precinct_xwalk.json'))[label]
+    key = (r.county_desc.astype(str).str.upper() + '|' + r.precinct_abbrv.astype(str)).astype('category')
+    for i, kind in enumerate(('cd', 'hd', 'sd')):
+        r[kind] = key.map({k: v[i] for k, v in xw.items()}).astype('float32')
+    del key
+    ad = a[['ncid', 'party', 'tier', 'k']].join(r[['cd', 'hd', 'sd']], on='ncid')
+    out['districts'] = {}
+    for kind, pre in (('cd', 'CD'), ('hd', 'HD'), ('sd', 'SD')):
+        rgd = dict(tuple(r.dropna(subset=[kind]).groupby(kind)))
+        out['districts'][kind] = {f'{pre} {int(n)}': place(g, rgd[n]) for n, g in ad.dropna(subset=[kind]).groupby(kind) if n in rgd}
     st = out['places']['North Carolina']
+    print(f"{label}: districts " + ', '.join(k + ' ' + str(len(v)) for k, v in out['districts'].items()))
     print(f"{label}: registered {sum(st['r']):,} in groups {st['r']}; voters by day 10 {sum(st['v'][10]):,}; counties {len(out['places']) - 1}")
     with open(f'docs/tiers{label}.json', 'w') as f:
         json.dump(out, f, separators=(',', ':'))
