@@ -279,6 +279,42 @@ for key, field, label in GEOS:
     # Voters with no district listed in the State Board file count statewide and in their county only.
     out['unassigned'][key] = int(acc[field].isna().sum())
 
+# ---- the State Board's county summary of mail ballots (absentee_spoiled_outstanding_<date>.csv) ----
+# The statewide file above lists only each voter's latest ballot, so a returned mail ballot that the county didn't count and
+# replaced with a new one isn't in it. This county-level file counts those. Optional: if it's missing or doesn't look right,
+# the tracker publishes without it.
+SO_COLS = ['county_name', 'abs_sent', 'abs_accepted', 'abs_spoiled_EV', 'abs_received_not_counted', 'abs_outstanding']
+SO_FILE = os.environ.get('SO_FILE', '').strip()
+
+
+def load_so(path):
+    so = pd.read_csv(path, dtype=str)
+    missing = [c for c in SO_COLS if c not in so.columns]
+    if missing:
+        raise ValueError(f'missing column(s) {missing}')
+    so['name'] = so.county_name.str.strip().str.upper().map(COUNTY_NAME)
+    if so.name.isna().any() or so.name.nunique() != len(so) or len(so) != 100:
+        raise ValueError('expected one row for each of the 100 counties')
+    vals = so[SO_COLS[1:]].apply(lambda c: pd.to_numeric(c.str.replace(',', '').str.strip(), errors='raise')).astype(int)
+    if (vals < 0).any().any():
+        raise ValueError('negative counts')
+    # [sent, accepted, voided because the voter voted early in person, returned but not counted, not yet returned]
+    return {n: [int(x) for x in row] for n, row in zip(so.name, vals.values)}
+
+
+if SO_FILE:
+    try:
+        SO = load_so(SO_FILE)
+        for r in out['geo']['county']:
+            r['so'] = SO[r['name']]
+        out['state']['so'] = [sum(v[i] for v in SO.values()) for i in range(5)]
+        so_mod = os.environ.get('SO_MODIFIED', '').strip()
+        out['so_asof'] = parsedate_to_datetime(so_mod).astimezone(ZoneInfo('America/New_York')).strftime('%Y-%m-%d') if so_mod else ASOF
+        print(f"county summary file ({out['so_asof']}): {out['state']['so'][3]:,} mail ballots returned but not counted; "
+              f"{out['state']['so'][1]:,} accepted (statewide file: {int(out['state'].get('ml', 0)):,} by mail)")
+    except Exception as e:
+        print(f'WARNING: county summary file skipped: {e}', file=sys.stderr)   # never let it block the main update
+
 # ---- early voting sites: accepted early in-person votes by the site where they were cast ----
 SMALL = {'of', 'the', 'and', 'at', 'for', 'in', 'on', 'a'}
 NOT_ACRONYM = {'mt', 'st', 'dr', 'jr', 'sr', 'ft', 'rd', 'ln', 'hwy', 'pkwy', 'blvd', 'ct', 'pl', 'sq', 'bldg', 'ctr', 'rm', 'mr', 'ms', 'mrs', 'nd', 'th'}

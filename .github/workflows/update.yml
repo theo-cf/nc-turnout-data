@@ -81,6 +81,18 @@ jobs:
           unzip -o absentee.zip -d raw
           ls -la raw
 
+      - name: Download the State Board's county summary of mail ballots
+        # Counts returned mail ballots that weren't counted and were replaced, which the statewide file leaves out. Optional.
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          URL=https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03/absentee_spoiled_outstanding_20261103.zip
+          if curl -fsSL --retry 2 --retry-delay 20 -o so.zip "$URL"; then
+            curl -fsSI "$URL" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r' > so_modified.txt
+            unzip -o so.zip -d raw_so && ls -la raw_so
+          else
+            echo "::warning::County summary file not available; publishing without it."
+          fi
+
       - name: Download election-night precinct results, once they exist
         if: steps.gate.outputs.go == 'true'
         run: |
@@ -134,6 +146,8 @@ jobs:
           ASOF=$(TZ=America/New_York date +%F)
           export RESULTS_FILE=$(find raw_results -type f -iname '*.txt' 2>/dev/null | head -1)
           export RESULTS_MODIFIED=$(cat results_modified.txt 2>/dev/null)
+          export SO_FILE=$(find raw_so -type f -iname '*.csv' 2>/dev/null | head -1)
+          export SO_MODIFIED=$(cat so_modified.txt 2>/dev/null)
           # Without the voting-history files the tracker would publish with its history sections blank, so stop instead
           if [ ! -f history/lookup.pkl.gz ] || [ ! -f history/pool.json ]; then
             echo "::error::Voting-history lookup missing; not publishing. The site keeps the last full data."; exit 1

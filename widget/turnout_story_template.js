@@ -376,15 +376,29 @@
       }
       box.innerHTML = '<p><b>Ballots not accepted ' + esc(where) + ', as of ' + apDate(D.asof) + '.</b> Every returned ballot the State Board has not accepted, by its status code. A voter can have more than one ballot, so the last column counts voters who have no accepted ballot of any kind. ' +
         (k === 'state' ? 'Rejected ballots: ' + fmt(D.state.g_rej || 0) + ' so far.' : 'Change the place above to see another county or district.') + '</p>' +
-        '<p class="tt-nah">Mail ballots</p>' + table(N.ml, 'ml') + '<p class="tt-nah">Early in-person ballots</p>' + table(N.ev, 'ev');
+        '<p class="tt-nah">Mail ballots</p>' + table(N.ml, 'ml') + '<p class="tt-nah">Early in-person ballots</p>' + table(N.ev, 'ev') + soBlock(r, k);
       dsort(box);
+    }
+    function soBlock(r, k) {   // the State Board's county summary of mail ballots: counts the replaced ballots the lists above can't show
+      if (!D.so_asof) return '';
+      var so = k === 'state' ? D.state.so : r.so, where = k === 'state' ? 'statewide' : 'in ' + LONG[k](r.name);
+      var h = '<p class="tt-nah" id="tt-ab-so">Mail ballots not counted and replaced</p><p>The lists above show only each voter\'s latest ballot. ' +
+        'When a county doesn\'t count a returned mail ballot (because the inner envelope wasn\'t sealed, for example), it sends the voter a new ballot, and the first one drops out of those lists. ' +
+        'The State Board counts them in a separate summary for each county. ';
+      if (!so) return h + 'That summary isn\'t broken down by district, so pick the state or a county to see it.</p>';
+      var rows = [['Returned but not counted', so[3], 'the county sent a new ballot'], ['Accepted', so[1], ''], ['Voided because the voter voted early in person', so[2], 'includes ballots never returned'],
+        ['Sent and not yet returned', so[4], ''], ['Sent in all', so[0], '']];
+      return h + 'Some of these voters have since voted again; the summary doesn\'t say how many.</p>' +
+        '<table class="tt-natab"><thead><tr><th>Mail ballots ' + esc(where) + ', as of ' + apDate(D.so_asof) + '</th><th>Ballots</th></tr></thead><tbody>' + rows.map(function (x) {
+          return '<tr><td>' + x[0] + (x[2] ? '<small>' + x[2] + '</small>' : '') + '</td><td>' + fmt(x[1]) + '</td></tr>';
+        }).join('') + '</tbody></table>';
     }
     h += '<details class="tt-how"><summary>How we count</summary>' +
       '<p id="tt-ab-votes">Votes cast are early in-person and mail ballots the State Board lists as accepted. A mail ballot that needs a fix joins the count once it is accepted, ' +
       'on the day it arrived, so recent days can rise a little after they first appear. Mail ballot rules changed in 2023, and more people vote early every cycle, so being ahead early doesn\'t mean final turnout will be higher.</p>' +
       '<p id="tt-ab-fix">"Need a fix" counts returned mail ballots that are waiting on the voter and haven\'t been accepted. These are the State Board statuses PENDING CURE, PHOTO ID CURABLE, ID NOT PROVIDED, ' +
       'AFFIDAVIT REVIEW PENDING, CONFLICT, VOTER SIGNATURE MISSING, AFFIDAVIT INCOMPLETE and PHOTO ID NONCOMPLIANT. Voters who have since voted another way are left out. Rejected ballots ' +
-      'and mail ballots replaced because the voter voted in person are not shown. "Fixed so far" counts mail ballots the State Board lists as ACCEPTED - CURED. Party is the voter\'s current registration; age is as listed in the State Board file.</p>' +
+      'and mail ballots replaced because the voter voted in person are not shown. ' + (D.so_asof ? 'Neither are mail ballots the county didn\'t count and replaced with a new ballot (because the inner envelope wasn\'t sealed, for example); the State Board\'s county summary counts those, shown below. ' : '') + '"Fixed so far" counts mail ballots the State Board lists as ACCEPTED - CURED. Party is the voter\'s current registration; age is as listed in the State Board file.</p>' +
       (D.reg_as_of ? '<p>Registered voters are the active and inactive voters in the State Board\'s registration file, updated weekly until Election Day. Inactive voters can still vote, so counting them keeps turnout from being overstated. Voters who register during early voting are added the following week.</p>' : '') +
       '<p id="tt-ab-cmp">Comparisons with 2018, 2020, 2022 and 2024 (statewide, by county and by district) line up each year by day of early voting, which began Oct. 15, 2020, Oct. 20, 2022, Oct. 17, 2024 and Oct. 15, 2026. 2020 was a presidential election held during the pandemic, with far more mail voting than any other year. 2018\'s early voting ran one day longer, starting Wednesday, Oct. 17, so it is lined up by days before Election Day instead: its Thursday, Oct. 18 matches 2026\'s Thursday, Oct. 15, and the votes from Oct. 17 count toward its totals. They count accepted early and mail ballots the same way, from the State Board\'s final absentee files for those years, and turnout rates use registered voters as of each election.</p>' +
       '<p id="tt-ab-dist">District comparisons use today\'s congressional, NC House and NC Senate lines for every year. Each past precinct is placed in the district where most of its voters who still live at the same address are registered today, and its votes and registered voters count there. A few dozen precincts are split by today\'s lines; each is counted whole in the district that holds most of its voters.</p>' +

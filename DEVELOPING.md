@@ -110,6 +110,7 @@ Memory in the container is about 7 GB, and building a full year's snapshot can b
   - `pty`, `age`, `race`, `eth`, `lp` (low-propensity voters by party), `tv`/`tr` (pyramid), `e22v`/`e22r` (2022 Election Day voters who've voted, and registered).
   - `xv`/`xr`, `xpv`/`xpr`, `pv`/`pr` (crosstabs), `dd`/`cdd` (by day), `nv` (new voters).
   - Registered-voter denominators come from the pool.
+  - `so` (state and counties only; no districts): the State Board's county summary of mail ballots, `absentee_spoiled_outstanding_20261103.zip`, as `[sent, accepted, voided because the voter voted early in person, returned but not counted, not yet returned]`, with its date in top-level `so_asof`. Optional: the run publishes without it if the file is missing or malformed. "Returned but not counted" is the only source for mail ballots a county rejected and replaced (unsealed inner envelope, for example); the statewide file keeps only each voter's latest ballot. Common Cause NC's "spoiled" column appears to be this number. Its accepted count matches our mail votes in 98 of 100 counties.
 
 **Still waiting on Theo's sign-off on wording:**
 - Pyramid notes
