@@ -116,7 +116,7 @@ jobs:
 
       - name: Build the voting-history lookup (only when the State Board posts new files)
         if: steps.gate.outputs.go == 'true' && steps.hkey.outcome == 'success' && steps.hcache.outputs.cache-hit != 'true'
-        continue-on-error: true   # without it the tracker still updates; Voter Propensity just isn't refreshed
+        # No continue-on-error: if this fails, the run stops and the site keeps the last full data
         run: |
           mkdir -p history "$RUNNER_TEMP/vh"
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/vh/ncvhis.zip" https://s3.amazonaws.com/dl.ncsbe.gov/data/ncvhis_Statewide.zip
@@ -134,8 +134,11 @@ jobs:
           ASOF=$(TZ=America/New_York date +%F)
           export RESULTS_FILE=$(find raw_results -type f -iname '*.txt' 2>/dev/null | head -1)
           export RESULTS_MODIFIED=$(cat results_modified.txt 2>/dev/null)
-          if [ -f history/lookup.pkl.gz ]; then export HISTORY_FILE=history/lookup.pkl.gz; fi
-          if [ -f history/pool.json ]; then export POOL_FILE=history/pool.json; fi
+          # Without the voting-history files the tracker would publish with its history sections blank, so stop instead
+          if [ ! -f history/lookup.pkl.gz ] || [ ! -f history/pool.json ]; then
+            echo "::error::Voting-history lookup missing; not publishing. The site keeps the last full data."; exit 1
+          fi
+          export HISTORY_FILE=history/lookup.pkl.gz POOL_FILE=history/pool.json
           python build_data.py "$SRC" "$ASOF" docs "$(cat last_modified.txt)"
 
       - name: Publish
