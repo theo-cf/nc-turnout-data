@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 
 XT_RACES = ['B', 'O', 'A', 'W']   # Black, Other, Asian, White: the race rows on the shareable graphics
+ED_METHODS = {'ELECTION DAY IN-PERSON', 'ELECTION DAY CURBSIDE', 'PROVISIONAL', 'TRANSFER'}   # the history file's Election Day methods
 ELECTIONS = {'11/08/2016': 1, '11/06/2018': 2, '11/03/2020': 4, '11/08/2022': 8, '11/05/2024': 16}
 
 
@@ -65,8 +66,11 @@ def main():
     ap.add_argument('--snap', default='', help='VR_Snapshot_20241105.zip, for first-time registrants')
     a = ap.parse_args()
 
-    h = read(a.history, ['ncid', 'election_lbl'], lambda c: c[c.election_lbl.isin(ELECTIONS)])
-    h = h.drop_duplicates()
+    # e: voted on Election Day in November 2022 (in person, curbside, provisional or transfer), for the pyramid's "already voted" bars
+    h = read(a.history, ['ncid', 'election_lbl', 'voting_method'],
+             lambda c: c[c.election_lbl.isin(ELECTIONS)].assign(e=lambda d: (d.election_lbl == '11/08/2022') & d.voting_method.str.strip().str.upper().isin(ED_METHODS)).drop(columns='voting_method'))
+    e22 = pd.Index(h.ncid[h.e].unique())
+    h = h.drop(columns='e').drop_duplicates()
     bits = h.election_lbl.map(ELECTIONS).groupby(h.ncid).sum().astype('uint8')
 
     v = read(a.voters, ['ncid', 'status_cd', 'registr_dt', 'birth_year', 'party_cd', 'county_desc', 'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv',
@@ -78,6 +82,7 @@ def main():
     out['b'] = bits.reindex(out.index).fillna(0).astype('uint8')
     out['reg'] = reg.dt.strftime('%Y%m%d').reindex(out.index).fillna('0').astype('int32')
     out['by'] = pd.to_numeric(v.birth_year, errors='coerce').reindex(out.index).fillna(0).astype('int16')
+    out['e22'] = out.index.isin(e22).astype('uint8')   # voted on Election Day 2022
     if a.snap:
         snap = snap_ids(a.snap)
         cur = v.status_cd.isin(['A', 'I']) & (reg.dt.year == 2026)
@@ -126,6 +131,10 @@ def main():
         from ncsbe import history_tier, tier_counts
         tt = history_tier(b, out.reg.reindex(r.index).fillna(0).astype(int), out.by.reindex(r.index).fillna(0).astype(int) >= 2003, 2026)
         P['tr'] = {'state': tier_counts(r.party_cd, tt), 'county': {COUNTY_NAME.get(c, c.title()): tier_counts(r.party_cd[g.index], tt[g.index]) for c, g in r.groupby('county_desc')}}
+        # Registered voters (active and inactive) who voted on Election Day 2022, by today's party, statewide and by county
+        ed = r[out.e22.reindex(r.index).fillna(0).astype(bool).values]
+        cnt3 = lambda g: [int((g.party_cd == x).sum()) for x in ('DEM', 'REP', 'UNA')]
+        P['e22'] = {'state': cnt3(ed), 'county': {COUNTY_NAME.get(c, c.title()): cnt3(g) for c, g in ed.groupby('county_desc')}}
         P['pr'] = {'state': xt(pc, 6), 'county': {COUNTY_NAME.get(c, c.title()): xt(pc[g.index], 6) for c, g in r.groupby('county_desc')}}
         # By precinct, for the precinct map layer: registered voters [all, DEM, REP, UNA] and low-propensity ones [DEM, REP, UNA];
         # the precinct name each code goes by in the absentee file; and each precinct's district (where most of its voters are).

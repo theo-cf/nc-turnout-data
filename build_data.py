@@ -111,6 +111,7 @@ if HAS_HIST:
     # voting-history group for the pyramid (ncsbe.history_tier): voters missing from the lookup registered after it, so they're new
     acc['tier'] = history_tier(_bits, acc.ncid.map(_H.reg).fillna(0).astype(int), acc.ncid.map(_H.by).fillna(0).astype(int) >= 2003, 2026) \
         .where(acc.ncid.isin(_H.index), 4)
+    acc['e22'] = acc.ncid.map(_H.e22).fillna(0).astype(int).eq(1) if 'e22' in _H.columns else False   # voted on Election Day 2022
     # First-time North Carolina registrants this year (see build_history.py --snap): flagged in the lookup, or not in it at all
     # (registered after the State Board's weekly file, including same-day registrants).
     HAS_NW = 'nw' in _H.columns
@@ -224,7 +225,7 @@ def totals(s):
         # party by race: [DEM, REP, UNA] voters for Black, White, Asian and American Indian voters (race), then Hispanic or Latino (ethnicity)
         'gp': [[int((s.race.eq(g) & s.party.eq(x)).sum()) for x in ['DEM', 'REP', 'UNA']] for g in ['B', 'W', 'A', 'I']]
               + [[int((s.eth.eq('HL') & s.party.eq(x)).sum()) for x in ['DEM', 'REP', 'UNA']]],
-    } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']], 'tv': tier_counts(s.party, s.tier)} if HAS_HIST else {}) \
+    } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']], 'tv': tier_counts(s.party, s.tier), 'e22v': [int((s.e22 & (s.party == x)).sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {}) \
       | (xt_counts(s) if HAS_HIST else {}) \
       | ({'nv': [int(s.nw.sum()), int(s.sdr.sum()), int((s.nw & s.sdr).sum()), int(s.unk.sum())]} if HAS_NW else {}) \
       | ({'dn': day_new(s)} if HAS_NW else {})
@@ -381,6 +382,11 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
             if _k in _P['nw']:
                 for _r in out['geo'][_k]:
                     _r['nwr'] = _P['nw'][_k].get(str(num(_r['name'])), 0)
+    if 'e22' in _P:   # registered voters who voted on Election Day 2022, by party: the denominator for the "already voted" bars
+        out['state']['e22r'] = _P['e22']['state']
+        for _r in out['geo']['county']:
+            if _r['name'] in _P['e22']['county']:
+                _r['e22r'] = _P['e22']['county'][_r['name']]
     if 'tr' in _P:   # registered voters by party x voting-history group, statewide and by county, for the pyramid
         out['state']['tr'] = _P['tr']['state']
         for _r in out['geo']['county']:
