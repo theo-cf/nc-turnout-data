@@ -128,34 +128,30 @@
   var DEF = {
     lean: 'How much more Democratic or Republican this district voted than North Carolina as a whole, averaged across the nine 2024 Council of State races other than governor. R+5 means 5 points more Republican than the state.',
     split: 'Democrats minus Republicans among people who have voted early or by mail so far, by party registration (not vote choice). Measured as a share of all voters, including unaffiliated.',
-    cmp: 'How far this district’s early vote is running ahead of or behind its own lean: its party split compared with the state’s, minus its district lean. An R+5 district whose early vote is 3 points more Republican than the state’s is running 2 points ahead for Democrats.',
-    ou: 'How this district’s early vote compares with other districts that have the same lean this year. Positive means it’s more Democratic than similar districts are running; negative, more Republican.',
-    pres: 'Harris’s share of the 2024 two-party presidential vote in this district (Harris plus Trump, leaving out third-party votes), minus her statewide share of 48.4%. R+5 means 5 points more Republican than the state.',
-    pp: 'How far this district’s early vote is running ahead of or behind its 2024 presidential vote: its party split compared with the state’s, minus its presidential lean.',
-    ppou: 'How this district’s early vote compares with other districts that voted the same way for president in 2024. Positive means it’s more Democratic than those districts are running; negative, more Republican.',
-    peer: 'How districts with the same lean are running against their lean this year: the trend through all of this chamber\u2019s districts. Performance vs. Lean minus this equals Over/Underperformance vs. Similar.',
-    flip: 'Striped districts are ahead on one measure and behind on the other. Performance vs. Lean compares a district with its own lean; Over/Underperformance vs. Similar compares it with other districts that have the same lean.',
+    pres: 'Harris’s 2024 margin over Trump in this district: Harris’s share minus Trump’s, using the two-party vote (third-party votes left out). Trump +5 means Trump won the district by 5 points.',
+    pp: 'This district’s early-vote party split minus Harris’s 2024 margin over Trump. Positive means Democrats’ lead among people who have voted is bigger than Harris’s margin was; negative, smaller.',
     lp: 'Democrats minus Republicans, but only for low-propensity voters who have already cast ballots. This includes people who voted in 0 or 1 of the last 3 federal elections, or who voted in 2020 and 2024 but skipped 2022.',
     rg: 'Democrats minus Republicans among all registered voters in the district.',
     vr: 'The party split of people who have voted minus the party split of registered voters. A positive number means Democrats’ lead over Republicans is bigger among people who have voted than among registered voters.',
     y22: 'How far a district has moved toward or away from Democrats since the same point in 2022, relative to the rest of the state.'
   };
-  var DLAB = { lean: 'District Lean', split: 'Party Split', cmp: 'Performance vs. Lean', ou: 'Over/Underperformance vs. Similar', pres: '2024 Presidential', pp: 'Performance vs. Presidential', ppou: 'Vs. similar presidential districts', flip: 'Striped districts', peer: 'Similar districts\u2019 performance', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022' };
-  var LAYERS = [   // no22: no Compared to 2022 view (the two leans are fixed; the 2022 change is the same on every performance map, so it lives on Performance vs. Lean)
-    { k: 'pres', name: '2024 Presidential', defs: ['pres'], max: 12, no22: 'The 2024 presidential vote is fixed, so it has no 2022 comparison.' },
-    { k: 'pp', name: 'Performance vs. Presidential', defs: ['split', 'pres', 'pp'], max: 12, no22: 'Switch to Performance vs. Lean to compare with 2022.' },
+  var DLAB = { lean: 'District Lean', split: 'Party Split', pres: '2024 Presidential', pp: 'Performance vs. Presidential', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022' };
+  var LAYERS = [   // no22: no Compared to 2022 view; the 2022 change lives on Party Split and Registration. max: points at which the color is fullest
+    { k: 'sp', name: 'Party Split', defs: ['split'], max: 30 },
+    { k: 'pres', name: '2024 Presidential', defs: ['pres'], max: 30, no22: 'The 2024 presidential vote is fixed, so it has no 2022 comparison.' },
+    { k: 'pp', name: 'Performance vs. Presidential', defs: ['split', 'pres', 'pp'], max: 30, no22: 'Switch to Party Split to compare with 2022.' },
     { k: 'lean', name: 'District Lean', defs: ['lean'], max: 12, no22: 'District lean is fixed, so it has no 2022 comparison.' },
-    { k: 'spl', name: 'Performance vs. Lean', defs: ['split', 'cmp', 'flip'], max: 12 },
-    { k: 'ou', name: 'Over/Underperformance vs. Similar', defs: ['split', 'ou', 'flip'], max: 12, no22: 'Switch to Performance vs. Lean to compare with 2022.' }
+    { k: 'rg', name: 'Registration', defs: ['rg'], max: 30 }
   ];
-  var PRES = {"cd":{"1":44.14,"2":67.2,"3":43.13,"4":73.02,"5":41.04,"6":41.32,"7":42.99,"8":40.25,"9":41.99,"10":41.06,"11":45.17,"12":73.52,"13":41.65,"14":42.39},"hd":{"1":34.99,"2":55.14,"3":39.84,"4":37.75,"5":46.63,"6":38.74,"7":43.68,"8":63.57,"9":45.05,"10":41.76,"11":66.66,"12":44.16,"13":29.57,"14":34.08,"15":33.1,"16":30.17,"17":38.33,"18":60.8,"19":39.41,"20":44.8,"21":63.49,"22":36.47,"23":56.32,"24":49.16,"25":49.95,"26":44.1,"27":58.58,"28":32.74,"29":84.89,"30":86.22,"31":80.69,"32":50.23,"33":71.06,"34":65.69,"35":49.05,"36":55.98,"37":48.53,"38":81.6,"39":62.78,"40":64.07,"41":67.47,"42":73.62,"43":43.66,"44":60.37,"45":57.61,"46":32.49,"47":37.91,"48":50.45,"49":70.58,"50":57.64,"51":37.02,"52":40.46,"53":36.99,"54":54.25,"55":36.98,"56":86.45,"57":67.96,"58":75.34,"59":44.99,"60":62.4,"61":78.55,"62":46.94,"63":46.11,"64":45.64,"65":31.91,"66":64.03,"67":26.08,"68":39.85,"69":37.38,"70":23.28,"71":69.49,"72":74.88,"73":46.78,"74":46.23,"75":43.97,"76":37.82,"77":23.05,"78":25.03,"79":36.21,"80":24.46,"81":27.9,"82":45.68,"83":34.21,"84":31.93,"85":26.32,"86":29.24,"87":25.16,"88":69.35,"89":25.21,"90":21.53,"91":32.64,"92":69.86,"93":41.8,"94":20.9,"95":36.22,"96":36.5,"97":26.97,"98":51.34,"99":82.95,"100":62.91,"101":69.07,"102":74.78,"103":57.39,"104":59.75,"105":50.32,"106":76.04,"107":80.5,"108":34.88,"109":42.43,"110":33.74,"111":25.96,"112":76.82,"113":34.13,"114":58.88,"115":48.53,"116":80.99,"117":43.8,"118":37.51,"119":43.63,"120":25.38},"sd":{"1":42.52,"2":41.46,"3":40.11,"4":44.95,"5":54.86,"6":31.84,"7":47.18,"8":40.46,"9":35.23,"10":39.11,"11":48.24,"12":38.04,"13":52.36,"14":73.83,"15":68.82,"16":67.78,"17":64.98,"18":49.75,"19":64.38,"20":72.37,"21":38.54,"22":79.94,"23":65.2,"24":42.45,"25":40.16,"26":38.94,"27":60.17,"28":76.45,"29":30.91,"30":26.28,"31":38.38,"32":70.27,"33":29.42,"34":45.85,"35":37.73,"36":20.74,"37":36.5,"38":68.59,"39":66.98,"40":75.09,"41":76.27,"42":53.33,"43":38.84,"44":28.8,"45":28.71,"46":33.91,"47":35.47,"48":37.0,"49":68.38,"50":35.17}}, PRES_ST = 48.37;   // Harris share of the 2024 two-party presidential vote, by district and statewide
+  var PRES = {"cd":{"1":44.14,"2":67.2,"3":43.13,"4":73.02,"5":41.04,"6":41.32,"7":42.99,"8":40.25,"9":41.99,"10":41.06,"11":45.17,"12":73.52,"13":41.65,"14":42.39},"hd":{"1":34.99,"2":55.14,"3":39.84,"4":37.75,"5":46.63,"6":38.74,"7":43.68,"8":63.57,"9":45.05,"10":41.76,"11":66.66,"12":44.16,"13":29.57,"14":34.08,"15":33.1,"16":30.17,"17":38.33,"18":60.8,"19":39.41,"20":44.8,"21":63.49,"22":36.47,"23":56.32,"24":49.16,"25":49.95,"26":44.1,"27":58.58,"28":32.74,"29":84.89,"30":86.22,"31":80.69,"32":50.23,"33":71.06,"34":65.69,"35":49.05,"36":55.98,"37":48.53,"38":81.6,"39":62.78,"40":64.07,"41":67.47,"42":73.62,"43":43.66,"44":60.37,"45":57.61,"46":32.49,"47":37.91,"48":50.45,"49":70.58,"50":57.64,"51":37.02,"52":40.46,"53":36.99,"54":54.25,"55":36.98,"56":86.45,"57":67.96,"58":75.34,"59":44.99,"60":62.4,"61":78.55,"62":46.94,"63":46.11,"64":45.64,"65":31.91,"66":64.03,"67":26.08,"68":39.85,"69":37.38,"70":23.28,"71":69.49,"72":74.88,"73":46.78,"74":46.23,"75":43.97,"76":37.82,"77":23.05,"78":25.03,"79":36.21,"80":24.46,"81":27.9,"82":45.68,"83":34.21,"84":31.93,"85":26.32,"86":29.24,"87":25.16,"88":69.35,"89":25.21,"90":21.53,"91":32.64,"92":69.86,"93":41.8,"94":20.9,"95":36.22,"96":36.5,"97":26.97,"98":51.34,"99":82.95,"100":62.91,"101":69.07,"102":74.78,"103":57.39,"104":59.75,"105":50.32,"106":76.04,"107":80.5,"108":34.88,"109":42.43,"110":33.74,"111":25.96,"112":76.82,"113":34.13,"114":58.88,"115":48.53,"116":80.99,"117":43.8,"118":37.51,"119":43.63,"120":25.38},"sd":{"1":42.52,"2":41.46,"3":40.11,"4":44.95,"5":54.86,"6":31.84,"7":47.18,"8":40.46,"9":35.23,"10":39.11,"11":48.24,"12":38.04,"13":52.36,"14":73.83,"15":68.82,"16":67.78,"17":64.98,"18":49.75,"19":64.38,"20":72.37,"21":38.54,"22":79.94,"23":65.2,"24":42.45,"25":40.16,"26":38.94,"27":60.17,"28":76.45,"29":30.91,"30":26.28,"31":38.38,"32":70.27,"33":29.42,"34":45.85,"35":37.73,"36":20.74,"37":36.5,"38":68.59,"39":66.98,"40":75.09,"41":76.27,"42":53.33,"43":38.84,"44":28.8,"45":28.71,"46":33.91,"47":35.47,"48":37.0,"49":68.38,"50":35.17}};   // Harris share of the 2024 two-party presidential vote, by district
   var PRE = { hd: 'HD', sd: 'SD', cd: 'CD' }, LONG = { hd: 'NC House District', sd: 'NC Senate District', cd: 'Congressional District' };
   var PCOL = { D: '#2E6DB4', R: '#B83A32', L: '#8a7a3a', G: '#3f7d4a', I: '#6b6b6b' };
-  var ST = { c: 'cd', layer: 'spl', y: 'now', s: 'bg', pick: null, vb: null, sort: { k: 'spl', d: -1 } };
+  var ST = { c: 'cd', layer: 'sp', y: 'now', s: 'bg', pick: null, vb: null, sort: { k: 'sp', d: -1 } };
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function dr(x, dec) { dec = dec || 0; if (x === null || x === undefined || isNaN(x)) return '—'; return Math.abs(x) < 0.5 * Math.pow(10, -dec) ? 'even' : (x > 0 ? 'D+' : 'R+') + Math.abs(x).toFixed(dec); }
   function gp(x) { if (x === null || x === undefined || isNaN(x)) return '—'; return Math.abs(x) < 0.05 ? '0.0' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(1); }
+  function hmTxt(m) { return m === null || m === undefined || isNaN(m) ? '\u2014' : Math.abs(m) < 0.05 ? 'Even' : (m > 0 ? 'Harris +' : 'Trump +') + Math.abs(m).toFixed(1); }
   function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
   function margin(d, r, n) { return n > 0 ? (d - r) / n * 100 : null; }
   function fit(xs, ys) {   // least-squares line y = a + b x
@@ -197,19 +193,10 @@
         ['sp', 'lp', 'rg', 'vr'].forEach(function (m) { r[m + 'o'] = r[m] === null || r[m + '22'] === null ? null : (r[m] - st[m]) - (r[m + '22'] - st[m + '22']); });
         rows.push(r);
       });
-      // compared with lean: the district's number relative to the state's, minus its district lean. Expected = the state's number plus the lean.
-      // (Split vs. registration isn't measured against lean, so it has no expected value.)
+      // 2024 presidential: Harris minus Trump (two-party), on its own, not relative to the state; performance vs. presidential = early-vote split minus that margin
       rows.forEach(function (r) {
-        ['sp', 'lp', 'rg'].forEach(function (m) { r[m + 'x'] = st[m] === null ? null : st[m] + r.lean; r[m + 'l'] = r[m] === null || r[m + 'x'] === null ? null : r[m] - r[m + 'x']; });
-        r.h2 = PRES[g][String(r.d)]; r.pres = r.h2 === undefined ? null : r.h2 - PRES_ST;   // presidential lean, two-party share points like the district lean
-        r.spp = r.pres === null ? null : (r.sp - st.sp) - r.pres;   // performance vs. presidential
-      });
-      // over/underperformance: how far above or below the line through all of this chamber's districts this year (vs. lean, and vs. presidential lean)
-      var f1 = fit(rows.map(function (r) { return r.lean; }), rows.map(function (r) { return r.sp; }));
-      var pr = rows.filter(function (r) { return r.pres !== null; }), f2 = fit(pr.map(function (r) { return r.pres; }), pr.map(function (r) { return r.sp; }));
-      rows.forEach(function (r) {
-        r.spu = r.sp - (f1[0] + f1[1] * r.lean); r.sppu = r.pres === null ? null : r.sp - (f2[0] + f2[1] * r.pres);
-        r.flip = r.spl !== null && r.spu !== null && r.spl * r.spu < 0;   // ahead on one method, behind on the other
+        r.h2 = PRES[g][String(r.d)]; r.hm = r.h2 === undefined ? null : 2 * r.h2 - 100;
+        r.spp = r.hm === null || r.sp === null ? null : r.sp - r.hm;
       });
       rows.sort(function (a, b) { return a.d - b.d; });
       ROWS[g] = rows;
@@ -219,13 +206,12 @@
   function layerOf(k) { for (var i = 0; i < LAYERS.length; i++) if (LAYERS[i].k === k) return LAYERS[i]; }
   function value(r, k) {   // what a layer or column shows for a district, given the 2022 switch
     var y = ST.y === '22';
-    if (k === 'lean') return r.lean; if (k === 'pres') return r.pres;
-    if (k === 'spl') return y ? r.spo : r.spl;   // the change in performance vs. lean since 2022 is the change in party split relative to the state
-    if (k === 'ou') return r.spu; if (k === 'pp') return r.spp;
+    if (k === 'lean') return r.lean; if (k === 'pres') return r.hm;
+    if (k === 'sp') return y ? r.spo : r.sp;   // compared to 2022: the change in party split relative to the state
+    if (k === 'pp') return r.spp;
     if (k === 'lp') return y ? r.lpo : r.lp; if (k === 'rg') return y ? r.rgo : r.rg; if (k === 'vr') return y ? r.vro : r.vr;
     return null;
   }
-  function hatchOn() { return ST.y !== '22' && (ST.layer === 'spl' || ST.layer === 'ou'); }
   function scaleMax(k) { return layerOf(k) ? layerOf(k).max : 12; }
   function isBg(r) { return r.lean >= -10 && r.lean <= 5; }
   function shown(r) { return ST.s === 'all' || isBg(r); }
@@ -257,10 +243,10 @@
   function layerSub() {
     var k = ST.layer;
     if (k === 'lean') return 'Blue districts vote more Democratic than North Carolina as a whole; red districts, more Republican.';
-    if (k === 'pres') return 'Blue districts voted more for Harris in 2024 than North Carolina as a whole; red districts, more for Trump.';
+    if (k === 'pres') return 'Blue districts voted for Harris in 2024; red districts, for Trump. Darker means a bigger margin.';
     if (ST.y === '22') return 'Blue districts have moved toward Democrats since the same point in 2022, relative to the rest of the state; red districts, toward Republicans.';
-    if (k === 'spl') return 'Blue indicates an early vote more Democratic than the district’s lean; red indicates an early vote more Republican than the district’s lean. Striped districts run the other way on Over/Underperformance vs. Similar.';
-    if (k === 'ou') return 'Blue indicates an early vote more Democratic than in districts with the same lean; red indicates an early vote more Republican than in those districts. Striped districts run the other way on Performance vs. Lean.';
+    if (k === 'sp') return 'Blue districts have more registered Democrats than Republicans among people who have voted so far; red districts, more Republicans.';
+    if (k === 'rg') return 'Blue districts have more registered Democrats than Republicans; red districts, more Republicans.';
     return 'Blue indicates an early vote more Democratic than the district’s 2024 presidential vote; red indicates an early vote more Republican than its presidential vote.';
   }
   function longDay(iso) { var d = new Date(iso + 'T12:00:00Z'); return ['Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.', 'Sat.'][d.getUTCDay()] + ', ' + ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'][d.getUTCMonth()] + ' ' + d.getUTCDate(); }
@@ -268,10 +254,10 @@
     var k = ST.layer, mx = scaleMax(k), el = mount.querySelector('#' + SLUG + '-leg');
     var lo, hi;
     if (ST.y === '22' && !layerOf(k).no22) { lo = 'Toward R by ' + mx + '+ pts'; hi = 'Toward D by ' + mx + '+ pts'; }
-    else if (k === 'spl' || k === 'ou' || k === 'pp') { lo = 'Redder by ' + mx + '+ pts'; hi = 'Bluer by ' + mx + '+ pts'; }
+    else if (k === 'pp') { lo = 'Redder by ' + mx + '+ pts'; hi = 'Bluer by ' + mx + '+ pts'; }
+    else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; }
     else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
-    el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (ST.s === 'bg' ? '<span class="chip"><i></i>Outside R+10 to D+5</span>' : '') +
-      (hatchOn() ? '<span class="chip"><i class="hx"></i>Ahead on one measure, behind on the other</span>' : '');
+    el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (ST.s === 'bg' ? '<span class="chip"><i></i>Outside R+10 to D+5</span>' : '') ;
   }
 
   /* ---- map ---- */
@@ -320,18 +306,12 @@
   function paint() {
     var k = ST.layer, mx = scaleMax(k);
     ROWS[ST.c].forEach(function (r) { var p = paths[r.d]; p.setAttribute('fill', shown(r) ? color(value(r, k), mx) : '#E4E1DA'); p.classList.toggle('on', ST.pick === r.d); });
-    Array.prototype.forEach.call(gEl.querySelectorAll('.dl-hx'), function (x) { x.parentNode.removeChild(x); });
-    if (hatchOn()) ROWS[ST.c].forEach(function (r) {   // stripes over districts where the two methods disagree
-      if (!r.flip || !shown(r)) return; var x = document.createElementNS(NS, 'path'); x.setAttribute('d', MAP[ST.c][String(r.d)]); x.setAttribute('class', 'dl-hx'); x.setAttribute('fill', 'url(#' + SLUG + '-hx)');
-      gEl.insertBefore(x, gEl.querySelector('.dl-cl'));
-    });
     var on = paths[ST.pick]; if (on) on.parentNode.insertBefore(on, gEl.querySelector('.dl-cl'));
   }
   function tipEl() { return mount.querySelector('.dl-tip'); }
   function tipShow(e, r) {
     var t = tipEl(), mw = mount.querySelector('#' + SLUG + '-mw'), rc = mw.getBoundingClientRect(), v = value(r, ST.layer), k = ST.layer;
-    var vs = k === 'lean' ? dr(v, 1) + ' district lean' : k === 'pres' ? dr(v, 1) + ' presidential lean' : ST.y === '22' ? gp(v) + ' since 2022' : k === 'spl' ? gp(v) + ' vs. its lean' : k === 'ou' ? gp(v) + ' vs. similar districts' : gp(v) + ' vs. presidential';
-    if (hatchOn() && r.flip) vs += ' (methods disagree)';
+    var vs = k === 'lean' ? dr(v, 1) + ' district lean' : k === 'pres' ? hmTxt(v) + ' in 2024' : ST.y === '22' && !layerOf(k).no22 ? gp(v) + ' since 2022' : k === 'sp' ? dr(v) + ' party split' : k === 'rg' ? dr(v) + ' registration' : gp(v) + ' vs. Harris’s margin';
     t.innerHTML = '<b>' + PRE[ST.c] + ' ' + r.d + '</b> ' + esc(vs); t.hidden = false;
     t.style.left = Math.min(e.clientX - rc.left + 12, mw.clientWidth - t.offsetWidth - 4) + 'px'; t.style.top = (e.clientY - rc.top + 14) + 'px';
   }
@@ -344,20 +324,18 @@
     var cand = r.cand.slice().sort(function (a, b) { return 'DRLGI'.indexOf(a[1]) - 'DRLGI'.indexOf(b[1]); });
     var col = function (v) { return v === null || v === undefined || isNaN(v) ? '' : v > 0.5 ? 'color:#2E6DB4' : v < -0.5 ? 'color:#B83A32' : ''; };
     var kv = function (lab, val, st) { return '<div class="dl-kv"><span>' + lab + '</span><b style="' + (st || '') + '">' + val + '</b></div>'; };
-    var hm = r.h2 === undefined ? null : 2 * r.h2 - 100;   // Harris minus Trump, two-party
+    var hm = r.hm;
     var h = '<button type="button" class="dl-cx" aria-label="Close">×</button><h3>' + LONG[ST.c] + ' ' + r.d + '</h3>' +
       (r.cty.length ? '<p class="dl-cty">' + esc(r.cty.join(', ')) + (r.cty.length > 1 ? ' (largest parts)' : '') + '</p>' : '') +
       (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span>' + esc(c[0]) + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
       kv('District lean (COS-No-Gov)' + qBtn('lean'), dr(r.lean, 1)) +
-      (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', (hm >= 0 ? 'Harris +' : 'Trump +') + Math.abs(hm).toFixed(1) + '<span class="dl-sub">' + dr(r.pres, 1) + ' vs. state</span>')) +
+      (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', hmTxt(hm))) +
       kv('Votes so far', fmt(r.votes) + ' · ' + (r.reg ? (r.votes / r.reg * 100).toFixed(1) + '% of registered' : '')) +
       '<p class="dl-ch">2026 early vote</p>' +
       kv('Party split' + qBtn('split'), dr(r.sp)) + kv('Low-propensity margin' + qBtn('lp'), dr(r.lp)) + kv('Registration' + qBtn('rg'), dr(r.rg)) + kv('2026 Results vs. Registration' + qBtn('vr'), dr(r.vr)) +
-      '<p class="dl-ch">How it’s running (points)</p>' +
-      kv('Performance vs. Lean' + qBtn('cmp'), gp(r.spl), col(r.spl)) + kv('Over/Underperformance vs. Similar' + qBtn('ou'), gp(r.spu), col(r.spu)) +
-      kv('Performance vs. Presidential' + qBtn('pp'), gp(r.spp), col(r.spp)) + kv('Vs. similar presidential districts' + qBtn('ppou'), gp(r.sppu), col(r.sppu)) +
-      kv('Compared to 2022' + qBtn('y22'), gp(r.spo), col(r.spo)) +
-      (r.flip ? '<p class="dl-flip"><span class="dl-hxs"></span><b>The two methods disagree here.</b> It’s running ' + Math.abs(r.spl).toFixed(1) + ' pts ' + (r.spl > 0 ? 'ahead of' : 'behind') + ' its own lean, but ' + Math.abs(r.spu).toFixed(1) + ' pts ' + (r.spu > 0 ? 'ahead of' : 'behind') + ' districts with the same lean.</p>' : '');
+      '<p class="dl-ch">Compared with 2024 and 2022 (points)</p>' +
+      kv('Performance vs. Presidential' + qBtn('pp'), gp(r.spp), col(r.spp)) +
+      kv('Party split compared to 2022' + qBtn('y22'), gp(r.spo), col(r.spo));
     var card = document.createElement('div'); card.className = 'dl-card' + (mw.clientWidth < 620 ? ' wide' : ''); card.innerHTML = h;
     if (mw.clientWidth < 620) mw.parentNode.insertBefore(card, mw.nextSibling); else mw.appendChild(card);
     card.querySelector('.dl-cx').onclick = function () { ST.pick = null; card.parentNode.removeChild(card); paint(); table(); };
@@ -367,14 +345,13 @@
   function table() {
     var tab = mount.querySelector('#' + SLUG + '-tab'); if (!tab) return;
     var y22 = ST.y === '22', cols = [['d', 'District', null], ['held', 'Held by', null], ['chal', 'Challenger', null], ['oth', 'Others?', null]].concat(y22
-      ? [['lean', 'District lean', 'lean'], ['spl', 'Party split', 'y22'], ['rg', 'Registration', 'rg'], ['vr', '2026 Results vs. Registration', 'vr'], ['lp', 'Low-prop. margin', 'lp']]
-      : [['pres', '2024 presidential', 'pres'], ['pp', 'Performance vs. Presidential', 'pp'], ['lean', 'District lean', 'lean'], ['spl', 'Performance vs. Lean', 'cmp'],
-         ['peer', 'Similar districts\u2019 performance', 'peer'], ['ou', 'Over/Under&shy;performance vs. Similar', 'ou'], ['rg', 'Registration', 'rg'], ['vr', '2026 Results vs. Registration', 'vr'], ['lp', 'Low-prop. margin', 'lp']]);
-    var HIDE = { held: 1, chal: 1, oth: 1, pres: 1, peer: 1, vr: 1, rg: 1, lp: 1 };   // phones: district, lean and the performance columns
+      ? [['lean', 'District lean', 'lean'], ['sp', 'Party split', 'y22'], ['rg', 'Registration', 'rg'], ['vr', '2026 Results vs. Registration', 'vr'], ['lp', 'Low-prop. margin', 'lp']]
+      : [['lean', 'District lean', 'lean'], ['sp', 'Party split', 'split'], ['rg', 'Registration', 'rg'], ['pres', '2024 presidential', 'pres'], ['pp', 'Performance vs. Presidential', 'pp'],
+         ['vr', '2026 Results vs. Registration', 'vr'], ['lp', 'Low-prop. margin', 'lp']]);
+    var HIDE = { held: 1, chal: 1, oth: 1, pres: 1, vr: 1, rg: 1, lp: 1 };   // phones: district, lean, party split and performance vs. presidential
     var incOf = function (r) { return r.cand.filter(function (c) { return c[2]; })[0] || null; };
     var heldOf = function (r) { var i = incOf(r); return i ? i[1] + ' ' + i[0] : 'Open'; };
-    var get = function (r, k) { return k === 'd' ? r.d : k === 'held' ? heldOf(r) : k === 'chal' ? chalOf(r).map(function (c) { return c[1] + ' ' + c[0]; }).join(', ') || null : k === 'oth' ? othOf(r) : k === 'pres' ? (r.h2 === undefined ? null : 2 * r.h2 - 100) : k === 'peer' ? peerOf(r) : value(r, k); };
-    function peerOf(r) { return r.spl === null || r.spu === null ? null : r.spl - r.spu; }   // how districts with this lean are running vs. their lean: the trend line, so Performance vs. Lean minus this is Over/Underperformance
+    var get = function (r, k) { return k === 'd' ? r.d : k === 'held' ? heldOf(r) : k === 'chal' ? chalOf(r).map(function (c) { return c[1] + ' ' + c[0]; }).join(', ') || null : k === 'oth' ? othOf(r) : value(r, k); };
     var rows = ROWS[ST.c].filter(shown).slice().sort(function (a, b) {
       var x = get(a, ST.sort.k), y = get(b, ST.sort.k);
       if (x === null || x === undefined) return 1; if (y === null || y === undefined) return -1;
@@ -382,7 +359,7 @@
     });
     lastRows = rows;
     mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+10 to D+5). ') + (ST.y === '22' ? 'Numbers are the change since the same point in 2022, relative to the state. ' : '') + 'Click a column to sort, or a row to show it on the map.';
-    var cell = function (v, k) { var hs = HIDE[k] ? ' class="hide-s"' : ''; if (v === null || v === undefined || isNaN(v)) return '<td' + hs + '>—</td>'; var c = v > 0.5 ? '#2E6DB4' : v < -0.5 ? '#B83A32' : '#1a1a1a'; return '<td' + hs + ' style="color:' + c + '">' + (y22 || k === 'spl' || k === 'ou' || k === 'pp' || k === 'peer' ? gp(v) : dr(v, 1)) + '</td>'; };
+    var cell = function (v, k) { var hs = HIDE[k] ? ' class="hide-s"' : ''; if (v === null || v === undefined || isNaN(v)) return '<td' + hs + '>—</td>'; var c = v > 0.5 ? '#2E6DB4' : v < -0.5 ? '#B83A32' : '#1a1a1a'; return '<td' + hs + ' style="color:' + c + '">' + (y22 || k === 'pp' ? gp(v) : dr(v, k === 'lean' ? 1 : 0)) + '</td>'; };
     tab.innerHTML = '<thead><tr>' + cols.map(function (c) {
       var on = ST.sort.k === c[0];
       return '<th class="' + (on ? 'on' : '') + (HIDE[c[0]] ? ' hide-s' : '') + '"' + (on ? ' aria-sort="' + (ST.sort.d > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" class="sb" data-ts="' + c[0] + '">' + c[1] + (on ? (ST.sort.d > 0 ? ' ▲' : ' ▼') : '') + '</button>' + (c[2] ? qBtn(c[2]) : '') + '</th>';
@@ -394,8 +371,8 @@
         '<td class="hide-s">' + othOf(r) + '</td>' +
         cols.slice(4).map(function (c) {
           if (c[0] === 'lean') return '<td>' + dr(r.lean, 1) + '</td>';
-          if (c[0] === 'pres') { var m = get(r, 'pres'); return '<td class="hide-s" style="color:' + (m === null ? '#1a1a1a' : m > 0 ? '#2E6DB4' : '#B83A32') + '">' + (m === null ? '\u2014' : (m > 0 ? 'Harris +' : 'Trump +') + Math.abs(m).toFixed(1)) + '</td>'; }
-          return cell(c[0] === 'peer' ? peerOf(r) : value(r, c[0]), c[0]);
+          if (c[0] === 'pres') { var m = get(r, 'pres'); return '<td class="hide-s" style="color:' + (m === null ? '#1a1a1a' : m > 0 ? '#2E6DB4' : '#B83A32') + '">' + hmTxt(m) + '</td>'; }
+          return cell(value(r, c[0]), c[0]);
         }).join('') + '</tr>';
     }).join('') + '</tbody>';
     Array.prototype.forEach.call(tab.querySelectorAll('[data-ts]'), function (b) { b.onclick = function () { var k = b.getAttribute('data-ts'); if (ST.sort.k === k) ST.sort.d = -ST.sort.d; else { ST.sort.k = k; ST.sort.d = k === 'd' || k === 'held' || k === 'chal' ? 1 : -1; } table(); }; });
@@ -417,21 +394,20 @@
   function othOf(r) { return r.cand.some(function (c) { return c[1] !== 'D' && c[1] !== 'R'; }) ? 'Y' : 'N'; }
   function mapCsv() {   // every district in the chamber, all the numbers; points, positive = more Democratic
     var P = ' (pts, + = D)';
-    csv(['District', 'Counties', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?', 'Battleground (R+10 to D+5)', 'District lean' + P, 'Harris 2024 two-party %', 'Presidential lean' + P, 'Votes so far', 'Registered voters',
-      'Party split' + P, 'Performance vs. lean' + P, 'Over/underperformance vs. similar' + P, 'Methods disagree', 'Performance vs. presidential' + P, 'Vs. similar presidential districts' + P,
+    csv(['District', 'Counties', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?', 'Battleground (R+10 to D+5)', 'District lean' + P, 'Harris 2024 two-party %', 'Harris minus Trump 2024' + P, 'Votes so far', 'Registered voters',
+      'Party split' + P, 'Performance vs. presidential' + P,
       'Low-prop. margin' + P, 'Registration' + P, '2026 results vs. registration' + P, 'Party split, compared to 2022' + P, 'Low-prop. margin, compared to 2022' + P, 'Registration, compared to 2022' + P, '2026 results vs. registration, compared to 2022' + P],
-      ROWS[ST.c].map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, r.cty.join('; '), i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r), isBg(r) ? 'Yes' : 'No', r.lean, r.h2, r.pres, r.votes, r.reg,
-        r.sp, r.spl, r.spu, r.flip ? 'Yes' : 'No', r.spp, r.sppu, r.lp, r.rg, r.vr, r.spo, r.lpo, r.rgo, r.vro]; }), fname('data', 'csv'));
+      ROWS[ST.c].map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, r.cty.join('; '), i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r), isBg(r) ? 'Yes' : 'No', r.lean, r.h2, r.hm, r.votes, r.reg,
+        r.sp, r.spp, r.lp, r.rg, r.vr, r.spo, r.lpo, r.rgo, r.vro]; }), fname('data', 'csv'));
   }
   function tableCsv(rows) {   // the table as shown: its districts, columns, sort and As of now / Compared to 2022 setting
     var y22 = ST.y === '22', t = y22 ? ', compared to 2022' : '', P = ' (pts, + = D)';
-    var peer = function (r) { return r.spl === null || r.spu === null ? null : r.spl - r.spu; };
-    var ks = y22 ? [['lean', 'District lean'], ['spl', 'Party split' + t], ['rg', 'Registration' + t], ['vr', '2026 results vs. registration' + t], ['lp', 'Low-prop. margin' + t]]
-      : [['pres', '2024 presidential, Harris minus Trump (two-party)'], ['pp', 'Performance vs. presidential'], ['lean', 'District lean'], ['spl', 'Performance vs. lean'], ['peer', 'Similar districts\u2019 performance'],
-         ['ou', 'Over/underperformance vs. similar'], ['rg', 'Registration'], ['vr', '2026 results vs. registration'], ['lp', 'Low-prop. margin']];
-    csv(['District', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?'].concat(ks.map(function (k) { return k[1] + P; })).concat(y22 ? [] : ['Methods disagree']),
+    var ks = y22 ? [['lean', 'District lean'], ['sp', 'Party split' + t], ['rg', 'Registration' + t], ['vr', '2026 results vs. registration' + t], ['lp', 'Low-prop. margin' + t]]
+      : [['lean', 'District lean'], ['sp', 'Party split'], ['rg', 'Registration'], ['pres', '2024 presidential, Harris minus Trump (two-party)'], ['pp', 'Performance vs. presidential'],
+         ['vr', '2026 results vs. registration'], ['lp', 'Low-prop. margin']];
+    csv(['District', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?'].concat(ks.map(function (k) { return k[1] + P; })),
       rows.map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r)]
-        .concat(ks.map(function (k) { return k[0] === 'lean' ? r.lean : k[0] === 'pres' ? (r.h2 === undefined ? null : 2 * r.h2 - 100) : k[0] === 'peer' ? peer(r) : value(r, k[0]); })).concat(y22 ? [] : [r.flip ? 'Yes' : 'No']); }), fname('table', 'csv'));
+        .concat(ks.map(function (k) { return value(r, k[0]); })); }), fname('table', 'csv'));
   }
   function wrap(ctx, text, w) { var out = [], line = ''; text.split(' ').forEach(function (word) { var t = line ? line + ' ' + word : word; if (ctx.measureText(t).width > w && line) { out.push(line); line = word; } else line = t; }); if (line) out.push(line); return out; }
   function mapPng(fmt) {
@@ -448,16 +424,11 @@
       y += tall ? 40 : 30; c.font = '400 ' + (tall ? 22 : 18) + 'px Inter, sans-serif'; c.fillStyle = '#3a3a3a';
       wrap(c, layerSub(), W - 2 * P).forEach(function (l, i) { if (i) y += tall ? 30 : 25; c.fillText(l, P, y); });
       // map box: what's on screen, fitted between the subtitle and the legend
-      var foot = tall ? 230 : hatchOn() ? 182 : 150, top = y + (tall ? 36 : 22), bw = W - 2 * P, bh = H - foot - top, v = ST.vb || fullVB();
+      var foot = tall ? 230 : 150, top = y + (tall ? 36 : 22), bw = W - 2 * P, bh = H - foot - top, v = ST.vb || fullVB();
       var s = Math.min(bw / v[2], bh / v[3]), ox = P + (bw - v[2] * s) / 2 - v[0] * s, oy = top + (bh - v[3] * s) / 2 - v[1] * s;
       c.save(); c.beginPath(); c.rect(P, top, bw, bh); c.clip(); c.setTransform(s, 0, 0, s, ox, oy);
       var k = ST.layer, mx = scaleMax(k), P2 = {};
       ROWS[ST.c].forEach(function (r) { var p = new Path2D(MAP[ST.c][String(r.d)]); P2[r.d] = p; c.fillStyle = shown(r) ? color(value(r, k), mx) : '#E4E1DA'; c.fill(p); c.strokeStyle = 'rgba(37,53,81,.6)'; c.lineWidth = 1 / s; c.stroke(p); });
-      if (hatchOn()) {   // stripes where the two methods disagree
-        var pc = document.createElement('canvas'); pc.width = pc.height = 8; var px = pc.getContext('2d'); px.strokeStyle = 'rgba(37,53,81,.55)'; px.lineWidth = 1.6; px.beginPath(); px.moveTo(-2, 10); px.lineTo(10, -2); px.moveTo(-2, 2); px.lineTo(2, -2); px.moveTo(6, 10); px.lineTo(10, 6); px.stroke();
-        var pat = c.createPattern(pc, 'repeat'); if (pat.setTransform) pat.setTransform(new DOMMatrix([1 / s, 0, 0, 1 / s, 0, 0]));
-        ROWS[ST.c].forEach(function (r) { if (r.flip && shown(r)) { c.fillStyle = pat; c.fill(P2[r.d]); } });
-      }
       if (ST.c !== 'cd') { c.strokeStyle = 'rgba(138,138,138,.45)'; c.lineWidth = 0.6 / s; c.stroke(new Path2D(MAP.lines)); }
       if (ST.pick !== null && P2[ST.pick]) { c.strokeStyle = '#253551'; c.lineWidth = 3.5 / s; c.stroke(P2[ST.pick]); }
       c.setTransform(1, 0, 0, 1, 0, 0);
@@ -478,20 +449,19 @@
       c.restore();
       // legend
       var ly = H - foot + (tall ? 40 : 30), lo, hi;
-      if (y22) { lo = 'Toward R by ' + mx + '+ pts'; hi = 'Toward D by ' + mx + '+ pts'; } else if (k === 'spl' || k === 'ou' || k === 'pp') { lo = 'Redder by ' + mx + '+ pts'; hi = 'Bluer by ' + mx + '+ pts'; } else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
+      if (y22) { lo = 'Toward R by ' + mx + '+ pts'; hi = 'Toward D by ' + mx + '+ pts'; } else if (k === 'pp') { lo = 'Redder by ' + mx + '+ pts'; hi = 'Bluer by ' + mx + '+ pts'; } else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; } else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
       c.font = '500 ' + (tall ? 18 : 15) + 'px Inter, sans-serif'; c.fillStyle = '#3a3a3a';
       var lw = c.measureText(lo).width, rw = tall ? 300 : 260, gx = P + lw + 12; c.fillText(lo, P, ly + 6);
       var g = c.createLinearGradient(gx, 0, gx + rw, 0); g.addColorStop(0, '#B83A32'); g.addColorStop(0.5, '#F2F0EB'); g.addColorStop(1, '#2E6DB4'); c.fillStyle = g; c.fillRect(gx, ly - 6, rw, 14);
       c.fillStyle = '#3a3a3a'; c.fillText(hi, gx + rw + 12, ly + 6);
-      var cx = gx + rw + 24 + c.measureText(hi).width; if (tall || hatchOn()) { cx = P; ly += 34; }
+      var cx = gx + rw + 24 + c.measureText(hi).width; if (tall) { cx = P; ly += 34; }
       if (ST.s === 'bg') { c.fillStyle = '#E4E1DA'; c.fillRect(cx, ly - 6, 14, 14); c.fillStyle = '#3a3a3a'; c.fillText('Outside R+10 to D+5', cx + 22, ly + 6); cx += 22 + c.measureText('Outside R+10 to D+5').width + 24; }
-      if (hatchOn()) { c.save(); c.beginPath(); c.rect(cx, ly - 6, 14, 14); c.clip(); c.fillStyle = '#fff'; c.fillRect(cx, ly - 6, 14, 14); c.strokeStyle = 'rgba(37,53,81,.6)'; c.lineWidth = 1.5; c.beginPath(); for (var hx = -14; hx < 14; hx += 4) { c.moveTo(cx + hx, ly + 8); c.lineTo(cx + hx + 14, ly - 6); } c.stroke(); c.restore(); c.strokeStyle = '#d8d2c4'; c.lineWidth = 1; c.strokeRect(cx, ly - 6, 14, 14); c.fillStyle = '#3a3a3a'; c.fillText('Ahead on one measure, behind on the other', cx + 22, ly + 6); }
       // source and name
       var sy = H - (tall ? 100 : 66); c.strokeStyle = '#d8d2c4'; c.lineWidth = 1; c.beginPath(); c.moveTo(P, sy - (tall ? 24 : 18)); c.lineTo(W - P, sy - (tall ? 24 : 18)); c.stroke();
       var lg = tall ? 48 : 38; if (logo) c.drawImage(logo, P, sy - 4, lg, lg);
       c.font = '700 ' + (tall ? 20 : 16) + 'px "Zilla Slab", Georgia, serif'; c.fillStyle = '#253551'; c.fillText('Carolina Forward', P + lg + 10, sy + (tall ? 16 : 12));
       c.font = '400 ' + (tall ? 15 : 13) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b'; c.fillText(PAGE_URL ? PAGE_URL.replace(/^https?:\/\/(www\.)?/, '') : CF_URL, P + lg + 10, sy + (tall ? 38 : 30));
-      var src = 'Early and mail votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting)' + (y22 ? ', compared with the same day in 2022 on today’s lines' : '') + '. Party is registration, not vote choice. ' + (k === 'pres' || k === 'pp' ? 'Presidential: 2024 Harris vs. Trump, two-party vote.' : 'District lean: 2024 Council of State races other than governor.') + ' Source: NC State Board of Elections.';
+      var src = 'Early and mail votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting)' + (y22 ? ', compared with the same day in 2022 on today’s lines' : '') + '. Party is registration, not vote choice. ' + (k === 'pres' || k === 'pp' ? 'Presidential: 2024 Harris vs. Trump, two-party vote. ' : k === 'lean' ? 'District lean: 2024 Council of State races other than governor. ' : '') + 'Source: NC State Board of Elections.';
       var sx = P + lg + (tall ? 230 : 200); c.font = '400 ' + (tall ? 14 : 12) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b';
       wrap(c, src, W - P - sx).forEach(function (l, i) { c.fillText(l, sx, sy + 8 + i * (tall ? 19 : 16)); });
       cv.toBlob(function (b) { save(b, fname(k, 'png').replace('.png', '-' + fmt + '.png')); }, 'image/png');
@@ -505,7 +475,7 @@
     Array.prototype.forEach.call(mount.querySelectorAll('[data-png]'), function (b) { b.onclick = function () { mapPng(b.getAttribute('data-png')); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-csv]'), function (b) { b.onclick = function () { if (b.getAttribute('data-csv') === 'map') mapCsv(); else tableCsv(lastRows); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-c]'), function (b) { b.onclick = function () { if (ST.c === b.getAttribute('data-c')) return; ST.c = b.getAttribute('data-c'); ST.pick = null; ST.vb = null; render(); }; });
-    Array.prototype.forEach.call(mount.querySelectorAll('[data-l]'), function (b) { b.onclick = function () { ST.layer = b.getAttribute('data-l'); if (layerOf(ST.layer).no22) ST.y = 'now'; if (ST.layer !== 'lean') ST.sort.k = ST.layer; render(); }; });
+    Array.prototype.forEach.call(mount.querySelectorAll('[data-l]'), function (b) { b.onclick = function () { ST.layer = b.getAttribute('data-l'); if (layerOf(ST.layer).no22) ST.y = 'now'; ST.sort.k = ST.layer; render(); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-y]'), function (b) { b.onclick = function () { ST.y = b.getAttribute('data-y'); render(); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-s]'), function (b) { b.onclick = function () { ST.s = b.getAttribute('data-s'); render(); }; });
   }
