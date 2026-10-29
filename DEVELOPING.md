@@ -111,11 +111,18 @@ Memory in the container is about 7 GB, and building a full year's snapshot can b
   - `xv`/`xr`, `xpv`/`xpr`, `pv`/`pr` (crosstabs), `dd`/`cdd` (by day), `nv` (new voters).
   - Registered-voter denominators come from the pool.
 
+**Added Oct. 29:**
+- **Candidates** on district pages ("On the ballot"), from `docs/candidates.json` (`build_candidates.py`, from `district_lean/candidates.csv`, the lean widget's list). Fetched lazily with `side()`.
+- **Party split by day, compared with past years** inside "Early voting, day by day": a day picker, That day / Through that day, Share / Votes, one row per year from `dd`. Early in-person only, like the chart. State `psDay`, `psThru`, `psVotes`.
+- **Election Day in past years** section (`edBlock`): Election Day votes (V, C, P, T), share of all votes, party mix, and early-and-mail D − R for 2018–2024, state, counties and today's districts. Data `docs/edhist.json` from `build_ed_history.py` and the State Board's `history_stats_<date>.zip` files; totals match `baseline.json`'s `fin`/`fp` exactly. Precinct-level Election Day history (Project 1, step 2) is still to do.
+- **Rankings: Choose columns.** The five measures and the numbers they're built from (`RK_X`: votes, registered, votes by party, shares, registration by party, registration split, low-propensity voters and registrants) switch on and off. `rkCols` rides in the hash as `rkcols=`. In Change since mode the extra columns show 2026 with the past year beneath; their CSV gets one column for each year.
+- District lean widget: lean comparisons removed (Performance vs. Lean, Over/Underperformance, peers, stripes). 2024 Presidential is Harris − Trump on its own; Performance vs. Presidential = party split − (Harris − Trump).
+
 **Still waiting on Theo's sign-off on wording:**
 - Pyramid notes
 - Rankings votes-mode "?" text
-- District lean widget definitions (Over/Underperformance, Performance vs. Presidential, peers, flips)
 - A suggested "Share these crosstabs" paragraph for the article's "What We Track" section
+- Oct. 29 tracker additions above: notes, "?" text and the Election Day lede
 
 ---
 
