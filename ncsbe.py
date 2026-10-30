@@ -8,8 +8,8 @@ ACCEPTED = {'ACCEPTED', 'ACCEPTED - EXCEPTION', 'ACCEPTED - CURED'}
 NEEDS_CURE = {'PENDING CURE', 'PHOTO ID CURABLE', 'ID NOT PROVIDED', 'CONFLICT', 'VOTER SIGNATURE MISSING',
               'AFFIDAVIT INCOMPLETE', 'PHOTO ID NONCOMPLIANT', 'AFFIDAVIT REVIEW PENDING', 'PENDING'}
 REJECTED = {'AFFIDAVIT DECLINED', 'ASSISTANT INFO INCOMPLETE', 'NOT PROPERLY NOTARIZED', 'NO TIME FOR CURE',
-            'NOT VOTED', 'REJECTED', 'RETURNED AFTER DEADLINE', 'RETURNED UNDELIVERABLE', 'SIGNED BY OTHER',
-            'WITNESS INFO INCOMPLETE', 'WRONG VOTER', 'NO APPLICATION', 'E-TRANSMISSION FAILURE',
+            'NO TIME FOR CURE - CONTACTED', 'NOT VOTED', 'REJECTED', 'RETURNED AFTER DEADLINE', 'RETURNED UNDELIVERABLE',
+            'SIGNED BY OTHER', 'WITNESS INFO INCOMPLETE', 'WRONG VOTER', 'NO APPLICATION', 'E-TRANSMISSION FAILURE',
             'SDR - FAILED VERIFICATION'}   # same-day registrant whose address couldn't be verified: the ballot isn't counted
 REPLACED = {'SPOILED - EV', 'SPOILED', 'CANCELLED', 'DUPLICATE'}
 KNOWN = ACCEPTED | NEEDS_CURE | REJECTED | REPLACED
@@ -21,8 +21,11 @@ def norm(x):
         return x
     s = re.sub(r'\s*-\s*', ' - ', str(x).upper().strip())
     if not s:
-        return float('nan')   # a blank status means nothing has been returned yet
-    return s.replace('E - TRANSMISSION', 'E-TRANSMISSION').replace('ONE - STOP', 'ONE-STOP')
+        return float('nan')  # a blank status means nothing has been returned yet
+    s = s.replace('E - TRANSMISSION', 'E-TRANSMISSION').replace('ONE - STOP', 'ONE-STOP')
+    if s.startswith('NO TIME FOR CURE'):
+        return 'NO TIME FOR CURE'
+    return s
 
 
 # Race and ethnicity as voters list them on their registration (both optional). Codes are the State Board's.
