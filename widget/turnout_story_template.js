@@ -160,6 +160,11 @@
       S + ' .tt-xtw{overflow-x:auto}' + S + ' .tt-xt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}' + S + ' .tt-xt th{text-align:left;font-weight:700;padding:7px 6px;border-top:1px solid #ECE7DC}' + S + ' .tt-xt thead th{text-align:right;font-size:12px;color:var(--mute);border-top:0}',
       S + ' .tt-xt td{text-align:right;padding:7px 6px;border-top:1px solid #ECE7DC}' + S + ' .tt-xt td b{display:block;font-size:15px}' + S + ' .tt-xt td span{display:block;font-size:12px;color:var(--mute)}',
       '@media (max-width:600px){' + S + ' .tt-lr{grid-template-columns:1fr auto;gap:4px 10px}' + S + ' .tt-lb{grid-column:1/-1;grid-row:2}}',
+      S + ' .tt-cands{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;font-size:14px;margin:2px 0 12px;color:var(--ink)}' + S + ' .tt-cands .tt-candl{font:700 11px Inter,sans-serif;letter-spacing:.5px;text-transform:uppercase;color:var(--mute)}' +
+        S + ' .tt-cands .tt-cp{display:inline-block;min-width:17px;padding:1px 4px;margin-right:5px;border-radius:2px;color:#fff;font:700 11px Inter,sans-serif;text-align:center;vertical-align:1px}' + S + ' .tt-cands small{color:var(--mute);font-size:12px;margin-left:4px}',
+      S + ' .tt-rkpast{display:block;font-size:11px;color:var(--mute);font-weight:400}' + S + ' .tt-rkx{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}' + S + ' .tt-rkx .tt-rkxg{flex:1 0 100%;font:700 10px Inter,sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--mute);margin-top:4px}' +
+        S + ' .tt-rkx button{background:#fff;border:1px solid var(--rule);border-radius:3px;padding:5px 9px;font:500 13px Inter,sans-serif;color:var(--ink);cursor:pointer}' + S + ' .tt-rkx button.on{background:var(--navy);border-color:var(--navy);color:#fff}' + S + ' .tt-rkx .tt-linkbtn{border:0;background:none;padding:5px 2px}',
+      S + ' .tt-psbar{display:flex;height:10px;width:100%;min-width:70px;border-radius:2px;overflow:hidden;background:#ECE7DC}' + S + ' .tt-psbar i{display:block;height:100%}' + S + ' .tt-rkt td small.tt-psd{display:block;font-size:11px;color:var(--mute);font-weight:400}' + S + ' .tt-rkt tr.now td{font-weight:700}' + S + ' .tt-rkt.tt-fit{min-width:0}' + S + ' .tt-rkt.tt-fit th{white-space:normal;vertical-align:bottom;font-size:12.5px;line-height:1.25}' + S + ' .tt-pssel{font:500 14px Inter,sans-serif;padding:5px 6px;border:1px solid var(--rule);border-radius:3px;background:#fff;color:var(--ink)}' + S + ' .tt-dps{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule)}' + S + ' .tt-dps h4{font:700 17px "Zilla Slab",Georgia,serif;color:var(--navy);margin:0 0 8px}',
       S + ' .tt-rkw{overflow-x:auto}' + S + ' .tt-rkt{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;min-width:560px}',
       S + ' .tt-rkt th{text-align:right;padding:0;border-bottom:1px solid var(--rule)}' + S + ' .tt-rkt th:first-child,' + S + ' .tt-rkt td:first-child{text-align:left}' + S + ' .tt-rkt th button{background:none;border:0;padding:7px 6px;font:700 11px Inter,sans-serif;letter-spacing:.5px;text-transform:uppercase;color:var(--mute);cursor:pointer;white-space:nowrap}' + S + ' .tt-rkt th.on button{color:var(--navy)}' + S + ' .tt-rkt th:not(.on) button:not(.tt-q)::after,' + S + ' .tt-srtd th:not(.on) .tt-sbtn::after,' + S + ' th.tt-dth:not(.asc):not(.desc)::after{content:" \\2195";opacity:.4}' +
       S + ' .tt-sbtn{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer;white-space:nowrap}' + S + ' .tt-srtd th.on .tt-sbtn{color:var(--navy)}' +
@@ -465,6 +470,17 @@
       fetch(DATA_URL.replace(/data\.json(\?.*)?$/, 'baseline_districts.json')).then(function (x) { if (!x.ok) throw new Error(x.status); return x.json(); })
         .then(function (j) { BASED = j; var y = window.scrollY; show(); window.scrollTo(0, y); }, function () { BASED = {}; });
     }
+    var SIDE = {}, sideLoading = {};
+    function side(f) {   // a small file next to data.json (candidates.json, edhist.json), fetched the first time a section needs it: undefined while loading, null if it can't load
+      if (f in SIDE) return SIDE[f];
+      if (!DATA_URL) return null;
+      if (!sideLoading[f]) {
+        sideLoading[f] = true;
+        fetch(DATA_URL.replace(/data\.json(\?.*)?$/, f)).then(function (x) { if (!x.ok) throw new Error(x.status); return x.json(); })
+          .then(function (j) { SIDE[f] = j; }, function () { SIDE[f] = null; }).then(function () { var y = window.scrollY; show(); window.scrollTo(0, y); });
+      }
+      return undefined;
+    }
     function cmp(r, yr) {
       yr = yr || vs;
       var k = state.geo, p = baseRow(r, yr), kn = kNow();
@@ -587,6 +603,10 @@
     function rkQ(k) { return '<button type="button" class="tt-q" aria-label="What does this column mean?" data-q="rk:' + k + '">?</button>'; }
     function rkDef(k) {   // a Rankings column's "?": what it is, how it changes in Change since mode, and the caveats that apply to it
       var y = rkCtx.vs, ch = rkCtx.chg, P = '<p style="margin:0 0 6px">', t;
+      if (/^x:/.test(k)) { var xk = k.slice(2), xd = RK_XDEF[xk] || '';
+        if (rkCtx.day) xd = xd.replace(/who have voted/g, 'who voted that day').replace(/Early in-person and mail votes cast/, 'Early in-person votes cast that day').replace(/Votes cast/, 'Early in-person votes cast that day');
+        return P + '<b>' + esc(rkX(xk)[1]) + ':</b> ' + esc(xd) + '</p>' + (ch ? P + 'Beneath: the same number at the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + (rkCtx.geo !== 'county' ? ', on today\u2019s district lines' : '') + '.</p>' : '') +
+          (/^l/.test(xk) ? P + esc(LP_DEF) + '</p>' : '') + (/^(v|s|r|l|regm)/.test(xk) && xk !== 'votes' && xk !== 'reg' ? '<p style="margin:0;font-style:italic">Party is registration, not vote choice.</p>' : ''); }
       var base = { turn: '<b>Turnout:</b> share of registered voters who have voted.', party: '<b>Party split:</b> Democratic minus Republican share of votes so far.',
         vreg: '<b>Vs. registration:</b> the party split minus the party split of registered voters here.',
         lpturn: '<b>Low-prop. turnout:</b> the share of registered low-propensity Democrats and of registered low-propensity Republicans who have voted. Click the heading again to sort by the D rate, the R rate or the gap between them.',
@@ -644,7 +664,7 @@
       Array.prototype.forEach.call(view.querySelectorAll(':scope > .tt-sec'), function (sec) {
         var h = sec.querySelector('.tt-sech'); if (!h) return;
         var bits = [];
-        if (dayI !== null) {
+        if (dayI !== null && !sec.classList.contains('tt-edh')) {
           var ok = thruOn() ? /tt-map|tt-rank|tt-calsec|tt-sitesec|tt-pctab/.test(sec.className)
             : !sec.classList.contains('tt-gfx') && !sec.classList.contains('tt-pctsec') && !sec.classList.contains('tt-nodayp');
           bits.push('<span class="tt-dtag' + (ok ? '' : ' off') + '">' + (ok ? (thruOn() ? 'Through ' + esc(dayShort(dayI)) : esc(dayShort(dayI)) + ' only') : 'All votes so far \u00B7 not available ' + (thruOn() ? 'for an earlier day' : 'by day')) + '</span>');
@@ -679,6 +699,7 @@
       var cu = r.cure || 0;
       var v = '<div class="tt-brand"><img src="' + CF_LOGO + '" alt="" width="26" height="26"><b>Carolina Forward</b><span>NC Turnout Tracker \u00B7 ' + CF_URL + '</span></div>';
       v += '<div class="tt-place">' + esc(LONG[k](r.name)) + '</div>';
+      v += candLine(r);
       v += dayBar(r);
       var r0 = r; r = asOf(r);   // through a day: the headline, map and rankings use the numbers as of that day
       if (dayOn() && r.dd && r.dd[dayI]) v += dayHead(r); else {
@@ -703,7 +724,8 @@
       v += rankBlock(r);
       v += '<div class="tt-sec tt-calsec"><div class="tt-sech">Early voting, day by day<span class="tt-dayof"></span></div>' + (cur ? '' : calYrRow(r)) +
         (cur ? '<div class="tt-calsub"><span>Showing <b>' + esc(site) + '</b> only</span><button type="button" class="tt-linkbtn tt-allsites">Show all of ' + esc(r.name) + ' County</button></div>' : '') +
-        '<div class="tt-cal" tabindex="0" role="group" aria-label="Early votes cast each day, Oct. 15 to 31. Use arrow keys to read each day."></div><div class="tt-calnote" aria-live="polite"></div>' + (cur ? '' : paceLines(r) + addedLine(r)) + '</div>';
+        '<div class="tt-cal" tabindex="0" role="group" aria-label="Early votes cast each day, Oct. 15 to 31. Use arrow keys to read each day."></div><div class="tt-calnote" aria-live="polite"></div>' + (cur ? '' : paceLines(r) + addedLine(r) + dayPartyBlock(r)) + '</div>';
+      if (!cur) v += edBlock(r);
       lastArgs = { k: k, r: r, sites: sites };
       v += sitesBlock(k, r, sites);
       if (k !== 'state') v += precinctBlock(r);
@@ -741,6 +763,10 @@
       Array.prototype.forEach.call(view.querySelectorAll('[data-calp]'), function (b) { b.addEventListener('click', function () { calParty = b.getAttribute('data-calp') === '1'; var sy = window.scrollY; show(); window.scrollTo(0, sy); }); });
       Array.prototype.forEach.call(view.querySelectorAll('[data-calyr]'), function (b) { b.addEventListener('click', function () {
         var y = b.getAttribute('data-calyr'), i = calYrs.indexOf(y); if (i >= 0) calYrs.splice(i, 1); else calYrs.push(y); var sy = window.scrollY; show(); window.scrollTo(0, sy); }); });
+      var pss = view.querySelector('[data-psday]'); if (pss) pss.addEventListener('change', function () { psDay = +pss.value; var y = window.scrollY; show(); window.scrollTo(0, y); });
+      Array.prototype.forEach.call(view.querySelectorAll('[data-psthru],[data-psv]'), function (b) { b.addEventListener('click', function () {
+        if (b.hasAttribute('data-psthru')) psThru = b.getAttribute('data-psthru') === '1'; else psVotes = b.getAttribute('data-psv') === '1';
+        var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       naFill(r, k);
       wireMap();
       wireRank();
@@ -1654,6 +1680,25 @@
        low-propensity measures. Past years for districts use today's lines (baseline_districts.json). */
     var rkGeo = 'county', rkSort = 'turn', rkDir = -1, rkAll = false, rkChg = false, rkLpBy = 'D';   // rkLpBy: low-propensity turnout sorted by the D rate, the R rate or the gap   // rkChg: show the change since the picked year
     var RKG = [['county', 'Counties'], ['cd', 'Congress'], ['hd', 'NC House'], ['sd', 'NC Senate']];
+    /* Build your own table: the five measures, and the numbers they're built from, each switched on or off */
+    var RK_MAIN = ['turn', 'party', 'vreg', 'lpturn', 'lpgap'], RK_DEF_COLS = RK_MAIN.slice(), rkCols = RK_MAIN.slice(), rkPick = false;
+    var RK_X = [   // [key, label, format: n count, s share, m registration split, group]
+      ['votes', 'Votes cast', 'n', 'v'], ['reg', 'Registered voters', 'n', 'v'],
+      ['vD', 'Dem. votes', 'n', 'p'], ['vR', 'Rep. votes', 'n', 'p'], ['vU', 'Unaff. votes', 'n', 'p'], ['vO', 'Other votes', 'n', 'p'], ['sD', 'Dem. share', 's', 'p'], ['sR', 'Rep. share', 's', 'p'],
+      ['rD', 'Registered Dems', 'n', 'r'], ['rR', 'Registered Reps', 'n', 'r'], ['rU', 'Registered unaff.', 'n', 'r'], ['regm', 'Registration split', 'm', 'r'],
+      ['lD', 'Low-prop. Dems voted', 'n', 'l'], ['lR', 'Low-prop. Reps voted', 'n', 'l'], ['lU', 'Low-prop. unaff. voted', 'n', 'l'], ['lrD', 'Registered low-prop. Dems', 'n', 'l'], ['lrR', 'Registered low-prop. Reps', 'n', 'l']];
+    var RK_XG = { v: 'Turnout is built from', p: 'Party split is built from', r: 'Vs. registration also uses', l: 'Low-propensity columns are built from' };
+    var RK_XDEF = { votes: 'Early in-person and mail votes cast.', reg: 'Registered voters (active and inactive).', vD: 'Votes cast by registered Democrats.', vR: 'Votes cast by registered Republicans.',
+      vU: 'Votes cast by unaffiliated voters.', vO: 'Votes cast by voters registered with other parties (Libertarian, Green, No Labels and others).', sD: 'Registered Democrats\u2019 share of the votes cast.', sR: 'Registered Republicans\u2019 share of the votes cast.',
+      rD: 'Registered Democrats.', rR: 'Registered Republicans.', rU: 'Registered unaffiliated voters.', regm: 'Democratic minus Republican share of registered voters. Vs. registration is the party split minus this.',
+      lD: 'Low-propensity Democrats who have voted.', lR: 'Low-propensity Republicans who have voted.', lU: 'Low-propensity unaffiliated voters who have voted.', lrD: 'Registered low-propensity Democrats.', lrR: 'Registered low-propensity Republicans.' };
+    function rkX(k) { for (var i = 0; i < RK_X.length; i++) if (RK_X[i][0] === k) return RK_X[i]; return null; }
+    function rkComp(pt, reg, rp, lp, lpr) {   // the numbers a row's measures are built from
+      var n = pt ? pt[0] + pt[1] + pt[2] + (pt[3] || 0) : null, g = function (a, i) { return a && a[i] !== undefined && a[i] !== null ? a[i] : null; };
+      return { votes: n, reg: reg || null, vD: g(pt, 0), vR: g(pt, 1), vU: g(pt, 2), vO: g(pt, 3), sD: n ? pt[0] / n * 100 : null, sR: n ? pt[1] / n * 100 : null,
+        rD: g(rp, 0), rR: g(rp, 1), rU: g(rp, 2), regm: regM(rp), lD: g(lp, 0), lR: g(lp, 1), lU: g(lp, 2), lrD: g(lpr, 0), lrR: g(lpr, 1) };
+    }
+    function rkXfmt(k, v) { var f = rkX(k)[2]; if (v === null || v === undefined || isNaN(v)) return '\u2014'; return f === 's' ? v.toFixed(1) + '%' : f === 'm' ? rdr(v) : fmt(v); }
     function rkPast(geo, name) {
       if (!BASE || !BASE[vs]) return null;
       if (geo === 'county') return BASE[vs].places[name] || null;
@@ -1678,6 +1723,9 @@
           };
           var a = dm(row.dd && row.dd[dayI], row.reg, row.lpr), b = p ? dm(p.dd && p.dd[dayI], p.reg, p.lpr) : {};
           o.lprates = a.lprates;
+          var dx = row.dd && row.dd[dayI], px0 = p && p.dd && p.dd[dayI];
+          o.cx = dx ? rkComp(dx.slice(0, 4), row.reg, row.rpty, dx.length > 8 ? dx.slice(8, 11) : null, row.lpr) : rkComp(null, row.reg, row.rpty, null, row.lpr);
+          o.px = p ? (px0 ? rkComp(px0.slice(0, 4), p.reg, p.rp, px0.length > 8 ? px0.slice(8, 11) : null, p.lpr) : rkComp(null, p.reg, p.rp, null, p.lpr)) : null;
           a.vreg = vsReg(a.party, regM(row.rpty)); if (p) b.vreg = vsReg(b.party, regM(p.rp));
           o.regm = regM(row.rpty);
           ['turn', 'party', 'vreg', 'lpturn', 'lpgap'].forEach(function (m) { o[m] = a[m]; o['d' + m] = a[m] !== null && b[m] !== null && b[m] !== undefined ? a[m] - b[m] : null; });
@@ -1692,6 +1740,7 @@
         o.lpturn = o.lprates && o.lprates[0] !== null && o.lprates[1] !== null ? o.lprates[0] - o.lprates[1] : null;
         o.lpgap = row.lp && sum(row.lp) > 0 ? (row.lp[0] - row.lp[1]) / sum(row.lp) * 100 : null;
         o.regm = regM(row.rpty); o.vreg = vsReg(o.party, o.regm); o.dvreg = null;
+        o.cx = rkComp(row.pty, row.reg, row.rpty, row.lp, row.lpr); o.px = null;
         // change since the picked year, in percentage points: 2026 minus the same point that year (final numbers once 2026 is final)
         o.dturn = o.dparty = o.dlpturn = o.dlpgap = null;
         if (p && Y && kn !== null) {
@@ -1706,6 +1755,7 @@
           if (o.lpturn !== null && tLp !== null) o.dlpturn = o.lpturn - tLp;
           if (o.lpgap !== null && tGap !== null) o.dlpgap = o.lpgap - tGap;
           var pastC = { turn: th, party: pp[0] - pp[1], lp: p.lp ? [p.lp[0][i], p.lp[1][i]] : null }, pastN = pn, pastV = tV;
+          o.px = rkComp(pp, p.reg, p.rp, p.lp ? [p.lp[0][i], p.lp[1][i], p.lp[2][i]] : null, p.lpr);
         }
         if (votesOn()) rkVotes(o, { turn: row.vc, party: n > 0 ? row.pty[0] - row.pty[1] : null, lp: row.lp ? [row.lp[0], row.lp[1]] : null }, pastC || null, n, pastN || 0, pastV);
         o.name = geo === 'county' ? row.name : +row.name.replace(/\D/g, '');
@@ -1723,15 +1773,19 @@
     }
     function rankBlock(r) {
       var canChg = !!(BASE && BASE[vs]); if (!canChg) rkChg = false;
-      var D0 = rkChg ? 'd' : '', base = rkSort === 'name' ? 'name' : rkSort.replace(/^d/, '');
-      if (base !== 'name' && ['turn', 'party', 'vreg', 'lpturn', 'lpgap'].indexOf(base) < 0) base = 'turn';
-      rkSort = base === 'name' ? 'name' : D0 + base;   // the same column stays sorted when switching views
+      var D0 = rkChg ? 'd' : '', base = rkSort === 'name' || /^x:/.test(rkSort) ? rkSort : rkSort.replace(/^d/, '');
+      if (!rkCols.length) rkCols = RK_DEF_COLS.slice();
+      if (base !== 'name' && rkCols.indexOf(base.replace(/^x:/, '')) < 0) base = rkX(rkCols[0]) ? 'x:' + rkCols[0] : rkCols[0];   // a hidden column can't stay sorted
+      rkSort = base === 'name' || /^x:/.test(base) ? base : D0 + base;   // the same column stays sorted when switching views
       var pick = state.geo !== 'state', tabs = pick ? pieceLayers().map(function (g) { return [g, LAYER_NAME[g]]; }) : RKG;
       if (tabs.every(function (g) { return g[0] !== rkGeo; })) rkGeo = tabs[0][0];
       if (pick && !pieceData()) return '<div class="tt-sec tt-rank"><div class="tt-sech">Rankings</div><p class="tt-mnote">Loading\u2026</p></div>';
       if (pick && rkChg && canChg && !piecePastFile(vs)) return '<div class="tt-sec tt-rank"><div class="tt-sech">Rankings</div><p class="tt-mnote">Loading ' + vs + '\u2026</p></div>';
-      var geo = rkGeo, rs = rkRows(geo), cols = [['name', geo === 'county' ? 'County' : 'District'], [D0 + 'turn', votesOn() ? 'Votes' : 'Turnout'], [D0 + 'party', votesOn() ? 'Net votes' : 'Party split'], [D0 + 'vreg', 'Vs. registration'], [D0 + 'lpturn', votesOn() ? 'Low-prop. voters' : 'Low-prop. turnout'], [D0 + 'lpgap', votesOn() ? 'Low-prop. net' : 'Low-prop. margin']];
-      var sv = function (o) { return rkSort === 'lpturn' && rkLpBy !== 'gap' ? (o.lprates ? o.lprates[rkLpBy === 'D' ? 0 : 1] : null) : o[rkSort]; };
+      var ML = { turn: votesOn() ? 'Votes' : 'Turnout', party: votesOn() ? 'Net votes' : 'Party split', vreg: 'Vs. registration', lpturn: votesOn() ? 'Low-prop. voters' : 'Low-prop. turnout', lpgap: votesOn() ? 'Low-prop. net' : 'Low-prop. margin' };
+      var geo = rkGeo, rs = rkRows(geo), cols = [['name', geo === 'county' ? 'County' : 'District']]
+        .concat(RK_MAIN.filter(function (k2) { return rkCols.indexOf(k2) >= 0; }).map(function (k2) { return [D0 + k2, ML[k2]]; }))
+        .concat(RK_X.filter(function (x) { return rkCols.indexOf(x[0]) >= 0; }).map(function (x) { return ['x:' + x[0], x[1]]; }));
+      var sv = function (o) { return /^x:/.test(rkSort) ? (o.cx ? o.cx[rkSort.slice(2)] : null) : rkSort === 'lpturn' && rkLpBy !== 'gap' ? (o.lprates ? o.lprates[rkLpBy === 'D' ? 0 : 1] : null) : o[rkSort]; };
       rs.sort(function (a, b) {
         var x = sv(a), y = sv(b);
         if (x === null) return 1; if (y === null) return -1;
@@ -1758,17 +1812,26 @@
       var t = '<div class="tt-sec tt-rank" data-csv="rank"><div class="tt-sech">Rankings' + (pick ? ' in ' + esc(LONG[state.geo](state.sel[state.geo])) : '') + '<span>' + (pick ? rs.length + (rs.length === 1 ? ' part' : ' parts') + ' inside' : rkAll ? 'All ' + rs.length : 'Top 10 of ' + rs.length) + '</span></div>' +
         crow('Rank', seg(tabs.map(function (g) { return bt('data-rkg', g[0], g[1], geo === g[0]); }).join(''), 'Rank', 'tt-rkg')) +
         (canChg ? viewYearRow(rkChg, 'data-rkc').replace(/tt-vyr/, 'tt-vyr tt-rkc') : '') + numCtl() +
+        crow('Columns', '<button type="button" class="tt-linkbtn tt-rkpick" aria-expanded="' + rkPick + '">' + (rkPick ? 'Done choosing columns' : 'Choose columns (' + rkCols.length + ' shown)') + '</button>') +
+        (rkPick ? '<div class="tt-rkx" role="group" aria-label="Columns to show"><span class="tt-rkxg">Measures</span>' + RK_MAIN.map(function (k2) { return bt('data-rkx', k2, ML[k2], rkCols.indexOf(k2) >= 0); }).join('') +
+          ['v', 'p', 'r', 'l'].map(function (g) { return '<span class="tt-rkxg">' + RK_XG[g] + '</span>' + RK_X.filter(function (x) { return x[3] === g; }).map(function (x) { return bt('data-rkx', x[0], x[1], rkCols.indexOf(x[0]) >= 0); }).join(''); }).join('') +
+          '<span class="tt-rkxg"></span><button type="button" class="tt-linkbtn tt-rkxr">Back to the standard five</button>' + (rkChg ? '<span class="tt-mnote" style="margin:4px 0 0;flex:1 0 100%">With Change since on, the extra columns show 2026 with ' + vs + ' beneath.</span>' : '') + '</div>' : '') +
         '<div class="tt-rkw"><table class="tt-rkt"><thead><tr>' + cols.map(function (c) {
           var on = rkSort === c[0], lab = c[1] + (on && c[0] === 'lpturn' ? ' (by ' + { D: 'D rate', R: 'R rate', gap: 'D \u2212 R' }[rkLpBy] + ')' : '');
-          return '<th data-rks="' + c[0] + '"' + (on ? ' class="on" aria-sort="' + (rkDir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button"' + (c[0] === 'lpturn' ? ' title="Click again to sort by the D rate, the R rate, or the gap"' : '') + '>' + lab + (on ? (rkDir > 0 ? ' ▲' : ' ▼') : '') + '</button>' +
-            (c[0] === 'name' ? '' : rkQ(c[0].replace(/^d(?=turn|party|vreg|lp)/, ''))) + '</th>';
+          var two = csvAll && rkChg && /^x:/.test(c[0]) ? '<th>' + c[1] + ' (' + vs + ')</th>' : '';
+          return '<th data-rks="' + c[0] + '"' + (on ? ' class="on" aria-sort="' + (rkDir > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button"' + (c[0] === 'lpturn' ? ' title="Click again to sort by the D rate, the R rate, or the gap"' : '') + '>' + lab + (two ? ' (2026)' : '') + (on ? (rkDir > 0 ? ' ▲' : ' ▼') : '') + '</button>' +
+            (c[0] === 'name' ? '' : rkQ(c[0].replace(/^d(?=turn|party|vreg|lp)/, ''))) + '</th>' + two;
         }).join('') + '</tr></thead><tbody>' +
         shown.map(function (o) {
           var rank = rs.indexOf(o) + 1;
           return '<tr class="go' + (o.row.name === cur ? ' me' : '') + '" tabindex="0" data-rkn="' + esc(o.row.name) + '"><td><span class="tt-rkn">' + rank + '</span>' + esc(geo === 'county' ? o.row.name : o.row.name) + '</td>' +
-            (rkChg ? '<td>' + chip(o.dturn) + '</td><td>' + shift(o.dparty) + '</td><td>' + shift(o.dvreg) + '</td><td>' + shift(o.dlpturn) + '</td><td>' + shift(o.dlpgap) + '</td></tr>'
-              : '<td><b>' + (o.turn === null ? '—' : votesOn() ? fmt(o.turn) : o.turn.toFixed(DQ) + '%') + '</b></td><td>' + drc(o.party, 0) + '</td><td>' + drc(o.vreg, 0) + '</td>' +
-              '<td>' + lpCell(o.lprates, DQ) + '</td><td>' + drc(o.lpgap, 0) + '</td></tr>');
+            cols.slice(1).map(function (c) {
+              var k2 = c[0].replace(/^d(?=turn|party|vreg|lp)/, '');
+              if (/^x:/.test(k2)) { var xk = k2.slice(2), now = rkXfmt(xk, o.cx ? o.cx[xk] : null), was = rkChg && o.px ? rkXfmt(xk, o.px[xk]) : null;
+                return csvAll && rkChg ? '<td>' + now + '</td><td>' + (was === null ? '' : was) + '</td>' : '<td>' + now + (was === null ? '' : '<small class="tt-rkpast">' + vs + ': ' + was + '</small>') + '</td>'; }
+              if (rkChg) return '<td>' + (k2 === 'turn' ? chip(o.dturn) : shift(o['d' + k2])) + '</td>';
+              return '<td>' + (k2 === 'turn' ? '<b>' + (o.turn === null ? '—' : votesOn() ? fmt(o.turn) : o.turn.toFixed(DQ) + '%') + '</b>' : k2 === 'lpturn' ? lpCell(o.lprates, DQ) : drc(o[k2], 0)) + '</td>';
+            }).join('') + '</tr>';
         }).join('') + '</tbody></table></div>' +
         (rs.length > 10 ? '<button type="button" class="tt-more tt-rkall">' + (rkAll ? 'Show the top 10' : 'Show all ' + rs.length) + '</button>' : '') +
         '<p class="tt-pfoot">Click or tap a row to open ' + (pick ? 'all of it' : 'it') + '.</p></div>';
@@ -1974,7 +2037,7 @@
       var ns = cls && view.querySelector(cls); if (ns) window.scrollBy(0, ns.getBoundingClientRect().top - top);
     });
     view.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.tt-secdl'); if (b && !b.disabled) secPng(b);
-      var cb = e.target.closest && e.target.closest('.tt-csvdl'); if (cb) csvFor(cb.closest('.tt-sec')); });
+      var cb = e.target.closest && e.target.closest('.tt-csvdl'); if (cb) csvFor(cb.closest('[data-csv]') || cb.closest('.tt-sec')); });
     /* CSV downloads: the same table as on the page, with every row (not just the top 10 or 15), as plain text. The map's CSV
        lists every place on the map with the value it's colored by. */
     var csvAll = false, lastArgs = null;
@@ -2002,6 +2065,8 @@
         else if (kind === 'pct') { var pa = ptAll; ptAll = true; rows = tableRows(pctTable(lastArgs.r)); ptAll = pa; kind = 'precincts' + (ptChg ? '-vs' + vs : '');
           if (rows) rows = rows.map(function (row) { return row.slice(-2).concat(row.slice(0, -2)); });   // county and code first
           if (rows && ptChg) rows[0] = rows[0].map(function (h, j) { return j > 2 ? h + ' (change since ' + vs + ')' : h; }); }
+        else if (kind === 'dps') { rows = tableRows(dayPartyBlock(lastArgs.r)); kind = 'party-split-by-day-' + (psThru ? 'through-' : '') + 'day-' + (dayPartyRows(lastArgs.r).i + 1) + (psVotes ? '-votes' : ''); }
+        else if (kind === 'edh') { rows = tableRows(edBlock(lastArgs.r)); kind = 'election-day-past-years' + (votesOn() ? '-votes' : ''); }
         else if (kind === 'sites') { rows = tableRows(sitesBlock(lastArgs.k, lastArgs.r, lastArgs.sites)); kind = 'early-voting-sites'; }
         else if (kind === 'map') {
           var unit = pctOn() ? 'Precinct' : { county: 'County', cd: 'Congressional district', hd: 'NC House district', sd: 'NC Senate district' }[mapGeo()] || 'Place';
@@ -2033,6 +2098,13 @@
         else if (rkSort === k2) rkDir = -rkDir; else { rkSort = k2; rkDir = k2 === 'name' ? 1 : -1; if (k2 === 'lpturn') rkLpBy = 'D'; }
         re(); }); });
       var all = box.querySelector('.tt-rkall'); if (all) all.addEventListener('click', function () { rkAll = !rkAll; re(); });
+      var pk = box.querySelector('.tt-rkpick'); if (pk) pk.addEventListener('click', function () { rkPick = !rkPick; re(); });
+      var rr = box.querySelector('.tt-rkxr'); if (rr) rr.addEventListener('click', function () { rkCols = RK_DEF_COLS.slice(); re(); });
+      Array.prototype.forEach.call(box.querySelectorAll('[data-rkx]'), function (b) { b.addEventListener('click', function () {
+        var k2 = b.getAttribute('data-rkx'), i = rkCols.indexOf(k2);
+        if (i >= 0) { if (rkCols.length > 1) rkCols.splice(i, 1); } else rkCols.push(k2);
+        var order = RK_MAIN.concat(RK_X.map(function (x) { return x[0]; })); rkCols.sort(function (a, b2) { return order.indexOf(a) - order.indexOf(b2); });
+        re(); }); });
       Array.prototype.forEach.call(box.querySelectorAll('[data-rkc]:not([data-vs])'), function (b) { b.addEventListener('click', function () { rkChg = b.getAttribute('data-rkc') === 'true'; re(); }); });
       Array.prototype.forEach.call(box.querySelectorAll('tr[data-rkn]'), function (tr) {
         function go() { state.sel[rkGeo] = tr.getAttribute('data-rkn'); site = null; setGeo(rkGeo); window.scrollTo(0, mount.getBoundingClientRect().top + window.scrollY - 10); }
@@ -3188,6 +3260,96 @@
         '<div class="tt-pnote">' + (isAge ? (FINAL ? 'All voters, including Election Day. ' : HAS_ED ? 'Early and mail votes only. ' : '') + 'Age as listed in the State Board file. Mail voters tend to be older than early in-person voters.' : (FINAL ? 'All voters, including Election Day. ' : HAS_ED ? 'Early and mail votes only; the State Board doesn\'t report Election Day voters by party or age until weeks later. ' : '') + 'Party registration, not vote choice: in a general election, every voter can vote for any candidate, whatever their party.') + '</div></div>';
     }
 
+    /* 2026 candidates on a district's page (candidates.json, the district lean widget's list) */
+    var CAND_COL = { D: 'var(--pd)', R: 'var(--pr)' };
+    function candLine(r) {
+      if (!/^(cd|hd|sd)$/.test(state.geo)) return '';
+      var C = side('candidates.json'), c = C && C[state.geo] ? C[state.geo][r.name] : null;
+      if (!c || !c.length) return '';
+      return '<div class="tt-cands"><span class="tt-candl">On the ballot</span>' + c.map(function (q) {
+        return '<span><i class="tt-cp" style="background:' + (CAND_COL[q[1]] || '#6b6b6b') + '">' + esc(q[1]) + '</i>' + esc(q[0]) + (q[2] ? '<small>incumbent</small>' : '') + '</span>'; }).join('') +
+        (c.some(function (q) { return q[2]; }) ? '' : '<span><small style="margin:0">Open seat</small></span>') + '</div>';
+    }
+
+    /* Party split on a day of early voting, 2026 and each past year: that day's early in-person votes (or every day through it),
+       by party registration, as shares or as votes. Years line up by day of early voting, as on the chart. */
+    var psDay = null, psThru = false, psVotes = false, PS_P = [['Dem.', '#2E6DB4'], ['Rep.', '#B83A32'], ['Unaff.', '#8C8577'], ['Other', '#CFC9BC']];
+    function isoAdd(iso, n) { return new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10); }
+    function psSum(dd, i, thru) {
+      if (!dd) return null; var a = [0, 0, 0, 0], any = false;
+      for (var j = thru ? 0 : i; j <= i; j++) { var x = dd[j]; if (!x) continue; any = true; for (var q = 0; q < 4; q++) a[q] += x[q] || 0; }
+      return any ? a : null;
+    }
+    function psLast(r) { var l = -1; EV_DAYS.forEach(function (d, i) { if (d < D.asof && r.dd && r.dd[i]) l = i; }); return l; }
+    function dayPartyRows(r) {
+      var last = psLast(r), i = psDay !== null ? psDay : dayI !== null ? dayI : Math.max(0, last);
+      var rows = ['2026'].concat(Object.keys(BASE || {}).sort().reverse()).map(function (y) {
+        var dd = y === '2026' ? r.dd : (baseRow(r, y) || {}).dd, a = y === '2026' && EV_DAYS[i] >= D.asof ? null : psSum(dd, i, psThru);
+        return { y: y, a: a, date: y === '2026' ? EV_DAYS[i] : isoAdd(BASE[y].ev_start, i) };
+      }).filter(function (q) { return q.y === '2026' || q.a; });
+      return { i: i, rows: rows };
+    }
+    function dayPartyBlock(r) {
+      if (!r.dd || !BASE) return '';
+      var P = dayPartyRows(r), i = P.i; if (P.rows.length < 2) return '';
+      var opts = EV_DAYS.map(function (d, j) { return '<option value="' + j + '"' + (j === i ? ' selected' : '') + '>Day ' + (j + 1) + ' · ' + WDS[dow(d)] + ' ' + apDate(d) + '</option>'; }).join('');
+      var cell = function (a, q) { var n = dayN(a); return psVotes ? fmt(a[q]) : n ? (a[q] / n * 100).toFixed(1) + '%' : '—'; };
+      var net = function (a) { var n = dayN(a), m = a[0] - a[1];
+        if (psVotes) { var c = m > 0 ? 'var(--pd)' : m < 0 ? 'var(--pr)' : 'var(--ink)'; return '<span style="color:' + c + ';font-weight:700">' + (!m ? 'even' : (m > 0 ? 'D' : 'R') + ' +' + fmt(Math.abs(m))) + '</span>'; }
+        var v = n ? m / n * 100 : null; return v === null ? '—' : '<span style="color:' + (v > 0.05 ? 'var(--pd)' : v < -0.05 ? 'var(--pr)' : 'var(--ink)') + ';font-weight:700">' + dr(v, 1) + '</span>'; };
+      var bar = function (a) { var n = dayN(a); return '<span class="tt-psbar" aria-hidden="true">' + PS_P.map(function (q, j) { return '<i style="width:' + (n ? a[j] / n * 100 : 0).toFixed(2) + '%;background:' + q[1] + '"></i>'; }).join('') + '</span>'; };
+      var when = psThru ? 'Days 1–' + (i + 1) : 'Day ' + (i + 1);
+      return '<div class="tt-dps" data-csv="dps"><h4>Party split by day, compared with past years</h4>' +
+        crow('Day', '<select class="tt-pssel" data-psday aria-label="Day of early voting">' + opts + '</select>') +
+        crow('Count', seg(bt('data-psthru', '0', 'That day', !psThru) + bt('data-psthru', '1', 'Through that day', psThru), 'That day or through that day')) +
+        crow('Show', seg(bt('data-psv', '0', 'Share', !psVotes) + bt('data-psv', '1', 'Votes', psVotes), 'Share or votes')) +
+        '<div class="tt-rkw"><table class="tt-rkt tt-pst tt-fit"><thead><tr><th style="text-align:left;padding:7px 6px">Year</th>' + PS_P.map(function (q, j) { return '<th' + (j >= 2 ? ' class="tt-hide-s"' : '') + ' style="padding:7px 6px">' + q[0] + '</th>'; }).join('') +
+        '<th style="padding:7px 6px">D − R</th><th style="padding:7px 6px">Votes</th>' + (psVotes ? '' : '<th class="tt-hide-s tt-hide-csv" style="padding:7px 6px"></th>') + '</tr></thead><tbody>' +
+        P.rows.map(function (q) {
+          var a = q.a, lab = '<td style="text-align:left">' + q.y + ' <small class="tt-psd">' + (psThru ? 'through ' : '') + WDS[dow(q.date)] + ' ' + apDate(q.date) + '</small></td>';
+          if (!a) return '<tr class="now">' + lab + '<td colspan="' + (psVotes ? 6 : 7) + '" style="text-align:left;color:var(--mute);font-weight:400">Not yet reported</td></tr>';
+          return '<tr' + (q.y === '2026' ? ' class="now"' : '') + '>' + lab + PS_P.map(function (_, j) { return '<td' + (j >= 2 ? ' class="tt-hide-s"' : '') + '>' + cell(a, j) + '</td>'; }).join('') +
+            '<td>' + net(a) + '</td><td>' + fmt(dayN(a)) + '</td>' + (psVotes ? '' : '<td class="tt-hide-s tt-hide-csv" style="width:110px">' + bar(a) + '</td>') + '</tr>';
+        }).join('') + '</tbody></table></div>' +
+        '<p class="tt-calsub2" style="margin-top:8px">' + when + ' of early voting: early in-person votes only, by party registration, not vote choice. ' +
+        (psVotes ? 'More people are registered than in past years, so counts tend to rise even when the split doesn’t change.' : 'Shares are of that ' + (psThru ? 'stretch’s' : 'day’s') + ' early in-person votes.') +
+        (state.geo !== 'state' && state.geo !== 'county' ? ' Past years use today’s district lines.' : '') + '</p><div class="tt-dlrow">' + csvBtn() + '</div></div>';
+    }
+
+    /* Election Day in past years: votes cast at the polls on Election Day (in person, curbside, provisional, transfer), their share
+       of all votes, and their party mix, next to early and mail voters' (edhist.json, from the State Board's final history counts). */
+    var ED_YRS = ['2024', '2022', '2020', '2018'];
+    function edOf(E, y, r) { var Y = E.years[y], k = state.geo; if (!Y) return null; return k === 'state' ? Y.state : (Y[k] || {})[r.name] || null; }
+    function edBlock(r) {
+      if (!/^(state|county|cd|hd|sd)$/.test(state.geo)) return '';
+      var E = side('edhist.json');
+      if (E === undefined) return '<div class="tt-sec tt-edh tt-nodl"><div class="tt-sech">Election Day in past years</div><p class="tt-mnote">Loading…</p></div>';
+      if (!E) return '';
+      var V = votesOn(), rows = ED_YRS.map(function (y) { var b = edOf(E, y, r); if (!b) return null;
+        var ed = b[0], em = [0, 1, 2, 3].map(function (j) { return b[1][j] + b[2][j]; }), nE = dayN(ed), nM = dayN(em);
+        return { y: y, ed: ed, em: em, nE: nE, nM: nM, all: nE + nM }; }).filter(function (q) { return q && q.all; });
+      if (!rows.length) return '';
+      var pc = function (a, j, n) { return V ? fmt(a[j]) : n ? (a[j] / n * 100).toFixed(1) + '%' : '—'; };
+      var net = function (a, n) { var m = a[0] - a[1];
+        if (V) return '<span style="color:' + (m > 0 ? 'var(--pd)' : m < 0 ? 'var(--pr)' : 'var(--ink)') + ';font-weight:700">' + (!m ? 'even' : (m > 0 ? 'D' : 'R') + ' +' + fmt(Math.abs(m))) + '</span>';
+        var v = n ? m / n * 100 : null; return v === null ? '—' : '<span style="color:' + (v > 0.05 ? 'var(--pd)' : v < -0.05 ? 'var(--pr)' : 'var(--ink)') + ';font-weight:700">' + dr(v, 1) + '</span>'; };
+      var m22 = rows.filter(function (q) { return q.y === '2022'; })[0], lede = '';
+      if (m22 && m22.nE && m22.nM) { var a = (m22.ed[0] - m22.ed[1]) / m22.nE * 100, b = (m22.em[0] - m22.em[1]) / m22.nM * 100;
+        lede = '<p class="tt-lede">In 2022, the last midterm, <b>' + fmt(m22.nE) + '</b> people voted on Election Day here, <b>' + (m22.nE / m22.all * 100).toFixed(1) + '%</b> of all votes. By party registration, Election Day voters were <b>' + dr(a, 0) + '</b>; early and mail voters were <b>' + dr(b, 0) + '</b>.</p>'; }
+      var th = function (s, cls) { return '<th' + (cls ? ' class="' + cls + '"' : '') + ' style="padding:7px 6px">' + s + '</th>'; };
+      return '<div class="tt-sec tt-edh" data-csv="edh"><div class="tt-sech">Election Day in past years<span>2018–2024, final</span></div>' + lede + numCtl() +
+        '<div class="tt-rkw"><table class="tt-rkt tt-fit"><thead><tr><th style="text-align:left;padding:7px 6px">Year</th>' + th('Election Day votes') + th('Share of all votes') +
+        th('Dem.', 'tt-hide-s') + th('Rep.', 'tt-hide-s') + th('Unaff.', 'tt-hide-s') + th('Other', 'tt-hide-s') + th('D − R') + th('Early &amp; mail D − R') + '</tr></thead><tbody>' +
+        rows.map(function (q) {
+          return '<tr><td style="text-align:left">' + q.y + '</td><td><b>' + fmt(q.nE) + '</b></td><td>' + (q.nE / q.all * 100).toFixed(1) + '%</td>' +
+            [0, 1, 2, 3].map(function (j) { return '<td class="tt-hide-s">' + pc(q.ed, j, q.nE) + '</td>'; }).join('') +
+            '<td>' + net(q.ed, q.nE) + '</td><td>' + net(q.em, q.nM) + '</td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        '<p class="tt-pnote">Election Day votes are ballots cast at the polls on Election Day: in person, curbside, provisional and transfer. ' + (V ? 'Party columns are Election Day votes by party; D − R is Democratic minus Republican votes.' : 'Party columns are shares of Election Day votes.') +
+        ' Final counts from the State Board’s voter history files. Party is registration, not vote choice.' +
+        (state.geo === 'cd' || state.geo === 'hd' || state.geo === 'sd' ? ' Past years use today’s district lines: each past precinct is counted in the district that holds most of its voters.' : '') + '</p></div>';
+    }
+
     function short(n) { return n < 1000 ? fmt(n) : n < 1e5 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : Math.round(n / 1000) + 'K'; }   // bar labels; the caption shows the full number
     /* Past years on the day-by-day chart: any of them can be laid over the 2026 bars as a colored tick on each day, lined up
        by day of early voting (every year here starts early voting on a Thursday). Early in-person votes only, like the bars. */
@@ -3324,10 +3486,10 @@
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
     /* The rest of the view rides along after the place, so a shared link opens on the same map, year, day and table:
        #nc-turnout=cd:4&map=county&area=in&show=lpgap&chg=1&vs=2022&day=6&rank=hd&rkchg=1&who=age */
-    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '' };
+    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.') };
     function viewNow() {
       return { byp: calParty ? '1' : '0', dm: dayMode, map: mapTab, area: mapScope, show: mapMode, race: raceG + '.' + raceM, chg: mapChg ? '1' : '0', vs: vs, day: dayI === null ? '' : String(dayI + 1),
-        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.') };
+        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.') };
     }
     function hashFull() {
       var v = viewNow(), extra = Object.keys(VIEW_DEF).filter(function (k) { return v[k] !== VIEW_DEF[k] && !(k === 'race' && v.show !== 'race'); })
@@ -3347,6 +3509,7 @@
       if (q.day && /^\d+$/.test(q.day) && +q.day >= 1 && +q.day <= EV_DAYS.length) dayI = +q.day - 1;
       if (q.rank && RKG.some(function (g) { return g[0] === q.rank; })) rkGeo = q.rank;
       if (q.rkchg === '1') rkChg = true;
+      if (q.rkcols) { var kc = q.rkcols.split('.').filter(function (x) { return RK_MAIN.indexOf(x) >= 0 || rkX(x); }); if (kc.length) rkCols = kc; }
       if (q.who && WHO_SUB[q.who]) who = q.who;
       if (q.cal) calYrs = q.cal.split('.').filter(function (y) { return BASE && BASE[y]; });
     }

@@ -122,7 +122,6 @@ Memory in the container is about 7 GB, and building a full year's snapshot can b
 - Pyramid notes
 - Rankings votes-mode "?" text
 - A suggested "Share these crosstabs" paragraph for the article's "What We Track" section
-- Oct. 29 tracker additions above: notes, "?" text and the Election Day lede
 
 ---
 
