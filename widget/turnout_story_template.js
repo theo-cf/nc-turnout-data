@@ -238,6 +238,13 @@
       S + ' .tt-sec{margin-top:34px}',
       S + ' .tt-sech{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:"Zilla Slab",Georgia,serif;font-size:20px;font-weight:700;color:var(--navy);margin-bottom:12px}',
       S + ' .tt-sech span{font-family:Inter,sans-serif;font-size:12px;font-weight:500;color:var(--mute);white-space:nowrap}',
+      S + ' .tt-fold{display:inline-flex;align-items:baseline;gap:9px;margin:0;padding:0;border:0;background:none;font:inherit;color:inherit;letter-spacing:inherit;line-height:inherit;text-align:left;cursor:pointer}' +
+      S + ' .tt-fold:focus-visible{outline:2px solid var(--navy);outline-offset:3px}' +
+      S + ' .tt-foldi{flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;box-sizing:border-box;border:1px solid var(--rule);border-radius:2px;background:#fff;font:700 15px/1 Inter,sans-serif;color:var(--navy)}' +
+      S + ' .tt-foldi::before{content:"\\2212"}' + S + ' .tt-folded .tt-foldi::before{content:"+"}' + S + ' .tt-fold:hover .tt-foldi{border-color:var(--navy)}' +
+      S + ' .tt-sec.tt-folded>:not(.tt-sech){display:none}' + S + ' .tt-sec.tt-folded>.tt-sech{margin-bottom:0}' + S + ' .tt-sec.tt-folded::after{display:none}' + S + ' .tt-folded .tt-sech .tt-who{display:none}' +
+      S + ' .tt-foldall{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 16px;margin:26px 0 -24px}' +
+      S + ' .tt-foldall button{font:600 12px Inter,sans-serif;padding:3px 2px;border:0;background:none;color:var(--navy);text-decoration:underline;text-underline-offset:2px;cursor:pointer}',
       S + ' .tt-cal{display:grid;grid-template-columns:repeat(17,minmax(0,1fr));gap:3px;align-items:end;outline:none}',
       S + ' .tt-d{display:flex;flex-direction:column;align-items:stretch;cursor:default}',
       S + ' .tt-v{height:16px;font-size:11px;font-weight:600;text-align:center;color:var(--ink);white-space:nowrap;visibility:hidden;font-variant-numeric:tabular-nums}',
@@ -684,6 +691,49 @@
       Array.prototype.forEach.call(view.querySelectorAll('.tt-tostate'), function (b) { b.addEventListener('click', function () {
         var top = mount.getBoundingClientRect().top + window.scrollY - 10; setGeo('state'); window.scrollTo(0, top); }); });
     }
+    /* Collapsible sections: every section's heading is a button that folds the section down to its heading. Which
+       sections are folded stays put across places and redraws, and rides along in shared links (fold=map.rank). */
+    var folded = {}, FOLD_SKIP = { 'tt-sec': 1, 'tt-nodl': 1, 'tt-nodayp': 1, 'tt-folded': 1, 'tt-flash': 1 };
+    var FOLD_KEYS = ['map', 'pctab', 'rank', 'calsec', 'edh', 'sitesec', 'precincts', 'whosec', 'tiers', 'gfx'];
+    function foldKey(sec) {
+      var c = Array.prototype.filter.call(sec.classList, function (x) { return !FOLD_SKIP[x]; })[0];
+      return c ? c.replace(/^tt-/, '') : 'precincts';   // "Turnout by precinct" has no class of its own
+    }
+    function foldWire() {
+      var secs = view.querySelectorAll(':scope > .tt-sec'), anyShut = false, anyOpen = false;
+      Array.prototype.forEach.call(secs, function (sec) {
+        var h = sec.querySelector(':scope > .tt-sech'); if (!h || h.querySelector('.tt-fold')) return;
+        var key = foldKey(sec), shut = !!folded[key], b = document.createElement('button');
+        b.type = 'button'; b.className = 'tt-fold'; b.setAttribute('data-fold', key); b.setAttribute('aria-expanded', String(!shut));
+        b.title = shut ? 'Show this section' : 'Hide this section';
+        b.innerHTML = '<i class="tt-foldi" aria-hidden="true"></i>';
+        while (h.firstChild && h.firstChild.nodeType === 3) b.appendChild(h.firstChild);   // the heading text becomes the button
+        h.insertBefore(b, h.firstChild);
+        sec.classList.toggle('tt-folded', shut);
+        if (shut) anyShut = true; else anyOpen = true;
+      });
+      var first = secs[0];
+      if (first && secs.length > 1) first.insertAdjacentHTML('beforebegin', '<div class="tt-foldall">' +
+        (anyOpen ? '<button type="button" data-foldall="1">Collapse all sections</button>' : '') +
+        (anyShut ? '<button type="button" data-foldall="0">Expand all sections</button>' : '') + '</div>');
+    }
+    view.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-fold],[data-foldall]'); if (!b || !view.contains(b)) return;
+      e.preventDefault();
+      var key = b.getAttribute('data-fold'), sec = b.closest('.tt-sec'), top = (sec || b).getBoundingClientRect().top;
+      if (key) { if (folded[key]) delete folded[key]; else folded[key] = 1; }
+      else {
+        folded = {};
+        if (b.getAttribute('data-foldall') === '1') {
+          FOLD_KEYS.forEach(function (k) { folded[k] = 1; });
+          Array.prototype.forEach.call(view.querySelectorAll(':scope > .tt-sec'), function (x) { folded[foldKey(x)] = 1; });
+        }
+      }
+      interacted = true;
+      var y = window.scrollY; show(); window.scrollTo(0, y);
+      var nb = key ? view.querySelector('[data-fold="' + key + '"]') : view.querySelector('.tt-foldall button');
+      if (nb) { window.scrollBy(0, (nb.closest('.tt-sec') || nb).getBoundingClientRect().top - top); try { nb.focus({ preventScroll: true }); } catch (er) { nb.focus(); } }
+    });
     function vregHead(r) {   // party split of the votes vs. the party split of registered voters here
       var m = measures(r).now; if (m.party === null || m.party === undefined || m.regm === null) return '';
       var col = function (x) { return x > 0.5 ? 'var(--pd)' : x < -0.5 ? 'var(--pr)' : 'var(--ink)'; }, v = m.vreg, a = Math.round(Math.abs(v));
@@ -734,6 +784,7 @@
       if (!cur) v += shareBlock(r);
       view.innerHTML = v;
       dayTags();
+      foldWire();
       Array.prototype.forEach.call(view.querySelectorAll('[data-dayp]'), function (sel) { sel.addEventListener('change', function () { setDay(sel.value === '' ? null : +sel.value); }); });
       Array.prototype.forEach.call(view.querySelectorAll('.tt-dayx'), function (b) { b.addEventListener('click', function () { setDay(null); }); });
       Array.prototype.forEach.call(view.querySelectorAll('[data-dmode]'), function (b) { b.addEventListener('click', function () { dayMode = b.getAttribute('data-dmode'); setDay(dayI); }); });
@@ -776,9 +827,10 @@
       Array.prototype.forEach.call(view.querySelectorAll('.tt-sites tr.go'), function (tr) {
         function go() {
           var c = tr.getAttribute('data-c'), n = tr.getAttribute('data-s');
+          delete folded.calsec;
           if (c && state.geo !== 'county') { state.sel.county = c; site = n; setGeo('county'); }
           else { site = site === n ? null : n; show(); }
-          var cal = view.querySelector('.tt-sec'); if (cal && cal.scrollIntoView) cal.scrollIntoView({ block: 'start' });
+          var cal = view.querySelector(':scope > .tt-calsec') || view.querySelector('.tt-sec'); if (cal && cal.scrollIntoView) cal.scrollIntoView({ block: 'start' });
         }
         tr.addEventListener('click', go);
         tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
@@ -1853,7 +1905,7 @@
     }
     var WHO_SUB = { party: 'By party registration', age: 'By age', race: 'By race and ethnicity', prop: 'By voting history (propensity)', new: 'First-time registrants' };
     var KEEP = '.tt-eh, .tt-es, .tt-shh, .tt-lede, .tt-pq, .tt-pqs, .tt-ssec, .tt-pbar, .tt-pleg';
-    var DL_DROP = '.tt-hint, .tt-secbar, .tt-calhint, .tt-pace, .tt-caltip, .tt-dlrow, .tt-csvdl, .tt-zctl, .tt-tostate, .tt-about, .tt-q, .tt-crow, .tt-yp, .tt-who, .tt-leftsw, .tt-more, .tt-linkbtn, .tt-step, .tt-shdl, .tt-secdl, .tt-whomsg, .tt-cure, .tt-yrhint';
+    var DL_DROP = '.tt-hint, .tt-secbar, .tt-calhint, .tt-pace, .tt-caltip, .tt-dlrow, .tt-csvdl, .tt-zctl, .tt-tostate, .tt-about, .tt-q, .tt-crow, .tt-yp, .tt-who, .tt-leftsw, .tt-more, .tt-linkbtn, .tt-step, .tt-shdl, .tt-secdl, .tt-whomsg, .tt-cure, .tt-yrhint, .tt-foldall';
     function secPng(btn) {
       var top = btn.getAttribute('data-top') === '1', sec = top ? null : btn.closest('.tt-sec');
       var place = state.geo === 'state' ? 'North Carolina' : LONG[state.geo](state.sel[state.geo]);
@@ -1867,7 +1919,8 @@
         });
       } else {
         c.appendChild(sec.cloneNode(true));
-        var h = c.querySelector('.tt-sech'), meta = h && h.querySelector('span:not(.tt-who)');
+        var h = c.querySelector('.tt-sech'), meta = h && h.querySelector('span:not(.tt-who)'), fb = h && h.querySelector('.tt-fold');
+        if (fb) { var fi = fb.querySelector('.tt-foldi'); if (fi) fi.parentNode.removeChild(fi); fb.parentNode.replaceChild(document.createTextNode(fb.textContent), fb); }
         var pressed = Array.prototype.map.call(sec.querySelectorAll('.tt-rkg .on, .tt-rkc .on'), function (x) { return x.getAttribute('data-lab') || x.textContent.trim(); });
         if (sec.classList.contains('tt-whosec')) {
           if (sec.querySelector('.tt-leftsw .on[data-left="true"]')) title = 'Who hasn’t voted yet';
@@ -3486,10 +3539,10 @@
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
     /* The rest of the view rides along after the place, so a shared link opens on the same map, year, day and table:
        #nc-turnout=cd:4&map=county&area=in&show=lpgap&chg=1&vs=2022&day=6&rank=hd&rkchg=1&who=age */
-    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.') };
+    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.'), fold: '' };
     function viewNow() {
       return { byp: calParty ? '1' : '0', dm: dayMode, map: mapTab, area: mapScope, show: mapMode, race: raceG + '.' + raceM, chg: mapChg ? '1' : '0', vs: vs, day: dayI === null ? '' : String(dayI + 1),
-        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.') };
+        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.'), fold: Object.keys(folded).sort().join('.') };
     }
     function hashFull() {
       var v = viewNow(), extra = Object.keys(VIEW_DEF).filter(function (k) { return v[k] !== VIEW_DEF[k] && !(k === 'race' && v.show !== 'race'); })
@@ -3511,6 +3564,7 @@
       if (q.rkchg === '1') rkChg = true;
       if (q.rkcols) { var kc = q.rkcols.split('.').filter(function (x) { return RK_MAIN.indexOf(x) >= 0 || rkX(x); }); if (kc.length) rkCols = kc; }
       if (q.who && WHO_SUB[q.who]) who = q.who;
+      if (q.fold) q.fold.split('.').forEach(function (k) { if (/^[a-z]+$/.test(k)) folded[k] = 1; });
       if (q.cal) calYrs = q.cal.split('.').filter(function (y) { return BASE && BASE[y]; });
     }
     function setHash() { try { if (history.replaceState) history.replaceState(null, '', hashFull()); } catch (e) { /* ignore */ } }
