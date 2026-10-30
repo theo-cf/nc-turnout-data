@@ -144,13 +144,20 @@ Memory in the container is about 7 GB, and building a full year's snapshot can b
    - Registered voters who voted on Election Day in 2022 (and/or 2024) and haven't voted yet in 2026, by party and low/high propensity, in today's precincts.
    - Built in the pool and `build_data.py`, alongside `e22`.
    - Needs a per-precinct `e22` count in the pool, plus a 2024 Election Day flag (`e24`) in the lookup.
-2. **Historical Election Day turnout by precinct** for 2018, 2020, 2022 and 2024:
-   - Election Day votes, their share of all votes, and the party mix, placed in today's precincts.
-   - New files, for example `docs/pct_ed/<year>/<County>.json`, built like `pct_base`.
+2. **Historical Election Day turnout by precinct** for 2018, 2020, 2022 and 2024. **Built Oct. 29** (see below).
 3. **UI:** an "Election Day" layer or mode on the precinct map and table, plus a rankings column: "most 2022 Election Day voters not yet voted".
    - County and district rollups.
    - CSV download, because greeter coordinators will want lists of precincts.
    - Keep the small-precinct privacy rule: precincts with fewer than 10 are combined, and no county has exactly one combined precinct.
+
+**Built: past Election Day turnout by precinct (Oct. 29).**
+- `build_pct_ed.py <year> <history_stats zip> <VR_Snapshot zip> <ncvoter_Statewide.zip>` writes `docs/pct_ed/<year>.json` (one statewide file per year, ~125 KB). Run once per year; the past doesn't change. About 4 minutes a year.
+- Votes are the State Board's final `history_stats` counts by precinct, party and method (Election Day = V, C, P, T; everything else is early or mail), so voters since removed are included.
+- Placement on today's lines uses the same weights as `build_precinct_baselines.py`: each past precinct is spread like its registered voters who still live at the same address (fewer than 10 such voters: today's precinct with the same code). Registered voters then are placed the same way.
+- Privacy: no counts under 10 Election Day votes, plus `also_hide`, same as `pct.json`.
+- Checked for 2022 against `results_pct_20221108` (U.S. Senate, Election Day + provisional): county totals within 0.5% (history counts voters, so slightly higher); 96.5% of precincts with an unchanged code within 5%.
+- UI: a "By precinct" part at the end of "Election Day in past years" (`edpBlock`), for counties and districts only: year picker, its own precinct map (share on Election Day, votes, per 100 registered, party split), sortable table, CSV. Hash: `edpy=`, `edpm=`. It does not use the main map's mode system.
+- Inputs: `history_stats` zips are on the `ncsbe-source-files` branch; the snapshots and `ncvoter_Statewide.zip` come from NCSBE (see "Local inputs").
 
 **Decide with Theo before building:**
 - Use 2022 alone (the last midterm) or 2022 and 2024 combined? Midterm behavior matches 2026 better.

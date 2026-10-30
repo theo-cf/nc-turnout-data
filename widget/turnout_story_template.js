@@ -243,6 +243,10 @@
       S + ' .tt-foldi{flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;box-sizing:border-box;border:1px solid var(--rule);border-radius:2px;background:#fff;font:700 15px/1 Inter,sans-serif;color:var(--navy)}' +
       S + ' .tt-foldi::before{content:"\\2212"}' + S + ' .tt-folded .tt-foldi::before{content:"+"}' + S + ' .tt-fold:hover .tt-foldi{border-color:var(--navy)}' +
       S + ' .tt-sec.tt-folded>:not(.tt-sech){display:none}' + S + ' .tt-sec.tt-folded>.tt-sech{margin-bottom:0}' + S + ' .tt-sec.tt-folded::after{display:none}' + S + ' .tt-folded .tt-sech .tt-who{display:none}' +
+      S + ' .tt-edp{margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}' + S + ' .tt-edp .tt-shh{margin-bottom:10px}' +
+      S + ' .tt-edpmap{position:relative;margin:4px 0 0}' + S + ' .tt-edpmap svg{display:block;width:100%;height:auto;max-height:560px}' + S + ' .tt-edpmap path{cursor:pointer}' + S + ' .tt-edpmap path.on{stroke:#1a1a1a!important;stroke-width:2px!important;vector-effect:non-scaling-stroke}' +
+      S + ' .tt-edpleg{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;font-size:12px;color:var(--mute);margin:8px 0 0}' + S + ' .tt-edpleg .bar{display:inline-block;width:150px;height:10px;border:1px solid var(--rule)}' + S + ' .tt-edpleg i{display:inline-block;width:12px;height:12px;border:1px solid var(--rule);vertical-align:-2px;margin-right:4px}' +
+      S + ' .tt-edpt th{white-space:normal!important;vertical-align:bottom}' + S + ' .tt-edpt th .tt-sbtn{white-space:normal;text-align:inherit}' + S + ' .tt-edpt td:first-child{white-space:normal;min-width:110px}' + S + ' .tt-edpcap{min-height:20px;font-size:14px;margin:8px 0 14px;color:var(--ink)}' +
       S + ' .tt-foldall{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 16px;margin:26px 0 -24px}' +
       S + ' .tt-foldall button{font:600 12px Inter,sans-serif;padding:3px 2px;border:0;background:none;color:var(--navy);text-decoration:underline;text-underline-offset:2px;cursor:pointer}',
       S + ' .tt-cal{display:grid;grid-template-columns:repeat(17,minmax(0,1fr));gap:3px;align-items:end;outline:none}',
@@ -717,6 +721,16 @@
         (anyOpen ? '<button type="button" data-foldall="1">Collapse all sections</button>' : '') +
         (anyShut ? '<button type="button" data-foldall="0">Expand all sections</button>' : '') + '</div>');
     }
+    function edpShow(path) {
+      var F = EDP[edpYr]; if (!F || !path) return;
+      edpPick = path.getAttribute('data-edp');
+      var o = edpRows(F).filter(function (x) { return x.name === edpPick; })[0], cap = view.querySelector('.tt-edpcap');
+      Array.prototype.forEach.call(view.querySelectorAll('.tt-edpmap path.on'), function (x) { x.classList.remove('on'); });
+      path.classList.add('on'); path.parentNode.appendChild(path);   // on top, so its outline shows
+      if (cap) cap.innerHTML = edpCap(o);
+    }
+    view.addEventListener('click', function (e) { var p = e.target.closest && e.target.closest('.tt-edpmap path'); if (p) edpShow(p); });
+    view.addEventListener('mouseover', function (e) { var p = e.target.closest && e.target.closest('.tt-edpmap path'); if (p && !p.classList.contains('on')) edpShow(p); });
     view.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('[data-fold],[data-foldall]'); if (!b || !view.contains(b)) return;
       e.preventDefault();
@@ -839,10 +853,14 @@
       Array.prototype.forEach.call(view.querySelectorAll('.tt-alldays'), function (b) { b.addEventListener('click', function () { dayI = null; var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       Array.prototype.forEach.call(view.querySelectorAll('[data-left]'), function (b) { b.addEventListener('click', function () { leftMode = b.getAttribute('data-left') === 'true'; var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       Array.prototype.forEach.call(view.querySelectorAll('.tt-who button[data-who]'), function (b) { b.addEventListener('click', function () { who = b.getAttribute('data-who'); var y = window.scrollY; show(); window.scrollTo(0, y); }); });
+      var epa = view.querySelector('.tt-edpall'); if (epa) epa.addEventListener('click', function () { edpAll = !edpAll; var y = window.scrollY; show(); window.scrollTo(0, y); });
+      Array.prototype.forEach.call(view.querySelectorAll('[data-edpy],[data-edpm]'), function (b) { b.addEventListener('click', function () {
+        if (b.hasAttribute('data-edpy')) edpYr = b.getAttribute('data-edpy'); else edpM = b.getAttribute('data-edpm');
+        var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       var pta = view.querySelector('.tt-ptall'); if (pta) pta.addEventListener('click', function () { ptAll = !ptAll; var y = window.scrollY; show(); window.scrollTo(0, y); });
       Array.prototype.forEach.call(view.querySelectorAll('.tt-pctab [data-ptc]:not([data-vs])'), function (b) { b.addEventListener('click', function () { ptChg = b.getAttribute('data-ptc') === 'true'; var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       var mp = view.querySelector('.tt-morepct'); if (mp) mp.addEventListener('click', function () { allPct = !allPct; show(); });
-      [['data-ss', siteSort], ['data-ps', pctSort], ['data-pts', ptSort]].forEach(function (z) {
+      [['data-ss', siteSort], ['data-ps', pctSort], ['data-pts', ptSort], ['data-edps', edpSort]].forEach(function (z) {
         Array.prototype.forEach.call(view.querySelectorAll('[' + z[0] + ']'), function (b) {
           b.addEventListener('click', function () { var key = b.getAttribute(z[0]), st = z[1]; if (st.k === key) st.d = -st.d; else { st.k = key; st.d = key === 'name' ? 1 : -1; } var y = window.scrollY; show(); window.scrollTo(0, y); });
         });
@@ -2119,6 +2137,7 @@
           if (rows) rows = rows.map(function (row) { return row.slice(-2).concat(row.slice(0, -2)); });   // county and code first
           if (rows && ptChg) rows[0] = rows[0].map(function (h, j) { return j > 2 ? h + ' (change since ' + vs + ')' : h; }); }
         else if (kind === 'dps') { rows = tableRows(dayPartyBlock(lastArgs.r)); kind = 'party-split-by-day-' + (psThru ? 'through-' : '') + 'day-' + (dayPartyRows(lastArgs.r).i + 1) + (psVotes ? '-votes' : ''); }
+        else if (kind === 'edp') { rows = tableRows(edpBlock(lastArgs.r)); kind = 'election-day-precincts-' + edpYr; }
         else if (kind === 'edh') { rows = tableRows(edBlock(lastArgs.r)); kind = 'election-day-past-years' + (votesOn() ? '-votes' : ''); }
         else if (kind === 'sites') { rows = tableRows(sitesBlock(lastArgs.k, lastArgs.r, lastArgs.sites)); kind = 'early-voting-sites'; }
         else if (kind === 'map') {
@@ -3373,6 +3392,86 @@
        of all votes, and their party mix, next to early and mail voters' (edhist.json, from the State Board's final history counts). */
     var ED_YRS = ['2024', '2022', '2020', '2018'];
     function edOf(E, y, r) { var Y = E.years[y], k = state.geo; if (!Y) return null; return k === 'state' ? Y.state : (Y[k] || {})[r.name] || null; }
+    /* Election Day in past years, by precinct (pct_ed/<year>.json, from build_pct_ed.py): each past year's final Election Day
+       and early-and-mail votes from the State Board's voter history counts, placed on TODAY's precinct lines (each past
+       precinct spread over today's precincts like its voters who still live at the same address). For poll greeters: where
+       Election Day voting has been heaviest. Counties and districts only; a precinct under 10 Election Day votes has no counts. */
+    var EDP = {}, edpYr = '2022', edpM = 'share', edpSort = { k: 'ed', d: -1 }, edpAll = false;
+    var EDP_M = { share: 'Share of votes cast on Election Day', votes: 'Election Day votes', rate: 'Election Day votes per 100 registered', party: 'Election Day party split' };
+    function edpFile(y) {   // undefined while loading, null if it can't load
+      if (EDP[y] !== undefined) return EDP[y];
+      if (!pctLoading['edp' + y]) { pctLoading['edp' + y] = 1; pctFetch('pct_ed/' + y + '.json', function (j) { EDP[y] = j || null; pctRedraw(); }); }
+      return undefined;
+    }
+    function edpRows(F) {
+      return pctRows().map(function (row) {
+        var code = row.name.slice(row.county.length + 1), v = ((F.c || {})[row.county] || {})[code] || null, g = ((F.reg || {})[row.county] || {})[code] || 0;
+        var o = { name: row.name, county: row.county, code: code, label: row.label, path: row.path, reg: g, ed: null, share: null, rate: null, party: null, emparty: null };
+        if (v) {
+          var ed = v[0] + v[1] + v[2] + v[3], em = v[4] + v[5] + v[6] + v[7];
+          o.ed = ed; o.share = ed + em ? ed / (ed + em) * 100 : null; o.rate = g >= 20 ? Math.min(100, ed / g * 100) : null;
+          o.party = ed ? (v[0] - v[1]) / ed * 100 : null; o.emparty = em >= (F.min || 10) ? (v[4] - v[5]) / em * 100 : null;
+        }
+        return o;
+      });
+    }
+    function edpVal(o) { return o[edpM === 'votes' ? 'ed' : edpM]; }
+    function edpColor(x, mx) {
+      if (x === null || x === undefined) return 'url(#tth)';
+      if (edpM === 'party') { var t = Math.min(Math.abs(x) / 50, 1); return Math.abs(x) < 0.5 ? '#F3F0EA' : tierMix(x > 0 ? '#2E6DB4' : '#B83A32', 1 - (0.12 + 0.88 * t)); }
+      return tierMix('#253551', 1 - (0.08 + 0.92 * Math.max(0, Math.min(x / (mx || 1), 1))));
+    }
+    function edpFmt(o, m) {
+      var x = o[m]; if (x === null || x === undefined) return '\u2014';
+      if (m === 'ed') return fmt(x);
+      if (m === 'party' || m === 'emparty') return dr(x, 0);
+      return m === 'rate' ? x.toFixed(1) : x.toFixed(1) + '%';
+    }
+    function edpCap(o) {
+      if (!o) return '<span class="tt-hint">Tap or hover over a precinct.</span>';
+      if (o.ed === null) return '<b>' + esc(o.label) + '</b>: hidden for privacy (fewer than 10 Election Day votes in ' + edpYr + ', or a nearby small precinct).';
+      return '<b>' + esc(o.label) + '</b>: ' + fmt(o.ed) + ' Election Day ' + (o.ed === 1 ? 'vote' : 'votes') + ' in ' + edpYr + (o.share === null ? '' : ', ' + o.share.toFixed(0) + '% of all votes') +
+        (o.party === null ? '' : '; Election Day voters were <b style="color:' + (o.party > 0.5 ? 'var(--pd)' : o.party < -0.5 ? 'var(--pr)' : 'var(--ink)') + '">' + dr(o.party, 0) + '</b> by party registration') + '.';
+    }
+    var edpPick = null;
+    function edpBlock(r) {
+      if (state.geo === 'state') return '<div class="tt-edp"><div class="tt-shh">By precinct</div><p class="tt-pnote" style="margin-top:0">Pick a county or district to see where Election Day voting has been heaviest, precinct by precinct.</p></div>';
+      var F = edpFile(edpYr), head = '<div class="tt-edp" data-csv="edp"><div class="tt-shh">By precinct</div>' +
+        crow('Year', seg(ED_YRS.map(function (y) { return bt('data-edpy', y, y, y === edpYr); }).join(''), 'Year')) +
+        crow('Map', seg(Object.keys(EDP_M).map(function (m) { return bt('data-edpm', m, { share: 'Share on Election Day', votes: 'Votes', rate: 'Per 100 registered', party: 'Party split' }[m], m === edpM); }).join(''), 'Color the map by'));
+      if (F === null) return head + '<p class="tt-mnote">Precinct counts for ' + edpYr + ' aren\u2019t available right now.</p></div>';
+      if (F === undefined || !pctNeed()) return head + '<p class="tt-mnote">Loading precincts\u2026</p></div>';
+      var rows = edpRows(F), shown = rows.filter(function (o) { return o.path; });
+      if (!rows.length) return '';
+      var vals = shown.map(edpVal).filter(function (x) { return x !== null; }).sort(function (a, b) { return a - b; });
+      var mx = edpM === 'party' ? 50 : vals.length ? vals[Math.floor((vals.length - 1) * 0.95)] : 1;
+      if (edpM === 'share' || edpM === 'rate') mx = Math.max(mx, 1);
+      var dm = pctDims(), sw = Math.max(dm.w, dm.h) / 700;
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + dm.w.toFixed(1) + ' ' + dm.h.toFixed(1) + '" role="img" aria-label="' + esc(EDP_M[edpM] + ' by precinct, ' + edpYr) + '">' + hatchDefs(dm.w) +
+        '<style>path{stroke:#fff;stroke-width:' + sw.toFixed(2) + 'px}</style><g transform="translate(' + (-dm.x).toFixed(1) + ',' + (-dm.y).toFixed(1) + ')">' +
+        shown.map(function (o) { return '<path d="' + o.path + '" fill="' + edpColor(edpVal(o), mx) + '" data-edp="' + esc(o.name) + '"' + (o.name === edpPick ? ' class="on"' : '') + '></path>'; }).join('') + '</g></svg>';
+      var lfmt = function (x) { return edpM === 'votes' ? fmt(Math.round(x)) : edpM === 'party' ? dr(x, 0) : Math.round(x) + (edpM === 'share' ? '%' : ''); };
+      var grad = edpM === 'party' ? 'linear-gradient(90deg,' + edpColor(-50) + ',#F3F0EA,' + edpColor(50) + ')' : 'linear-gradient(90deg,' + edpColor(0, mx) + ',' + edpColor(mx, mx) + ')';
+      var leg = '<div class="tt-edpleg"><span>' + (edpM === 'party' ? 'R+50' : lfmt(0)) + '</span><span class="bar" style="background:' + grad + '"></span><span>' + (edpM === 'party' ? 'D+50' : lfmt(mx) + ' or more') + '</span>' +
+        (shown.some(function (o) { return o.ed === null; }) ? '<span><i style="background:repeating-linear-gradient(45deg,#F1EDE4 0 3px,#C9C2B3 3px 4px)"></i>Too few votes to show</span>' : '') + '</div>';
+      var get = function (o, k) { return k === 'name' ? o.label : o[k]; };
+      rows.sort(bySort(edpSort, get));
+      var list = edpAll || csvAll ? rows : rows.slice(0, 15), n = rows.length, na = '<span class="tt-na">\u2014</span>';
+      var drp = function (x) { return x === null ? na : '<b style="color:' + (x > 0.5 ? 'var(--pd)' : x < -0.5 ? 'var(--pr)' : 'var(--ink)') + '">' + dr(x, 0) + '</b>'; };
+      var cols = [['name', 'Precinct', ''], ['ed', 'Election Day votes', ''], ['share', 'Share of all votes', ''], ['rate', 'Per 100 registered', 'tt-hide-s'], ['party', 'D \u2212 R', ''], ['emparty', 'Early &amp; mail D \u2212 R', 'tt-hide-s']];
+      return head + '<div class="tt-edpmap">' + svg + '</div>' + leg + '<p class="tt-edpcap" aria-live="polite">' + edpCap(rows.filter(function (o) { return o.name === edpPick; })[0]) + '</p>' +
+        '<div class="tt-rkw"><table class="tt-rkt tt-ptt tt-edpt tt-fit"><thead><tr>' + cols.map(function (c) { return sortTh('data-edps', c[0], c[1], edpSort, c[2]); }).join('') +
+        '<th class="tt-csvonly">County</th><th class="tt-csvonly">Precinct code</th><th class="tt-csvonly">Registered then</th></tr></thead><tbody>' +
+        list.map(function (o) {
+          return '<tr><td>' + esc(o.label) + '</td><td><b>' + (o.ed === null ? na : fmt(o.ed)) + '</b></td><td>' + (o.share === null ? na : o.share.toFixed(1) + '%') + '</td><td class="tt-hide-s">' + (o.rate === null ? na : o.rate.toFixed(1)) + '</td><td>' + drp(o.party) + '</td><td class="tt-hide-s">' + drp(o.emparty) + '</td>' +
+            '<td class="tt-csvonly">' + esc(o.county) + '</td><td class="tt-csvonly">' + esc(o.code) + '</td><td class="tt-csvonly">' + (o.reg || '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        (n > 15 ? '<button type="button" class="tt-more tt-edpall">' + (edpAll ? 'Show the top 15' : 'Show all ' + n + ' precincts') + '</button>' : '') +
+        '<div class="tt-dlrow"><button type="button" class="tt-shdl tt-csvdl">Download precincts (CSV)</button></div>' +
+        '<p class="tt-pfoot">' + edpYr + ' votes on today\u2019s precinct lines: each ' + edpYr + ' precinct is spread over today\u2019s precincts in the same proportions as its voters who still live at the same address. ' +
+        'Per 100 registered: Election Day votes for every 100 people registered there in ' + edpYr + '. Early &amp; mail D \u2212 R is the same precinct\u2019s early in-person and mail voters, for contrast. ' +
+        'A dash: fewer than ' + (F.min || 10) + ' Election Day votes, or hidden so a nearby small precinct\u2019s count can\u2019t be worked out. Final counts from the State Board\u2019s voter history files. Party is registration, not vote choice.</p></div>';
+    }
     function edBlock(r) {
       if (!/^(state|county|cd|hd|sd)$/.test(state.geo)) return '';
       var E = side('edhist.json');
@@ -3400,7 +3499,8 @@
         }).join('') + '</tbody></table></div>' +
         '<p class="tt-pnote">Election Day votes are ballots cast at the polls on Election Day: in person, curbside, provisional and transfer. ' + (V ? 'Party columns are Election Day votes by party; D − R is Democratic minus Republican votes.' : 'Party columns are shares of Election Day votes.') +
         ' Final counts from the State Board’s voter history files. Party is registration, not vote choice.' +
-        (state.geo === 'cd' || state.geo === 'hd' || state.geo === 'sd' ? ' Past years use today’s district lines: each past precinct is counted in the district that holds most of its voters.' : '') + '</p></div>';
+        (state.geo === 'cd' || state.geo === 'hd' || state.geo === 'sd' ? ' Past years use today’s district lines: each past precinct is counted in the district that holds most of its voters.' : '') + '</p>' +
+        '<div class="tt-dlrow">' + csvBtn() + '</div>' + edpBlock(r) + '</div>';
     }
 
     function short(n) { return n < 1000 ? fmt(n) : n < 1e5 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : Math.round(n / 1000) + 'K'; }   // bar labels; the caption shows the full number
@@ -3539,10 +3639,10 @@
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
     /* The rest of the view rides along after the place, so a shared link opens on the same map, year, day and table:
        #nc-turnout=cd:4&map=county&area=in&show=lpgap&chg=1&vs=2022&day=6&rank=hd&rkchg=1&who=age */
-    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.'), fold: '' };
+    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.'), fold: '', edpy: '2022', edpm: 'share' };
     function viewNow() {
       return { byp: calParty ? '1' : '0', dm: dayMode, map: mapTab, area: mapScope, show: mapMode, race: raceG + '.' + raceM, chg: mapChg ? '1' : '0', vs: vs, day: dayI === null ? '' : String(dayI + 1),
-        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.'), fold: Object.keys(folded).sort().join('.') };
+        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.'), fold: Object.keys(folded).sort().join('.'), edpy: edpYr, edpm: edpM };
     }
     function hashFull() {
       var v = viewNow(), extra = Object.keys(VIEW_DEF).filter(function (k) { return v[k] !== VIEW_DEF[k] && !(k === 'race' && v.show !== 'race'); })
@@ -3564,6 +3664,8 @@
       if (q.rkchg === '1') rkChg = true;
       if (q.rkcols) { var kc = q.rkcols.split('.').filter(function (x) { return RK_MAIN.indexOf(x) >= 0 || rkX(x); }); if (kc.length) rkCols = kc; }
       if (q.who && WHO_SUB[q.who]) who = q.who;
+      if (q.edpy && ED_YRS.indexOf(q.edpy) >= 0) edpYr = q.edpy;
+      if (q.edpm && EDP_M[q.edpm]) edpM = q.edpm;
       if (q.fold) q.fold.split('.').forEach(function (k) { if (/^[a-z]+$/.test(k)) folded[k] = 1; });
       if (q.cal) calYrs = q.cal.split('.').filter(function (y) { return BASE && BASE[y]; });
     }
