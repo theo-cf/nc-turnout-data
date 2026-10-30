@@ -75,8 +75,7 @@
       S + ' .dl-leg .chip i{width:12px;height:12px;border-radius:1px;background:var(--off);display:inline-block;border:1px solid var(--rule)}',
       S + ' .dl-hint{font-size:12px;color:var(--mute);margin:0}',
       S + '{grid-template-columns:minmax(0,1fr)}',   // keeps the column at the page's width when the table breaks out of it
-      S + ' table.dl-big td:nth-child(2),' + S + ' table.dl-big td:nth-child(3){white-space:normal;min-width:118px;line-height:1.35}',
-      '@media (min-width:1000px){' + S + ' .dl-wide table.dl-big{font-size:12.5px}' + S + ' .dl-wide table.dl-big td,' + S + ' .dl-wide table.dl-big th .sb{padding-left:4px;padding-right:4px;font-size:10px;letter-spacing:.2px}' + S + ' .dl-wide{position:relative;left:50%;transform:translateX(-50%);width:min(92vw,1180px);max-width:none}}',   // the table breaks out of the article column on wide screens, like the site\'s wide embeds
+      '@media (min-width:1000px){' + S + ' .dl-wide{position:relative;left:50%;transform:translateX(-50%);width:min(92vw,1180px);max-width:none}}',   // the table breaks out of the article column on wide screens, like the site\'s wide embeds
       S + ' .dl-dls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}',
       S + ' .dl-dll{font:700 11px Inter,sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--mute)}',
       S + ' .dl-dlg{display:flex;flex-wrap:wrap;align-items:center;gap:6px}',
@@ -104,22 +103,30 @@
       S + ' .dl-sec{display:grid;gap:8px;margin-top:6px}',
       S + ' .dl-sech{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}',
       S + ' .dl-sech h3{font:700 20px/1.2 "Zilla Slab",Georgia,serif;color:var(--navy);margin:0}',
-      S + ' .dl-tw{overflow:auto;max-height:560px;border:1px solid var(--rule);border-radius:3px}',
-      S + ' table.dl-big{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}',
-      S + ' table.dl-big thead th{position:sticky;top:0;background:#fff;z-index:1;padding:0;border-bottom:1px solid var(--rule);vertical-align:bottom}',
-      S + ' table.dl-big th .sb{all:unset;display:block;padding:7px 8px;cursor:pointer;font:700 10.5px Inter,sans-serif;letter-spacing:.5px;text-transform:uppercase;color:var(--mute);text-align:right}',
-      S + ' table.dl-big th:first-child .sb,' + S + ' table.dl-big th:nth-child(2) .sb,' + S + ' table.dl-big th:nth-child(3) .sb{text-align:left}' + S + ' table.dl-big th:nth-child(4) .sb{text-align:center;white-space:normal}',
-      S + ' table.dl-big th.on .sb{color:var(--navy)}',
-      S + ' table.dl-big th .dl-q{margin:0 0 6px 8px}',
-      S + ' table.dl-big td{padding:7px 8px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}',
-      S + ' table.dl-big td:first-child,' + S + ' table.dl-big td:nth-child(2),' + S + ' table.dl-big td:nth-child(3){text-align:left}' + S + ' table.dl-big td:nth-child(4){text-align:center}',
-      S + ' table.dl-big tbody tr{cursor:pointer}',
+      S + ' .dl-tw{overflow:auto;max-height:620px;border:1px solid var(--rule);border-radius:4px;background:#fff}',
+      S + ' table.dl-big{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}',
+      S + ' table.dl-big thead th{position:sticky;background:#fff;z-index:2;padding:0;vertical-align:bottom}',
+      S + ' table.dl-big thead tr.dl-grp th{top:0;height:30px;box-sizing:border-box;padding:9px 10px 5px;font:700 10px Inter,sans-serif;letter-spacing:.9px;text-transform:uppercase;color:var(--navy);text-align:center;border-bottom:2px solid var(--navy)}',
+      S + ' table.dl-big thead tr.dl-grp th.nog{border-bottom-color:transparent}',
+      S + ' table.dl-big thead tr.dl-cols th{top:30px;border-bottom:1px solid var(--rule)}',
+      S + ' table.dl-big .dl-thw{display:flex;align-items:flex-end;justify-content:flex-end;gap:2px;padding:7px 8px 8px 10px}' + S + ' table.dl-big th.l .dl-thw{justify-content:flex-start}',
+      S + ' table.dl-big th .sb{all:unset;cursor:pointer;font:600 12px/1.25 Inter,sans-serif;color:var(--soft);text-align:right}' + S + ' table.dl-big th.l .sb{text-align:left}',
+      S + ' table.dl-big th.on .sb{color:var(--navy);font-weight:700}' + S + ' table.dl-big th .sb:focus-visible{outline:2px solid var(--navy);outline-offset:2px}',
+      S + ' table.dl-big th .dl-q{margin:0 0 0 3px;flex:none}',
+      S + ' table.dl-big td{padding:9px 10px;border-bottom:1px solid #EFEAE0;text-align:right;white-space:nowrap;vertical-align:middle}',
+      S + ' table.dl-big td.l{text-align:left}' + S + ' table.dl-big .dl-g{border-left:1px solid var(--rule)}',
+      S + ' table.dl-big tbody tr{cursor:pointer}' + S + ' table.dl-big tbody tr:last-child td{border-bottom:0}',
       S + ' table.dl-big tbody tr:hover td{background:var(--parch-l)}',
-      S + ' table.dl-big tbody tr.me td{background:var(--parch-l);font-weight:700}',
+      S + ' table.dl-big tbody tr.me td{background:#EEF1F6}' + S + ' table.dl-big tbody tr.me td:first-child{box-shadow:inset 3px 0 0 var(--navy)}',
+      S + ' table.dl-big tbody td:first-child,' + S + ' table.dl-big tr.dl-cols th:first-child{position:sticky;left:0;background:#fff;z-index:1;box-shadow:inset -1px 0 0 #EFEAE0}' + S + ' table.dl-big tr.dl-cols th:first-child{z-index:3}' + S + ' table.dl-big tr.dl-grp th:first-child{left:0;z-index:3}',
+      S + ' .dl-dn{font-weight:700;color:var(--navy)}' + S + ' .dl-dc{display:block;font-size:11.5px;color:var(--mute);font-weight:400;margin-top:1px}',
+      S + ' .dl-race{white-space:normal;min-width:190px;line-height:1.3}' + S + ' .dl-race div{margin:1px 0}' + S + ' .dl-race .dl-inc{margin-left:4px}' + S + ' .dl-race .dl-oth{font-size:11.5px;color:var(--mute)}',
+      S + ' .dl-pill{display:inline-block;min-width:58px;box-sizing:border-box;text-align:center;padding:3px 9px;border-radius:999px;font-weight:600;font-size:12.5px;line-height:1.35}',
+      S + ' .dl-na{color:#b3ab9b}',
       S + ' .dl-held{display:inline-block;font:700 10px/16px Inter,sans-serif;color:#fff;border-radius:2px;padding:0 5px}',
       S + ' .dl-foot{font-size:12px;color:var(--mute);margin:0;max-width:80ch}',
       S + ' .dl-load{padding:40px 0;text-align:center;color:var(--mute)}',
-      '@media (max-width:600px){' + S + ' .dl-lab{min-width:0;flex:1 0 100%}' + S + ' .dl-lname{font-size:19px}' + S + ' .dl-mark span{display:none}' + S + ' .hide-s{display:none}' + S + ' table.dl-big td,' + S + ' table.dl-big th .sb{padding-left:5px;padding-right:5px}}'
+      '@media (max-width:600px){' + S + ' .dl-lab{min-width:0;flex:1 0 100%}' + S + ' table.dl-big tr.dl-grp{display:none}' + S + ' table.dl-big thead tr.dl-cols th{top:0}' + S + ' table.dl-big td{padding:8px 6px}' + S + ' .dl-pill{min-width:0;padding:3px 7px}' + S + ' .dl-lname{font-size:19px}' + S + ' .dl-mark span{display:none}' + S + ' .hide-s{display:none}' + S + ' table.dl-big td,' + S + ' table.dl-big th .sb{padding-left:5px;padding-right:5px}}'
     ].join('\n');
     document.head.appendChild(st);
   }
@@ -146,7 +153,7 @@
   var PRES = {"cd":{"1":44.14,"2":67.2,"3":43.13,"4":73.02,"5":41.04,"6":41.32,"7":42.99,"8":40.25,"9":41.99,"10":41.06,"11":45.17,"12":73.52,"13":41.65,"14":42.39},"hd":{"1":34.99,"2":55.14,"3":39.84,"4":37.75,"5":46.63,"6":38.74,"7":43.68,"8":63.57,"9":45.05,"10":41.76,"11":66.66,"12":44.16,"13":29.57,"14":34.08,"15":33.1,"16":30.17,"17":38.33,"18":60.8,"19":39.41,"20":44.8,"21":63.49,"22":36.47,"23":56.32,"24":49.16,"25":49.95,"26":44.1,"27":58.58,"28":32.74,"29":84.89,"30":86.22,"31":80.69,"32":50.23,"33":71.06,"34":65.69,"35":49.05,"36":55.98,"37":48.53,"38":81.6,"39":62.78,"40":64.07,"41":67.47,"42":73.62,"43":43.66,"44":60.37,"45":57.61,"46":32.49,"47":37.91,"48":50.45,"49":70.58,"50":57.64,"51":37.02,"52":40.46,"53":36.99,"54":54.25,"55":36.98,"56":86.45,"57":67.96,"58":75.34,"59":44.99,"60":62.4,"61":78.55,"62":46.94,"63":46.11,"64":45.64,"65":31.91,"66":64.03,"67":26.08,"68":39.85,"69":37.38,"70":23.28,"71":69.49,"72":74.88,"73":46.78,"74":46.23,"75":43.97,"76":37.82,"77":23.05,"78":25.03,"79":36.21,"80":24.46,"81":27.9,"82":45.68,"83":34.21,"84":31.93,"85":26.32,"86":29.24,"87":25.16,"88":69.35,"89":25.21,"90":21.53,"91":32.64,"92":69.86,"93":41.8,"94":20.9,"95":36.22,"96":36.5,"97":26.97,"98":51.34,"99":82.95,"100":62.91,"101":69.07,"102":74.78,"103":57.39,"104":59.75,"105":50.32,"106":76.04,"107":80.5,"108":34.88,"109":42.43,"110":33.74,"111":25.96,"112":76.82,"113":34.13,"114":58.88,"115":48.53,"116":80.99,"117":43.8,"118":37.51,"119":43.63,"120":25.38},"sd":{"1":42.52,"2":41.46,"3":40.11,"4":44.95,"5":54.86,"6":31.84,"7":47.18,"8":40.46,"9":35.23,"10":39.11,"11":48.24,"12":38.04,"13":52.36,"14":73.83,"15":68.82,"16":67.78,"17":64.98,"18":49.75,"19":64.38,"20":72.37,"21":38.54,"22":79.94,"23":65.2,"24":42.45,"25":40.16,"26":38.94,"27":60.17,"28":76.45,"29":30.91,"30":26.28,"31":38.38,"32":70.27,"33":29.42,"34":45.85,"35":37.73,"36":20.74,"37":36.5,"38":68.59,"39":66.98,"40":75.09,"41":76.27,"42":53.33,"43":38.84,"44":28.8,"45":28.71,"46":33.91,"47":35.47,"48":37.0,"49":68.38,"50":35.17}};   // Harris share of the 2024 two-party presidential vote, by district
   var PRE = { hd: 'HD', sd: 'SD', cd: 'CD' }, LONG = { hd: 'NC House District', sd: 'NC Senate District', cd: 'Congressional District' };
   var PCOL = { D: '#2E6DB4', R: '#B83A32', L: '#8a7a3a', G: '#3f7d4a', I: '#6b6b6b' };
-  var ST = { c: 'cd', layer: 'sp', y: 'now', s: 'bg', pick: null, vb: null, sort: { k: 'sp', d: -1 } };
+  var ST = { c: 'cd', layer: 'sp', y: 'now', u: 'pts', s: 'bg', pick: null, vb: null, sort: { k: 'sp', d: -1 } };
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function dr(x, dec) { dec = dec || 0; if (x === null || x === undefined || isNaN(x)) return '—'; return Math.abs(x) < 0.5 * Math.pow(10, -dec) ? 'even' : (x > 0 ? 'D+' : 'R+') + Math.abs(x).toFixed(dec); }
@@ -188,8 +195,11 @@
         var z = L.ch[g][d], q = cur[PRE[g] + ' ' + d]; if (!q) return;
         var r = { d: +d, lean: z.lean, cty: z.cty, cand: z.cand, votes: q.vc, reg: q.reg, lpn: sum(q.lp) };
         r.sp = margin(q.pty[0], q.pty[1], sum(q.pty)); r.lp = sum(q.lp) >= 50 ? margin(q.lp[0], q.lp[1], sum(q.lp)) : null; r.rg = margin(q.rpty[0], q.rpty[1], sum(q.rpty)); r.vr = r.sp - r.rg;
+        var nP = sum(q.pty);   // the same numbers as net votes (Democrats minus Republicans); vr in votes = how far the net is from the registration split
+        r.np = nP; r.nv = { sp: q.pty[0] - q.pty[1], rg: q.rpty[0] - q.rpty[1], lp: r.lp === null ? null : q.lp[0] - q.lp[1], vr: r.vr / 100 * nP };
         r.sp22 = margin(z.p[0][i22], z.p[1][i22], z.p[2][i22]); r.lp22 = z.lp[2][i22] >= 50 ? margin(z.lp[0][i22], z.lp[1][i22], z.lp[2][i22]) : null; r.rg22 = margin(z.rp[0], z.rp[1], z.rp[2]); r.vr22 = r.sp22 - r.rg22;
         // compared to 2022: the district vs. the state now, minus the district vs. the state then
+        r.nv22 = { sp: z.p[0][i22] - z.p[1][i22], rg: z.rp[0] - z.rp[1], lp: r.lp22 === null ? null : z.lp[0][i22] - z.lp[1][i22], vr: r.vr22 / 100 * z.p[2][i22] };
         ['sp', 'lp', 'rg', 'vr'].forEach(function (m) { r[m + 'o'] = r[m] === null || r[m + '22'] === null ? null : (r[m] - st[m]) - (r[m + '22'] - st[m + '22']); });
         rows.push(r);
       });
@@ -197,6 +207,7 @@
       rows.forEach(function (r) {
         r.h2 = PRES[g][String(r.d)]; r.hm = r.h2 === undefined ? null : 2 * r.h2 - 100;
         r.spp = r.hm === null || r.sp === null ? null : r.sp - r.hm;
+        r.nv.pp = r.spp === null ? null : r.spp / 100 * r.np;
       });
       rows.sort(function (a, b) { return a.d - b.d; });
       ROWS[g] = rows;
@@ -235,7 +246,7 @@
       '<p class="dl-hint">Click or tap a district for its numbers. Use + and − to zoom, and drag to move once zoomed in.</p>' +
       '<div class="dl-dls"><span class="dl-dll">Download</span><div class="dl-dlg"><span class="dl-dlk">Map image</span><button type="button" class="dl-dlb" data-png="wide">Wide <small>X, Facebook</small></button><button type="button" class="dl-dlb" data-png="tall">Tall <small>Instagram</small></button></div>' +
       '<div class="dl-dlg"><span class="dl-dlk">Map data</span><button type="button" class="dl-dlb" data-csv="map">CSV</button></div></div>' +
-      '<div class="dl-sec dl-wide"><div class="dl-sech"><h3>District by district' + (ST.y === '22' ? ' compared to 2022' : '') + '</h3>' + seg('data-c', [['cd', 'Congress'], ['hd', 'NC House'], ['sd', 'NC Senate']], ST.c, 'Districts in the table') + '</div><p class="dl-foot" id="' + SLUG + '-tnote"></p><div class="dl-tw"><table class="dl-big" id="' + SLUG + '-tab"></table></div><div class="dl-dls"><span class="dl-dll">Download</span><div class="dl-dlg"><span class="dl-dlk">Table</span><button type="button" class="dl-dlb" data-csv="table">CSV</button></div></div></div>' +
+      '<div class="dl-sec dl-wide"><div class="dl-sech"><h3>District by district' + (ST.y === '22' ? ' compared to 2022' : '') + '</h3>' + seg('data-c', [['cd', 'Congress'], ['hd', 'NC House'], ['sd', 'NC Senate']], ST.c, 'Districts in the table') + '</div><div class="dl-crow"><span class="dl-lab">Show</span>' + seg('data-u', [['pts', 'Points'], ['votes', 'Votes']], ST.u, 'Points or votes') + '</div><p class="dl-foot" id="' + SLUG + '-tnote"></p><div class="dl-tw"><table class="dl-big" id="' + SLUG + '-tab"></table></div><div class="dl-dls"><span class="dl-dll">Download</span><div class="dl-dlg"><span class="dl-dlk">Table</span><button type="button" class="dl-dlb" data-csv="table">CSV</button></div></div></div>' +
       '<p class="dl-foot">Votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting), compared with the same day of early voting in 2022, with 2022 voters placed on today’s district lines. Party is registration, not vote choice. Source: NC State Board of Elections. District lean: Carolina Forward analysis of 2024 Council of State results. 2024 presidential: Harris and Trump’s share of the two-party vote.</p>';
     mount.innerHTML = h;
     wire(); drawMap(); legend(); table();
@@ -342,40 +353,65 @@
   }
 
   /* ---- table ---- */
+  var OTH_NAME = { L: 'Libertarian', G: 'Green', I: 'independent' };
+  function tVal(r, k) {   // a table cell's number, in points or votes; district lean and 2024 presidential are always points
+    if (ST.u !== 'votes' || k === 'lean' || k === 'pres') return value(r, k);
+    if (ST.y === '22') return r.nv[k] === null || r.nv[k] === undefined || r.nv22[k] === null || r.nv22[k] === undefined ? null : r.nv[k] - r.nv22[k];
+    return r.nv[k] === undefined ? null : r.nv[k];
+  }
+  function tTxt(v, k) {
+    if (v === null || v === undefined || isNaN(v)) return null;
+    if (k === 'pres') return hmTxt(v);
+    if (ST.u === 'votes' && k !== 'lean') { var n = Math.round(v); return !n ? 'even' : (n > 0 ? 'D+' : 'R+') + fmt(Math.abs(n)); }
+    return dr(v, k === 'lean' || k === 'pp' || ST.y === '22' ? 1 : 0);
+  }
+  function tCols() {   // [key, label, ? definition, group]
+    var y22 = ST.y === '22';
+    return [['d', 'District', null, ''], ['race', 'Candidates', null, '']].concat(y22
+      ? [['lean', 'District lean', 'lean', 'Baseline'], ['sp', 'Party split', 'y22', 'Change since 2022'], ['rg', 'Registration', 'rg', 'Change since 2022'], ['vr', 'Vs. registration', 'vr', 'Change since 2022'], ['lp', 'Low-prop. margin', 'lp', 'Change since 2022']]
+      : [['lean', 'District lean', 'lean', 'Baseline'], ['rg', 'Registration', 'rg', 'Baseline'], ['pres', '2024 president', 'pres', 'Baseline'],
+         ['sp', 'Party split', 'split', '2026 early vote'], ['vr', 'Vs. registration', 'vr', '2026 early vote'], ['lp', 'Low-prop. margin', 'lp', '2026 early vote'], ['pp', 'Performance vs. presidential', 'pp', '2026 early vote']]);
+  }
   function table() {
     var tab = mount.querySelector('#' + SLUG + '-tab'); if (!tab) return;
-    var y22 = ST.y === '22', cols = [['d', 'District', null], ['held', 'Held by', null], ['chal', 'Challenger', null], ['oth', 'Others?', null]].concat(y22
-      ? [['lean', 'District lean', 'lean'], ['sp', 'Party split', 'y22'], ['rg', 'Registration', 'rg'], ['vr', '2026 Results vs. Registration', 'vr'], ['lp', 'Low-prop. margin', 'lp']]
-      : [['lean', 'District lean', 'lean'], ['sp', 'Party split', 'split'], ['rg', 'Registration', 'rg'], ['pres', '2024 presidential', 'pres'], ['pp', 'Performance vs. Presidential', 'pp'],
-         ['vr', '2026 Results vs. Registration', 'vr'], ['lp', 'Low-prop. margin', 'lp']]);
-    var HIDE = { held: 1, chal: 1, oth: 1, pres: 1, vr: 1, rg: 1, lp: 1 };   // phones: district, lean, party split and performance vs. presidential
-    var incOf = function (r) { return r.cand.filter(function (c) { return c[2]; })[0] || null; };
-    var heldOf = function (r) { var i = incOf(r); return i ? i[1] + ' ' + i[0] : 'Open'; };
-    var get = function (r, k) { return k === 'd' ? r.d : k === 'held' ? heldOf(r) : k === 'chal' ? chalOf(r).map(function (c) { return c[1] + ' ' + c[0]; }).join(', ') || null : k === 'oth' ? othOf(r) : value(r, k); };
+    var y22 = ST.y === '22', V = ST.u === 'votes', cols = tCols();
+    var HIDE = { race: 1, rg: 1, pres: 1, vr: 1, lp: 1 };   // phones: district, lean, party split and vs. Harris (or the 2022 change)
+    var get = function (r, k) { return k === 'd' ? r.d : k === 'race' ? (incOf(r) ? incOf(r)[1] + incOf(r)[0] : 'Z') : tVal(r, k); };
+    if (cols.every(function (c) { return c[0] !== ST.sort.k; })) ST.sort.k = 'lean';
     var rows = ROWS[ST.c].filter(shown).slice().sort(function (a, b) {
       var x = get(a, ST.sort.k), y = get(b, ST.sort.k);
       if (x === null || x === undefined) return 1; if (y === null || y === undefined) return -1;
       return (typeof x === 'string' ? x.localeCompare(y) : x - y) * ST.sort.d || a.d - b.d;
     });
     lastRows = rows;
-    mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+10 to D+5). ') + (ST.y === '22' ? 'Numbers are the change since the same point in 2022, relative to the state. ' : '') + 'Click a column to sort, or a row to show it on the map.';
-    var cell = function (v, k) { var hs = HIDE[k] ? ' class="hide-s"' : ''; if (v === null || v === undefined || isNaN(v)) return '<td' + hs + '>—</td>'; var c = v > 0.5 ? '#2E6DB4' : v < -0.5 ? '#B83A32' : '#1a1a1a'; return '<td' + hs + ' style="color:' + c + '">' + (y22 || k === 'pp' ? gp(v) : dr(v, k === 'lean' ? 1 : 0)) + '</td>'; };
-    tab.innerHTML = '<thead><tr>' + cols.map(function (c) {
-      var on = ST.sort.k === c[0];
-      return '<th class="' + (on ? 'on' : '') + (HIDE[c[0]] ? ' hide-s' : '') + '"' + (on ? ' aria-sort="' + (ST.sort.d > 0 ? 'ascending' : 'descending') + '"' : '') + '><button type="button" class="sb" data-ts="' + c[0] + '">' + c[1] + (on ? (ST.sort.d > 0 ? ' ▲' : ' ▼') : '') + '</button>' + (c[2] ? qBtn(c[2]) : '') + '</th>';
-    }).join('') + '</tr></thead><tbody>' + rows.map(function (r) {
-      var hd = heldOf(r);
-      return '<tr data-d="' + r.d + '" tabindex="0"' + (ST.pick === r.d ? ' class="me"' : '') + '><td>' + PRE[ST.c] + ' ' + r.d + (r.cty.length ? ' <span class="hide-s" style="color:#6b6b6b;font-weight:400">' + esc(r.cty[0]) + '</span>' : '') + '</td>' +
-        '<td class="hide-s">' + (hd === 'Open' ? '<span style="color:#6b6b6b">Open seat</span>' : '<span class="dl-held" style="background:' + (PCOL[incOf(r)[1]] || '#6b6b6b') + '">' + esc(incOf(r)[1]) + '</span> ' + esc(incOf(r)[0])) + '</td>' +
-        '<td class="hide-s">' + (chalOf(r).length ? chalOf(r).map(function (c) { return '<span class="dl-held" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span> ' + esc(c[0]); }).join('<br>') : '<span style="color:#6b6b6b">None</span>') + '</td>' +
-        '<td class="hide-s">' + othOf(r) + '</td>' +
-        cols.slice(4).map(function (c) {
-          if (c[0] === 'lean') return '<td>' + dr(r.lean, 1) + '</td>';
-          if (c[0] === 'pres') { var m = get(r, 'pres'); return '<td class="hide-s" style="color:' + (m === null ? '#1a1a1a' : m > 0 ? '#2E6DB4' : '#B83A32') + '">' + hmTxt(m) + '</td>'; }
-          return cell(value(r, c[0]), c[0]);
-        }).join('') + '</tr>';
-    }).join('') + '</tbody>';
-    Array.prototype.forEach.call(tab.querySelectorAll('[data-ts]'), function (b) { b.onclick = function () { var k = b.getAttribute('data-ts'); if (ST.sort.k === k) ST.sort.d = -ST.sort.d; else { ST.sort.k = k; ST.sort.d = k === 'd' || k === 'held' || k === 'chal' ? 1 : -1; } table(); }; });
+    mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+10 to D+5). ') +
+      (V ? (y22 ? 'Numbers are the change in net votes (Democrats minus Republicans) since the same day of early voting in 2022. ' : 'Numbers are net votes: Democrats minus Republicans. ') + 'Registration is net registered voters; district lean and 2024 president stay in points. '
+        : y22 ? 'Numbers are the change since the same point in 2022, relative to the state, in points. ' : '') + 'Click a column to sort, or a row to show it on the map.';
+    var mx = {};   // the color's full strength: the biggest value in each column, so shading compares districts within a column
+    cols.forEach(function (c) { if (c[3]) mx[c[0]] = Math.max(V && c[0] !== 'lean' && c[0] !== 'pres' ? 50 : 3, rows.reduce(function (m, r) { var v = tVal(r, c[0]); return v === null || isNaN(v) ? m : Math.max(m, Math.abs(v)); }, 0)); });
+    var pill = function (v, k) {
+      var s = tTxt(v, k); if (s === null) return '<span class="dl-na">—</span>';
+      var z = V && k !== 'lean' && k !== 'pres' ? Math.abs(v) < 0.5 : Math.abs(v) < 0.05, f = Math.min(1, Math.abs(v) / mx[k]);
+      var bg = z ? '#F2F0EB' : mix('#FFFFFF', v > 0 ? '#2E6DB4' : '#B83A32', 0.1 + 0.32 * f), fg = z ? '#1a1a1a' : v > 0 ? '#1d4a85' : '#8f2e28';
+      return '<span class="dl-pill" style="background:' + bg + ';color:' + fg + '">' + s + '</span>';
+    };
+    var groups = []; cols.forEach(function (c) { var g = groups[groups.length - 1]; if (g && g[0] === c[3]) g[1]++; else groups.push([c[3], 1, c]); });
+    var hs = function (k) { return HIDE[k] ? ' hide-s' : ''; }, first = {}; groups.forEach(function (g) { if (g[0]) first[g[2][0]] = 1; });
+    tab.innerHTML = '<thead><tr class="dl-grp">' + groups.map(function (g) {
+      var ks = cols.filter(function (c) { return c[3] === g[0]; }), vis = ks.filter(function (c) { return !HIDE[c[0]]; }).length;
+      return '<th colspan="' + g[1] + '" class="' + (g[0] ? 'dl-g' : 'nog') + (vis ? '' : ' hide-s') + '" data-vis="' + vis + '">' + esc(g[0]) + '</th>'; }).join('') + '</tr><tr class="dl-cols">' +
+      cols.map(function (c) {
+        var on = ST.sort.k === c[0], cls = (on ? 'on' : '') + (c[3] ? '' : ' l') + (first[c[0]] ? ' dl-g' : '') + hs(c[0]);
+        return '<th class="' + cls + '"' + (on ? ' aria-sort="' + (ST.sort.d > 0 ? 'ascending' : 'descending') + '"' : '') + '><div class="dl-thw"><button type="button" class="sb" data-ts="' + c[0] + '">' + c[1] + (on ? (ST.sort.d > 0 ? ' ▲' : ' ▼') : '') + '</button>' + (c[2] ? qBtn(c[2]) : '') + '</div></th>';
+      }).join('') + '</tr></thead><tbody>' + rows.map(function (r) {
+        var cand = r.cand.filter(function (c) { return c[1] === 'D' || c[1] === 'R'; }).sort(function (a, b) { return b[2] - a[2] || (a[1] < b[1] ? -1 : 1); }), oth = r.cand.filter(function (c) { return c[1] !== 'D' && c[1] !== 'R'; });
+        return '<tr data-d="' + r.d + '" tabindex="0"' + (ST.pick === r.d ? ' class="me"' : '') + '><td class="l"><span class="dl-dn">' + PRE[ST.c] + ' ' + r.d + '</span>' + (r.cty.length ? '<span class="dl-dc">' + esc(r.cty[0]) + '</span>' : '') + '</td>' +
+          '<td class="l dl-race hide-s">' + cand.map(function (c) { return '<div><span class="dl-held" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span> ' + esc(c[0]) + (c[2] ? '<span class="dl-inc">incumbent</span>' : '') + '</div>'; }).join('') +
+            (cand.every(function (c) { return !c[2]; }) ? '<div class="dl-oth">Open seat</div>' : '') +
+            (oth.length ? '<div class="dl-oth">Also: ' + oth.map(function (c) { return esc(c[0]) + ' (' + (OTH_NAME[c[1]] || c[1]) + ')'; }).join(', ') + '</div>' : '') + '</td>' +
+          cols.slice(2).map(function (c) { return '<td class="' + (first[c[0]] ? 'dl-g' : '') + hs(c[0]) + '">' + pill(tVal(r, c[0]), c[0]) + '</td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody>';
+    Array.prototype.forEach.call(tab.querySelectorAll('[data-ts]'), function (b) { b.onclick = function () { var k = b.getAttribute('data-ts'); if (ST.sort.k === k) ST.sort.d = -ST.sort.d; else { ST.sort.k = k; ST.sort.d = k === 'd' || k === 'race' ? 1 : -1; } table(); }; });
     Array.prototype.forEach.call(tab.querySelectorAll('tbody tr'), function (tr) {
       var go = function () { pick(+tr.getAttribute('data-d')); var mw = mount.querySelector('#' + SLUG + '-mw'); if (mw.getBoundingClientRect().top < 0) mw.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
       tr.onclick = go; tr.onkeydown = function (e) { if (e.key === 'Enter') go(); };
@@ -400,14 +436,12 @@
       ROWS[ST.c].map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, r.cty.join('; '), i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r), isBg(r) ? 'Yes' : 'No', r.lean, r.h2, r.hm, r.votes, r.reg,
         r.sp, r.spp, r.lp, r.rg, r.vr, r.spo, r.lpo, r.rgo, r.vro]; }), fname('data', 'csv'));
   }
-  function tableCsv(rows) {   // the table as shown: its districts, columns, sort and As of now / Compared to 2022 setting
-    var y22 = ST.y === '22', t = y22 ? ', compared to 2022' : '', P = ' (pts, + = D)';
-    var ks = y22 ? [['lean', 'District lean'], ['sp', 'Party split' + t], ['rg', 'Registration' + t], ['vr', '2026 results vs. registration' + t], ['lp', 'Low-prop. margin' + t]]
-      : [['lean', 'District lean'], ['sp', 'Party split'], ['rg', 'Registration'], ['pres', '2024 presidential, Harris minus Trump (two-party)'], ['pp', 'Performance vs. presidential'],
-         ['vr', '2026 results vs. registration'], ['lp', 'Low-prop. margin']];
-    csv(['District', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?'].concat(ks.map(function (k) { return k[1] + P; })),
+  function tableCsv(rows) {   // the table as shown: its districts, columns, sort, units and As of now / Compared to 2022 setting
+    var y22 = ST.y === '22', V = ST.u === 'votes', ks = tCols().slice(2);
+    var unit = function (k) { return k === 'pres' ? ' (Harris minus Trump, pts, two-party)' : V && k !== 'lean' ? (k === 'rg' ? (y22 ? ' (change in net registered voters since 2022, + = D)' : ' (net registered voters, + = D)') : y22 ? ' (change in net votes since 2022, + = D)' : ' (net votes, + = D)') : (y22 && k !== 'lean' ? ' (change since 2022, pts, + = D)' : ' (pts, + = D)'); };
+    csv(['District', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?'].concat(ks.map(function (k) { return k[1] + unit(k[0]); })),
       rows.map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r)]
-        .concat(ks.map(function (k) { return value(r, k[0]); })); }), fname('table', 'csv'));
+        .concat(ks.map(function (k) { var v = tVal(r, k[0]); return v === null || v === undefined ? null : V && k[0] !== 'lean' && k[0] !== 'pres' ? Math.round(v) : v; })); }), fname('table' + (V ? '-votes' : ''), 'csv'));
   }
   function wrap(ctx, text, w) { var out = [], line = ''; text.split(' ').forEach(function (word) { var t = line ? line + ' ' + word : word; if (ctx.measureText(t).width > w && line) { out.push(line); line = word; } else line = t; }); if (line) out.push(line); return out; }
   function mapPng(fmt) {
@@ -477,6 +511,7 @@
     Array.prototype.forEach.call(mount.querySelectorAll('[data-c]'), function (b) { b.onclick = function () { if (ST.c === b.getAttribute('data-c')) return; ST.c = b.getAttribute('data-c'); ST.pick = null; ST.vb = null; render(); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-l]'), function (b) { b.onclick = function () { ST.layer = b.getAttribute('data-l'); if (layerOf(ST.layer).no22) ST.y = 'now'; ST.sort.k = ST.layer; render(); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-y]'), function (b) { b.onclick = function () { ST.y = b.getAttribute('data-y'); render(); }; });
+    Array.prototype.forEach.call(mount.querySelectorAll('[data-u]'), function (b) { b.onclick = function () { ST.u = b.getAttribute('data-u'); Array.prototype.forEach.call(mount.querySelectorAll('[data-u]'), function (x) { x.setAttribute('aria-pressed', x === b); }); table(); }; });
     Array.prototype.forEach.call(mount.querySelectorAll('[data-s]'), function (b) { b.onclick = function () { ST.s = b.getAttribute('data-s'); render(); }; });
   }
   var qOpen = null;
