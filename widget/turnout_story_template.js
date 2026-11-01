@@ -831,8 +831,8 @@
       Array.prototype.forEach.call(view.querySelectorAll('[data-calyr]'), function (b) { b.addEventListener('click', function () {
         var y = b.getAttribute('data-calyr'), i = calYrs.indexOf(y); if (i >= 0) calYrs.splice(i, 1); else calYrs.push(y); var sy = window.scrollY; show(); window.scrollTo(0, sy); }); });
       var pss = view.querySelector('[data-psday]'); if (pss) pss.addEventListener('change', function () { psDay = +pss.value; var y = window.scrollY; show(); window.scrollTo(0, y); });
-      Array.prototype.forEach.call(view.querySelectorAll('[data-psthru],[data-psv]'), function (b) { b.addEventListener('click', function () {
-        if (b.hasAttribute('data-psthru')) psThru = b.getAttribute('data-psthru') === '1'; else psVotes = b.getAttribute('data-psv') === '1';
+      Array.prototype.forEach.call(view.querySelectorAll('[data-psmode],[data-psv]'), function (b) { b.addEventListener('click', function () {
+        if (b.hasAttribute('data-psmode')) psMode = b.getAttribute('data-psmode'); else psVotes = b.getAttribute('data-psv') === '1';
         var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       naFill(r, k);
       wireMap();
@@ -2139,7 +2139,7 @@
         else if (kind === 'pct') { var pa = ptAll; ptAll = true; rows = tableRows(pctTable(lastArgs.r)); ptAll = pa; kind = 'precincts' + (ptChg ? '-vs' + vs : '');
           if (rows) rows = rows.map(function (row) { return row.slice(-2).concat(row.slice(0, -2)); });   // county and code first
           if (rows && ptChg) rows[0] = rows[0].map(function (h, j) { return j > 2 ? h + ' (change since ' + vs + ')' : h; }); }
-        else if (kind === 'dps') { rows = tableRows(dayPartyBlock(lastArgs.r)); kind = 'party-split-by-day-' + (psThru ? 'through-' : '') + 'day-' + (dayPartyRows(lastArgs.r).i + 1) + (psVotes ? '-votes' : ''); }
+        else if (kind === 'dps') { rows = tableRows(dayPartyBlock(lastArgs.r)); kind = 'party-split-by-day-' + (psMode === 'mail' ? 'through-with-mail-' : psMode === 'thru' ? 'through-' : '') + 'day-' + (dayPartyRows(lastArgs.r).i + 1) + (psVotes ? '-votes' : ''); }
         else if (kind === 'edp') { rows = tableRows(edpBlock(lastArgs.r)); kind = 'election-day-precincts-' + edpYr; }
         else if (kind === 'edh') { rows = tableRows(edBlock(lastArgs.r)); kind = 'election-day-past-years' + (votesOn() ? '-votes' : ''); }
         else if (kind === 'sites') { rows = tableRows(sitesBlock(lastArgs.k, lastArgs.r, lastArgs.sites)); kind = 'early-voting-sites'; }
@@ -3441,19 +3441,26 @@
     }
 
     /* Party split on a day of early voting, 2026 and each past year: that day's early in-person votes (or every day through it),
-       by party registration, as shares or as votes. Years line up by day of early voting, as on the chart. */
-    var psDay = null, psThru = false, psVotes = false, PS_P = [['Dem.', '#2E6DB4'], ['Rep.', '#B83A32'], ['Unaff.', '#8C8577'], ['Other', '#CFC9BC']];
+       by party registration, as shares or as votes. Years line up by day of early voting, as on the chart. psMode 'mail' adds
+       accepted mail ballots, counted on the day each was accepted: 2026 from cdd, past years from the cumulative p series. */
+    var psDay = null, psMode = 'day', psVotes = false, PS_P = [['Dem.', '#2E6DB4'], ['Rep.', '#B83A32'], ['Unaff.', '#8C8577'], ['Other', '#CFC9BC']];
     function isoAdd(iso, n) { return new Date(Date.parse(iso + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10); }
     function psSum(dd, i, thru) {
       if (!dd) return null; var a = [0, 0, 0, 0], any = false;
       for (var j = thru ? 0 : i; j <= i; j++) { var x = dd[j]; if (!x) continue; any = true; for (var q = 0; q < 4; q++) a[q] += x[q] || 0; }
       return any ? a : null;
     }
+    function psMail(r, y, i) {   // [DEM, REP, UNA, OTH] early in-person and mail votes through day i of early voting
+      var a;
+      if (y === '2026') a = r.cdd && r.cdd[i] ? r.cdd[i].slice(1, 5) : null;
+      else { var b = baseRow(r, y), p = b && b.p, j = i - (BASE[y].k0 || 0); a = p && p[0] && j >= 0 && j < p[0].length ? [0, 1, 2, 3].map(function (q) { return p[q] ? p[q][j] || 0 : 0; }) : null; }
+      return a && dayN(a) > 0 ? a : null;
+    }
     function psLast(r) { var l = -1; EV_DAYS.forEach(function (d, i) { if (d < D.asof && r.dd && r.dd[i]) l = i; }); return l; }
     function dayPartyRows(r) {
       var last = psLast(r), i = psDay !== null ? psDay : dayI !== null ? dayI : Math.max(0, last);
       var rows = ['2026'].concat(Object.keys(BASE || {}).sort().reverse()).map(function (y) {
-        var dd = y === '2026' ? r.dd : (baseRow(r, y) || {}).dd, a = y === '2026' && EV_DAYS[i] >= D.asof ? null : psSum(dd, i, psThru);
+        var a = y === '2026' && EV_DAYS[i] >= D.asof ? null : psMode === 'mail' ? psMail(r, y, i) : psSum(y === '2026' ? r.dd : (baseRow(r, y) || {}).dd, i, psMode === 'thru');
         return { y: y, a: a, date: y === '2026' ? EV_DAYS[i] : isoAdd(BASE[y].ev_start, i) };
       }).filter(function (q) { return q.y === '2026' || q.a; });
       return { i: i, rows: rows };
@@ -3467,10 +3474,10 @@
         if (psVotes) { var c = m > 0 ? 'var(--pd)' : m < 0 ? 'var(--pr)' : 'var(--ink)'; return '<span style="color:' + c + ';font-weight:700">' + (!m ? 'even' : (m > 0 ? 'D' : 'R') + ' +' + fmt(Math.abs(m))) + '</span>'; }
         var v = n ? m / n * 100 : null; return v === null ? '—' : '<span style="color:' + (v > 0.05 ? 'var(--pd)' : v < -0.05 ? 'var(--pr)' : 'var(--ink)') + ';font-weight:700">' + dr(v, 1) + '</span>'; };
       var bar = function (a) { var n = dayN(a); return '<span class="tt-psbar" aria-hidden="true">' + PS_P.map(function (q, j) { return '<i style="width:' + (n ? a[j] / n * 100 : 0).toFixed(2) + '%;background:' + q[1] + '"></i>'; }).join('') + '</span>'; };
-      var when = psThru ? 'Days 1–' + (i + 1) : 'Day ' + (i + 1);
+      var psThru = psMode !== 'day', when = psThru ? 'Days 1–' + (i + 1) : 'Day ' + (i + 1);
       return '<div class="tt-dps" data-csv="dps"><h4>Party split by day, compared with past years</h4>' +
         crow('Day', '<select class="tt-pssel" data-psday aria-label="Day of early voting">' + opts + '</select>') +
-        crow('Count', seg(bt('data-psthru', '0', 'That day', !psThru) + bt('data-psthru', '1', 'Through that day', psThru), 'That day or through that day')) +
+        crow('Count', seg(bt('data-psmode', 'day', 'That day', psMode === 'day') + bt('data-psmode', 'thru', 'Through that day', psMode === 'thru') + bt('data-psmode', 'mail', 'Through that day, with mail', psMode === 'mail'), 'That day, through that day, or through that day with mail ballots')) +
         crow('Show', seg(bt('data-psv', '0', 'Share', !psVotes) + bt('data-psv', '1', 'Votes', psVotes), 'Share or votes')) +
         '<div class="tt-rkw"><table class="tt-rkt tt-pst tt-fit"><thead><tr><th style="text-align:left;padding:7px 6px">Year</th>' + PS_P.map(function (q, j) { return '<th' + (j >= 2 ? ' class="tt-hide-s"' : '') + ' style="padding:7px 6px">' + q[0] + '</th>'; }).join('') +
         '<th style="padding:7px 6px">D − R</th><th style="padding:7px 6px">Votes</th>' + (psVotes ? '' : '<th class="tt-hide-s tt-hide-csv" style="padding:7px 6px"></th>') + '</tr></thead><tbody>' +
@@ -3480,8 +3487,9 @@
           return '<tr' + (q.y === '2026' ? ' class="now"' : '') + '>' + lab + PS_P.map(function (_, j) { return '<td' + (j >= 2 ? ' class="tt-hide-s"' : '') + '>' + cell(a, j) + '</td>'; }).join('') +
             '<td>' + net(a) + '</td><td>' + fmt(dayN(a)) + '</td>' + (psVotes ? '' : '<td class="tt-hide-s tt-hide-csv" style="width:110px">' + bar(a) + '</td>') + '</tr>';
         }).join('') + '</tbody></table></div>' +
-        '<p class="tt-calsub2" style="margin-top:8px">' + when + ' of early voting: early in-person votes only, by party registration, not vote choice. ' +
-        (psVotes ? 'More people are registered than in past years, so counts tend to rise even when the split doesn’t change.' : 'Shares are of that ' + (psThru ? 'stretch’s' : 'day’s') + ' early in-person votes.') +
+        '<p class="tt-calsub2" style="margin-top:8px">' + when + ' of early voting: ' + (psMode === 'mail' ? 'early in-person votes and accepted mail ballots (each counted on the day it was accepted)' : 'early in-person votes only') + ', by party registration, not vote choice. ' +
+        (psVotes ? 'More people are registered than in past years, so counts tend to rise even when the split doesn’t change.' : 'Shares are of that ' + (psThru ? 'stretch’s' : 'day’s') + (psMode === 'mail' ? ' early in-person and mail votes.' : ' early in-person votes.')) +
+        (psMode === 'mail' && BASE['2020'] ? ' Mail was a much larger share of votes in 2020 than in other years.' : '') +
         (state.geo !== 'state' && state.geo !== 'county' ? ' Past years use today’s district lines.' : '') + '</p><div class="tt-dlrow">' + csvBtn() + '</div></div>';
     }
 
