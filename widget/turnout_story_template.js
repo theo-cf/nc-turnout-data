@@ -3254,7 +3254,7 @@
     function hasPx(r) { return !!(r && r.pa && r.pg && !r.site); }
     function pxCtl(r) {
       if (!hasPx(r)) return '';
-      return crow('Party', seg(bt('data-whop', '-1', 'All', whoP < 0) + PXN.map(function (p, j) { return bt('data-whop', String(j), ['Dem.', 'Rep.', 'Unaff.'][j], whoP === j); }).join(''), 'Show one party’s voters'));
+      return crow('Among', seg(bt('data-whop', '-1', 'All voters', whoP < 0) + PXN.map(function (p, j) { return bt('data-whop', String(j), ['Dem.', 'Rep.', 'Unaff.'][j], whoP === j); }).join(''), 'Show one party’s voters'));
     }
     function pc1(x) { return x === null || x === undefined || !isFinite(x) ? '—' : x.toFixed(1) + '%'; }
     /* list: [label, color, votes, registered (or null), all voters' share of votes for comparison (or null)] */
@@ -3338,19 +3338,19 @@
       var px = hasPx(r);
       if (!px) whoP = -1;
       if ((!hasAge && who === 'age') || (!hasProp && who === 'prop') || (!hasRace && who === 'race') || (!hasNew && who === 'new') || (!px && (who === 'gender' || who === 'method'))) who = 'party';
-      if (whoP >= 0 && who === 'party') who = 'age';
-      if (whoP >= 0 && who === 'new' && !r.pnv) who = 'age';
+      var amongOk = px && who !== 'party' && !(who === 'new' && !r.pnv);   // "Among": narrow the breakdown to one party's voters
+      if (!amongOk) whoP = -1;
       var isAge = who === 'age';
       var tb = function (k, label) { return '<button type="button" data-who="' + k + '" aria-pressed="' + (who === k) + '"' + (who === k ? ' class="on"' : '') + '>' + label + '</button>'; };
-      var toggle = !hasAge && !hasProp ? '' : '<span class="tt-who tt-whotab" role="group" aria-label="Break down by">' + (whoP < 0 ? tb('party', 'Party') : '') + (hasAge ? tb('age', 'Age') : '') + (hasRace ? tb('race', 'Race') : '') +
-        (px ? tb('gender', 'Gender') + tb('method', 'Method') : '') + (hasProp ? tb('prop', 'Propensity') : '') + (hasNew && (whoP < 0 || r.pnv) ? tb('new', 'New voters') : '') + '</span>';
+      var toggle = !hasAge && !hasProp ? '' : '<span class="tt-who tt-whotab" role="group" aria-label="Break down by">' + tb('party', 'Party') + (hasAge ? tb('age', 'Age') : '') + (hasRace ? tb('race', 'Race') : '') +
+        (px ? tb('gender', 'Gender') + tb('method', 'Method') : '') + (hasProp ? tb('prop', 'Propensity') : '') + (hasNew ? tb('new', 'New voters') : '') + '</span>';
       var head = '<div class="tt-sec tt-whosec tt-nodayp"><div class="tt-sech">Who has voted' + (r.site ? ' here' : '') + '</div>' +
         (r.site ? '<div class="tt-calsub"><span>Showing <b>' + esc(r.site) + '</b> only</span><button type="button" class="tt-linkbtn tt-allsites2">Show all of ' + esc(r.county) + ' County</button></div>' : '');
       if (r.site && r.vc < SITE_MIN) return head + '<p class="tt-pnote" style="font-size:14px;color:var(--soft)">Too few early votes here so far (' + fmt(r.vc) + ') to show a breakdown. It appears once a site reaches ' + SITE_MIN + '.</p></div>';
       var canLeft = !r.site && !FINAL && !!r.rpty;   // "Haven't voted yet": registered voters with no accepted ballot so far
       if (canLeft) head += crow('View', seg(bt('data-left', 'false', 'Voted so far', !leftMode) + bt('data-left', 'true', 'Haven\u2019t voted yet', leftMode), 'Show', 'tt-leftsw'));
-      head += pxCtl(r);
       if (toggle) head += crow('By', toggle + (who === 'prop' ? lpQ() : ''));
+      if (amongOk) head += pxCtl(r);
       var pxv = px && (whoP >= 0 || who === 'gender' || who === 'method') ? pxBlock(r) : '';
       if (pxv) return head + pxv + '</div>';
       if (!(canLeft && leftMode) && who !== 'new') head += numCtl();
