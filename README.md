@@ -17,7 +17,7 @@ It contains **totals only**: statewide, by county, by congressional district, by
 - votes cast, split into early in-person, by mail and (from election night) on Election Day
 - early and mail votes cast each day
 - votes cast by the voters' party registration (Democratic, Republican, Unaffiliated, other parties)
-- votes cast by age group (18–29, 30–44, 45–64, 65 and older)
+- votes cast by age group, in the State Board's groups (18–25, 26–40, 41–65, 66 and older)
 
 It also includes:
 
