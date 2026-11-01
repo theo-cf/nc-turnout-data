@@ -180,6 +180,11 @@ def main():
             for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
                 d = pd.to_numeric(n[col], errors='coerce')
                 P['nw'][k] = {str(int(x)): int(len(g)) for x, g in n[d.notna()].groupby(d.dropna().astype(int))}
+            # The same by party [DEM, REP, UNA], for "Who has voted"'s party filter
+            P['pnw'] = {'state': cnt3(n), 'county': {COUNTY_NAME.get(c, c.title()): cnt3(g) for c, g in n.groupby('county_desc')}}
+            for k, col in (('cd', 'cong_dist_abbrv'), ('hd', 'nc_house_abbrv'), ('sd', 'nc_senate_abbrv')):
+                d = pd.to_numeric(n[col], errors='coerce')
+                P['pnw'][k] = {str(int(x)): cnt3(g) for x, g in n[d.notna()].groupby(d.dropna().astype(int))}
         # Pieces: where a county and a district, or two kinds of district, overlap ("Wake|4" under "county|cd"), for showing only
         # the part of a place inside the one picked. Registered voters [all; DEM, REP, UNA, other; four age groups; races; ethnicities],
         # low-propensity ones by party, and the race x age x propensity, party x propensity and Hispanic counts above.

@@ -51,7 +51,7 @@ ED_DROP_LIMIT = 0.90          # stop if Election Day votes fall below 90% of the
 DROP_LIMIT = 0.95   # stop if total votes cast fall below 95% of the last published total
 
 COLS = ['ncid', 'county_desc', 'voter_party_code', 'cong_dist_desc', 'nc_house_desc', 'nc_senate_desc',
-        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc', 'race', 'ethnicity', 'sdr']
+        'ballot_req_type', 'ballot_rtn_dt', 'ballot_rtn_status', 'age', 'site_name', 'precinct_desc', 'race', 'ethnicity', 'gender', 'sdr']
 AGE_GROUPS = [(18, 25), (26, 40), (41, 65), (66, 200)]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
 EV_START, EV_DAYS = '2026-10-15', 17                      # in-person early voting, Oct. 15-31
 
@@ -93,6 +93,10 @@ acc['party'] = acc.voter_party_code.where(acc.voter_party_code.isin(['DEM', 'REP
 acc['race'] = acc.race.fillna('').map({x: race_code(x) for x in acc.race.fillna('').unique()})        # as listed on the registration (optional)
 acc['sdr'] = acc.sdr.fillna('').str.strip().str.upper().eq('Y')   # registered (or updated their address) and voted the same day
 acc['eth'] = acc.ethnicity.fillna('').map({x: eth_code(x) for x in acc.ethnicity.fillna('').unique()})
+acc['gn'] = acc.gender.fillna('').str.strip().str.upper().map({'F': 0, 'M': 1}).fillna(2).astype(int)   # GENDERS: as listed on the registration
+acc['rci'] = acc.race.map({x: i for i, x in enumerate(RACES)})
+acc['eci'] = acc.eth.map({x: i for i, x in enumerate(ETHS)})
+acc['mi'] = acc.kind.map({'ev': 0, 'ml': 1})
 asof_ts = pd.Timestamp(ASOF)
 acc['when'] = acc.when.fillna(asof_ts)
 acc['day'] = acc.when.where(acc.when <= asof_ts, asof_ts).dt.strftime('%Y-%m-%d')  # future-dated records count on the file date
@@ -151,6 +155,27 @@ def day_new(s):
         x = g.get(d)
         res.append([0, 0, 0] if x is None else [int(x.nw.sum()), int(x.sdr.sum()), int((x.nw & x.sdr).sum())])
     return res
+
+
+GENDERS = ['F', 'M', 'U']   # women, men, undesignated (as listed on the registration)
+PX = ['DEM', 'REP', 'UNA']   # the parties in the party crosstabs below
+
+
+def party_x(s):
+    """Votes by party (PX) crossed with each breakdown, for "Who has voted"'s party filter and the gender view:
+    'pa' age groups, 'prc' races (RACES), 'pe' ethnicities (ETHS), 'pm' [early in person, mail], 'pg' GENDERS,
+    plus 'gn' GENDERS for all voters and 'ag' age group x GENDERS. 'pnv': first-time registrants who have voted, by party."""
+    out = {}
+    for nm, col, n in (('pa', 'ab', len(AGE_GROUPS)), ('prc', 'rci', len(RACES)), ('pe', 'eci', len(ETHS)), ('pm', 'mi', 2), ('pg', 'gn', 3)):
+        t = s.groupby(['party', col]).size()
+        out[nm] = [[int(t.get((p, i), 0)) for i in range(n)] for p in PX]
+    g = s.gn.value_counts()
+    out['gn'] = [int(g.get(i, 0)) for i in range(3)]
+    t = s.groupby(['ab', 'gn']).size()
+    out['ag'] = [[int(t.get((a, i), 0)) for i in range(3)] for a in range(len(AGE_GROUPS))]
+    if HAS_NW:
+        out['pnv'] = [int((s.nw & (s.party == p)).sum()) for p in PX]
+    return out
 
 
 XT_RACES = ['B', 'O', 'A', 'W']   # race rows on the shareable graphics: Black, Other, Asian, White
@@ -229,7 +254,8 @@ def totals(s):
     } | ({'lp': [int(s.low[s.party == x].sum()) for x in ['DEM', 'REP', 'UNA']], 'tv': tier_counts(s.party, s.tier), 'e22v': [int((s.e22 & (s.party == x)).sum()) for x in ['DEM', 'REP', 'UNA']]} if HAS_HIST else {}) \
       | (xt_counts(s) if HAS_HIST else {}) \
       | ({'nv': [int(s.nw.sum()), int(s.sdr.sum()), int((s.nw & s.sdr).sum()), int(s.unk.sum())]} if HAS_NW else {}) \
-      | ({'dn': day_new(s)} if HAS_NW else {})
+      | ({'dn': day_new(s)} if HAS_NW else {}) \
+      | party_x(s)
     # low-propensity voters by party; counts for the shareable graphics; new voters: first-time registrants who have voted,
     # same-day registrants, first-time same-day registrants, first-time registrants newer than the registration file
 
@@ -341,6 +367,9 @@ if reg:
             r['reg'], r['rpty'], r['rage'] = x['n'], x['pty'], x['age']
             if 'race' in x:
                 r['rrace'], r['reth'] = x['race'], x['eth']
+            for _f in ('pa', 'prc', 'pe', 'pg', 'gn', 'ag'):   # party and gender crosstabs (build_registration.py), as 'rpa', 'rprc' ...
+                if _f in x:
+                    r['r' + _f] = x[_f]
 ed_pct = None
 if RESULTS_FILE and os.path.exists(RESULTS_FILE) and ASOF >= ELECTION_DAY:   # the State Board posts a blank results file weeks early
     try:
@@ -379,6 +408,16 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE):
         out['state']['nwr'] = _P['nw']['state']
         for _r in out['geo']['county']:
             _r['nwr'] = _P['nw']['county'].get(_r['name'], 0)
+        if 'pnw' in _P:   # the same by party [DEM, REP, UNA], for the party filter
+            out['state']['pnwr'] = _P['pnw']['state']
+            for _r in out['geo']['county']:
+                if _r['name'] in _P['pnw']['county']:
+                    _r['pnwr'] = _P['pnw']['county'][_r['name']]
+            for _k in ('cd', 'hd', 'sd'):
+                for _r in out['geo'][_k]:
+                    _x = _P['pnw'].get(_k, {}).get(str(num(_r['name'])))
+                    if _x:
+                        _r['pnwr'] = _x
         for _k in ('cd', 'hd', 'sd'):
             if _k in _P['nw']:
                 for _r in out['geo'][_k]:
@@ -468,7 +507,8 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pieces' in _P:
         res = {}
         for kk, sub in acc.loc[key.index].groupby(key.values):
             row = totals(sub)
-            row.pop('xpv', None)   # the crosstabs' party filter is for whole places only
+            for _f in ('xpv', 'pa', 'prc', 'pe', 'pm', 'pg', 'gn', 'ag', 'pnv'):   # the party filter and gender view are for whole places only
+                row.pop(_f, None)
             x = regs.get(kk)
             if x:
                 row.update({'reg': x['n'], 'rpty': x['pty'], 'rage': x['age'], 'rrace': x['race'], 'reth': x['eth'], 'lpr': x['lpr'],

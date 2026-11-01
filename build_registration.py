@@ -21,7 +21,7 @@ import pandas as pd
 
 from ncsbe import COUNTY_NAME, ETHS, RACES, eth_code, race_code
 
-COLS = ['county_desc', 'status_cd', 'party_cd', 'age_at_year_end', 'precinct_desc', 'race_code', 'ethnic_code',
+COLS = ['county_desc', 'status_cd', 'party_cd', 'gender_code', 'age_at_year_end', 'precinct_desc', 'race_code', 'ethnic_code',
         'cong_dist_abbrv', 'nc_house_abbrv', 'nc_senate_abbrv']
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
 AGE_EDGES = [17, 25, 40, 65, 200]   # the State Board's groups: 18-25, 26-40, 41-65, 66 and older
@@ -46,7 +46,8 @@ def main():
                     ch['active'] = ch.status_cd == 'A'
                     ch['race'] = ch.race_code.map({x: race_code(x) for x in ch.race_code.unique()})
                     ch['eth'] = ch.ethnic_code.map({x: eth_code(x) for x in ch.ethnic_code.unique()})
-                    parts.append(ch.drop(columns=['status_cd', 'party_cd', 'age_at_year_end', 'race_code', 'ethnic_code']))
+                    ch['gn'] = ch.gender_code.str.strip().str.upper().map({'F': 0, 'M': 1}).fillna(2).astype('int8')   # women, men, undesignated
+                    parts.append(ch.drop(columns=['status_cd', 'party_cd', 'gender_code', 'age_at_year_end', 'race_code', 'ethnic_code']))
     v = pd.concat(parts)
     if len(v) < 1_000_000 and len(a.zips) == 1:
         raise SystemExit(f'STOPPING: only {len(v):,} registered voters; the file looks incomplete')
@@ -55,7 +56,20 @@ def main():
         p, g, rc, ec = s.party.value_counts(), s.ab.value_counts(), s.race.value_counts(), s.eth.value_counts()
         return {'n': int(len(s)), 'active': int(s.active.sum()),
                 'pty': [int(p.get(x, 0)) for x in PARTIES], 'age': [int(g.get(i, 0)) for i in range(4)],
-                'race': [int(rc.get(x, 0)) for x in RACES], 'eth': [int(ec.get(x, 0)) for x in ETHS]}
+                'race': [int(rc.get(x, 0)) for x in RACES], 'eth': [int(ec.get(x, 0)) for x in ETHS]} | party_x(s)
+
+    def party_x(s):
+        """Registered voters by party [DEM, REP, UNA] crossed with age group ('pa'), race ('prc', RACES), ethnicity ('pe', ETHS)
+        and gender ('pg': women, men, undesignated); by gender ('gn') and age group x gender ('ag'). For the tracker's party filter."""
+        out = {}
+        for nm, col, keys in (('pa', 'ab', range(4)), ('prc', 'race', RACES), ('pe', 'eth', ETHS), ('pg', 'gn', range(3))):
+            t = s.groupby(['party', col]).size()
+            out[nm] = [[int(t.get((p, k), 0)) for k in keys] for p in PARTIES[:3]]
+        g = s.gn.value_counts()
+        out['gn'] = [int(g.get(i, 0)) for i in range(3)]
+        t = s.groupby(['ab', 'gn']).size()
+        out['ag'] = [[int(t.get((a, i), 0)) for i in range(3)] for a in range(4)]
+        return out
 
     out = {'state': counts(v), 'county': {}, 'cd': {}, 'hd': {}, 'sd': {}, 'precinct': {}}
     if a.modified.strip():

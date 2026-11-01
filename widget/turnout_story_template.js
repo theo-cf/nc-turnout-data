@@ -160,6 +160,8 @@
       S + ' .tt-xtw{overflow-x:auto}' + S + ' .tt-xt{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}' + S + ' .tt-xt th{text-align:left;font-weight:700;padding:7px 6px;border-top:1px solid #ECE7DC}' + S + ' .tt-xt thead th{text-align:right;font-size:12px;color:var(--mute);border-top:0}',
       S + ' .tt-xt td{text-align:right;padding:7px 6px;border-top:1px solid #ECE7DC}' + S + ' .tt-xt td b{display:block;font-size:15px}' + S + ' .tt-xt td span{display:block;font-size:12px;color:var(--mute)}',
       '@media (max-width:600px){' + S + ' .tt-lr{grid-template-columns:1fr auto;gap:4px 10px}' + S + ' .tt-lb{grid-column:1/-1;grid-row:2}}',
+      S + ' .tt-pxt{margin-top:10px}' + S + ' .tt-pxt tbody th{font-size:14px;white-space:nowrap}' + S + ' .tt-pxt th i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:0}' + S + ' .tt-pxt td span{white-space:nowrap}' + S + ' .tt-pxt small.tt-pxv{display:none}',
+      '@media (max-width:600px){' + S + ' .tt-pxt tbody th{white-space:normal;font-size:13px}' + S + ' .tt-pxt td,' + S + ' .tt-pxt th{padding:7px 4px}' + S + ' .tt-pxt .tt-pxvc{display:none}' + S + ' .tt-pxt small.tt-pxv{display:block;font-weight:400;font-size:12px;color:var(--mute);margin-top:2px}' + S + ' .tt-pxt td span{white-space:normal}' + S + ' .tt-pxt thead th{font-size:11px}}',
       S + ' .tt-cands{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;font-size:14px;margin:2px 0 12px;color:var(--ink)}' + S + ' .tt-cands .tt-candl{font:700 11px Inter,sans-serif;letter-spacing:.5px;text-transform:uppercase;color:var(--mute)}' +
         S + ' .tt-cands .tt-cp{display:inline-block;min-width:17px;padding:1px 4px;margin-right:5px;border-radius:2px;color:#fff;font:700 11px Inter,sans-serif;text-align:center;vertical-align:1px}' + S + ' .tt-cands small{color:var(--mute);font-size:12px;margin-left:4px}',
       S + ' .tt-rkpast{display:block;font-size:11px;color:var(--mute);font-weight:400}' + S + ' .tt-rkx{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}' + S + ' .tt-rkx .tt-rkxg{flex:1 0 100%;font:700 10px Inter,sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--mute);margin-top:4px}' +
@@ -806,7 +808,7 @@
       if (yrsAvail.length > 1) {
         // Who has voted: the years sit in its "Compared with the same point in ____" heading when it has one, else as a control row
         var ws = view.querySelector(':scope > .tt-whosec');
-        if (ws) {
+        if (ws && !ws.querySelector('.tt-pxt')) {   // the party filter and gender and method views have no past years
           var hh = ws.querySelector('.tt-shh'), m = hh && /^(Compared with (?:the same point in|early and mail voting in)) (\d{4})$/.exec(hh.textContent.trim());
           if (m) hh.innerHTML = esc(m[1]) + ' <span class="tt-who tt-yin" role="group" aria-label="Compare with">' + yrBtns(true) + '</span>';
           else { var rows = ws.querySelectorAll('.tt-crow'); var last = rows[rows.length - 1] || ws.querySelector('.tt-sech'); last.insertAdjacentHTML('afterend', crow('Compare with', seg(yrBtns(true), 'Compare with'))); }
@@ -852,6 +854,7 @@
       Array.prototype.forEach.call(view.querySelectorAll('.tt-allsites,.tt-allsites2'), function (b) { b.addEventListener('click', function () { site = null; show(); }); });
       Array.prototype.forEach.call(view.querySelectorAll('.tt-alldays'), function (b) { b.addEventListener('click', function () { dayI = null; var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       Array.prototype.forEach.call(view.querySelectorAll('[data-left]'), function (b) { b.addEventListener('click', function () { leftMode = b.getAttribute('data-left') === 'true'; var y = window.scrollY; show(); window.scrollTo(0, y); }); });
+      Array.prototype.forEach.call(view.querySelectorAll('[data-whop]'), function (b) { b.addEventListener('click', function () { whoP = +b.getAttribute('data-whop'); var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       Array.prototype.forEach.call(view.querySelectorAll('.tt-who button[data-who]'), function (b) { b.addEventListener('click', function () { who = b.getAttribute('data-who'); var y = window.scrollY; show(); window.scrollTo(0, y); }); });
       var epa = view.querySelector('.tt-edpall'); if (epa) epa.addEventListener('click', function () { edpAll = !edpAll; var y = window.scrollY; show(); window.scrollTo(0, y); });
       Array.prototype.forEach.call(view.querySelectorAll('[data-edpy],[data-edpm]'), function (b) { b.addEventListener('click', function () {
@@ -1921,7 +1924,7 @@
       });
       return h2cP;
     }
-    var WHO_SUB = { party: 'By party registration', age: 'By age', race: 'By race and ethnicity', prop: 'By voting history (propensity)', new: 'First-time registrants' };
+    var WHO_SUB = { party: 'By party registration', age: 'By age', race: 'By race and ethnicity', gender: 'By gender', method: 'By how they voted', prop: 'By voting history (propensity)', new: 'First-time registrants' };
     var KEEP = '.tt-eh, .tt-es, .tt-shh, .tt-lede, .tt-pq, .tt-pqs, .tt-ssec, .tt-pbar, .tt-pleg';
     var DL_DROP = '.tt-hint, .tt-secbar, .tt-calhint, .tt-pace, .tt-caltip, .tt-dlrow, .tt-csvdl, .tt-zctl, .tt-tostate, .tt-about, .tt-q, .tt-crow, .tt-yp, .tt-who, .tt-leftsw, .tt-more, .tt-linkbtn, .tt-step, .tt-shdl, .tt-secdl, .tt-whomsg, .tt-cure, .tt-yrhint, .tt-foldall';
     function secPng(btn) {
@@ -2844,7 +2847,7 @@
       var x = r.dd[dayI], d = EV_DAYS[dayI], pty = x.slice(0, 4), age = x.slice(4, 8), lp = x.length > 8 ? x.slice(8, 11) : null;
       var vc = pty.reduce(function (a2, b2) { return a2 + b2; }, 0), hasProp = !!lp, xr = r.ddr && r.ddr[dayI], hasRace = !!xr;
       var hasNewD = !!(r.dn && r.dn[dayI]);
-      if ((!hasProp && who === 'prop') || (!hasRace && who === 'race') || (!hasNewD && who === 'new')) who = 'party';
+      if ((!hasProp && who === 'prop') || (!hasRace && who === 'race') || (!hasNewD && who === 'new') || who === 'gender' || who === 'method') who = 'party';
       var isAge = who === 'age', label = WDL[dow(d)] + ', ' + apDate(d), nday = 'day ' + (dayI + 1) + ' of early voting';
       var tb = function (k, l) { return '<button type="button" data-who="' + k + '" aria-pressed="' + (who === k) + '"' + (who === k ? ' class="on"' : '') + '>' + l + '</button>'; };
       var t = '<div class="tt-sec tt-whosec"><div class="tt-sech">Who voted early on ' + label + '</div>' + crow('By', '<span class="tt-who tt-whotab" role="group" aria-label="Break down by">' + tb('party', 'Party') + tb('age', 'Age') + (hasRace ? tb('race', 'Race') : '') + (hasProp ? tb('prop', 'Propensity') : '') + (hasNewD ? tb('new', 'New voters') : '') + '</span>') +
@@ -3240,22 +3243,116 @@
       } else t += rows(PARTY.map(function (p, j) { return [p[0], 'var(--p' + p[1] + ')', r.rpty[j] - r.pty[j], r.rpty[j], null]; }));
       return t + '<p class="tt-pfoot">Registered voters are active and inactive voters in the State Board’s weekly registration file. Voters who register during early voting are added the following week.</p>';
     }
+
+    /* Party filter and the gender and method views of "Who has voted": votes by party crossed with age, race, ethnicity, gender,
+       method, propensity and new voters ('pa', 'prc', 'pe', 'pg', 'pm', 'pv', 'pnv'), with registered voters for turnout ('rpa', 'rprc',
+       'rpe', 'rpg', 'pr', 'pnwr'), and by gender for all voters ('gn', 'ag'; 'rgn', 'rag'). 2026 only: no past-year comparison yet. */
+    var whoP = -1;   // -1 all voters; 0 Democrats, 1 Republicans, 2 unaffiliated
+    var PXN = [['Democrats', 'Democratic', 'var(--pd)'], ['Republicans', 'Republican', 'var(--pr)'], ['Unaffiliated voters', 'unaffiliated', 'var(--pu)']];
+    var GEN = [['Women', '#7A5C99'], ['Men', '#3C8D7E'], ['Gender not listed', '#CFC9BC']];
+    var RCOL = { B: '#253551', W: '#8C9AB3', A: '#3C8D7E', I: '#B07A1F', O: '#7A5C99', M: '#C9A227', P: '#5B8C5A', U: '#CFC9BC' };
+    function hasPx(r) { return !!(r && r.pa && r.pg && !r.site); }
+    function pxCtl(r) {
+      if (!hasPx(r)) return '';
+      return crow('Party', seg(bt('data-whop', '-1', 'All', whoP < 0) + PXN.map(function (p, j) { return bt('data-whop', String(j), ['Dem.', 'Rep.', 'Unaff.'][j], whoP === j); }).join(''), 'Show one party’s voters'));
+    }
+    function pc1(x) { return x === null || x === undefined || !isFinite(x) ? '—' : x.toFixed(1) + '%'; }
+    /* list: [label, color, votes, registered (or null), all voters' share of votes for comparison (or null)] */
+    function pxTable(list, o) {
+      list = list.filter(function (x) { return x[2] > 0 || (x[3] || 0) > 0; });
+      var tot = list.reduce(function (a, x) { return a + x[2]; }, 0), hasReg = list.some(function (x) { return x[3]; }), hasCmp = list.some(function (x) { return x[4] !== null && x[4] !== undefined; });
+      if (o.left) {
+        return '<div class="tt-left">' + list.filter(function (x) { return x[3] > 0; }).map(function (x) {
+          var pc = Math.max(0, x[3] - x[2]) / x[3] * 100;
+          return '<div class="tt-lr"><span class="tt-ll"><i style="background:' + x[1] + '"></i>' + x[0] + '</span><span class="tt-lb"><i style="width:' + pc.toFixed(1) + '%;background:' + x[1] + '"></i></span>' +
+            '<span class="tt-lv"><b>' + fmt(Math.max(0, x[3] - x[2])) + '</b> ' + pc.toFixed(1) + '% left</span></div>';
+        }).join('') + '</div>';
+      }
+      var bar = '<div class="tt-pbar" role="img" aria-label="' + esc(o.of) + '">' + list.map(function (x) { return x[2] ? '<span class="tt-ps" style="width:' + (x[2] / (tot || 1) * 100).toFixed(2) + '%;background:' + x[1] + '"></span>' : ''; }).join('') + '</div>';
+      return bar + '<div class="tt-xtw"><table class="tt-xt tt-pxt"><thead><tr><th></th><th class="tt-pxvc">Votes</th><th>Share ' + esc(o.of) + '</th>' + (hasReg ? '<th>Turnout</th>' : '') + '</tr></thead><tbody>' +
+        list.map(function (x) {
+          var sh = tot ? x[2] / tot * 100 : null, tr = x[3] ? Math.min(100, x[2] / x[3] * 100) : null;
+          return '<tr><th><i style="background:' + x[1] + '"></i>' + x[0] + '<small class="tt-pxv">' + fmt(x[2]) + ' votes</small></th><td class="tt-pxvc">' + fmt(x[2]) + '</td><td><b>' + pc1(sh) + '</b>' + (hasCmp && x[4] !== null && x[4] !== undefined ? '<span>' + pc1(x[4]) + ' ' + esc(o.cmp) + '</span>' : '') + '</td>' +
+            (hasReg ? '<td><b>' + pc1(tr) + '</b>' + (x[3] ? '<span>of ' + fmt(x[3]) + '</span>' : '') + '</td>' : '') + '</tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+    function pxShare(arr, i) { var t = (arr || []).reduce(function (a, x) { return a + x; }, 0); return t && arr ? arr[i] / t * 100 : null; }
+    function pxBlock(r) {
+      var p = whoP, P = p >= 0 ? PXN[p] : null, left = leftMode && !!r.rpty, t = '';
+      var of = P ? 'of ' + P[1] + ' votes' : 'of votes', cmp = 'of all voters';
+      var head = function (q, sub) { t += '<p class="tt-pq">' + q + '</p><p class="tt-pqs">' + sub + '</p>'; };
+      var lead = left ? (P ? P[0] + ' who haven’t voted yet' : 'Registered voters who haven’t voted yet') : (P ? P[0] + ' who have voted' : 'Who has voted');
+      if (who === 'age' && P) {
+        head(lead + ', by age', left ? 'Registered ' + P[1] + ' voters with no accepted ballot so far.' : 'Each age group’s share ' + of + ', next to its share ' + cmp + ', and turnout among the party’s registered voters in that age group.');
+        t += pxTable(AGE.map(function (a, j) { return [a[0], 'var(--' + a[1] + ')', r.pa[p][j], r.rpa ? r.rpa[p][j] : null, pxShare(r.age, j)]; }), { of: of, cmp: cmp, left: left });
+      } else if (who === 'race' && P) {
+        var L = [];
+        RCODES.forEach(function (code, j) { var rg = r.rprc ? r.rprc[p][j] : null; if ((rg || 0) >= 100 || r.prc[p][j] >= 20) L.push([RLAB[code], RCOL[code] || '#8C9AB3', r.prc[p][j], rg, pxShare(r.race, j)]); });
+        L.sort(function (a, b) { return b[2] - a[2]; });
+        head(lead + ', by race', left ? 'Registered ' + P[1] + ' voters with no accepted ballot so far, by race as listed on voter registration.' : 'Race as listed on voter registration.');
+        t += pxTable(L, { of: of, cmp: cmp, left: left });
+        if (r.pe) {
+          t += '<p class="tt-pq tt-pq2">Hispanic or Latino ' + (p === 2 ? 'unaffiliated voters' : P[0]) + '</p><p class="tt-pqs">Ethnicity is a separate question on the registration form, so Hispanic and Latino voters are counted in the race rows above, too.</p>';
+          t += pxTable([['Hispanic or Latino', '#B07A1F', r.pe[p][0], r.rpe ? r.rpe[p][0] : null, pxShare(r.eth, 0)], ['Not Hispanic or Latino', '#8C9AB3', r.pe[p][1], r.rpe ? r.rpe[p][1] : null, pxShare(r.eth, 1)],
+            ['Ethnicity left blank', '#CFC9BC', r.pe[p][2], r.rpe ? r.rpe[p][2] : null, pxShare(r.eth, 2)]], { of: of, cmp: cmp, left: left });
+        }
+      } else if (who === 'gender') {
+        var gv = P ? r.pg[p] : r.gn, gr = P ? (r.rpg ? r.rpg[p] : null) : r.rgn;
+        head(lead + ', by gender', 'Gender as listed on voter registration' + (left ? '.' : ', with turnout among registered ' + (P ? P[1] + ' ' : '') + 'voters in each group.'));
+        t += pxTable(GEN.map(function (g, j) { return [g[0], g[1], gv[j], gr ? gr[j] : null, P ? pxShare(r.gn, j) : null]; }), { of: of, cmp: cmp, left: left });
+        if (!P && !left && r.ag) {   // the gender gap by age, for all voters
+          t += '<p class="tt-pq tt-pq2">The gender gap by age</p><p class="tt-pqs">Women’s share of each age group’s votes, and turnout for women and men.</p>' +
+            '<div class="tt-xtw"><table class="tt-xt tt-pxt"><thead><tr><th></th><th>Women’s share</th><th>Women’s turnout</th><th>Men’s turnout</th></tr></thead><tbody>' +
+            AGE.map(function (a, j) {
+              var v = r.ag[j], g = r.rag ? r.rag[j] : null, wm = v[0] + v[1];
+              return '<tr><th><i style="background:var(--' + a[1] + ')"></i>' + a[0] + '</th><td><b>' + pc1(wm ? v[0] / wm * 100 : null) + '</b></td><td>' + pc1(g && g[0] ? v[0] / g[0] * 100 : null) + '</td><td>' + pc1(g && g[1] ? v[1] / g[1] * 100 : null) + '</td></tr>';
+            }).join('') + '</tbody></table></div><p class="tt-pfoot">Women’s share leaves out voters with no gender listed.</p>';
+        }
+      } else if (who === 'method') {
+        var MC = [['Early in person', 'var(--navy)'], ['By mail', '#B07A1F']];
+        if (P) {
+          head(P[0] + ' who have voted, by how they voted', 'Accepted ballots only. A voter with an accepted early in-person ballot counts as an early voter.');
+          t += pxTable(MC.map(function (m, j) { return [m[0], m[1], r.pm[p][j], null, j ? (r.vc ? r.ml / r.vc * 100 : null) : (r.vc ? r.ev / r.vc * 100 : null)]; }), { of: of, cmp: cmp });
+        } else {
+          head('How each party has voted', 'Early in-person and mail votes by party registration. Accepted ballots only.');
+          t += '<div class="tt-xtw"><table class="tt-xt tt-pxt"><thead><tr><th></th><th>Early in person</th><th>By mail</th><th>Mail share</th></tr></thead><tbody>' +
+            PXN.map(function (q, j) { var a = r.pm[j], n = a[0] + a[1]; return '<tr><th><i style="background:' + q[2] + '"></i>' + q[0] + '</th><td>' + fmt(a[0]) + '</td><td>' + fmt(a[1]) + '</td><td><b>' + pc1(n ? a[1] / n * 100 : null) + '</b></td></tr>'; }).join('') +
+            '<tr><th>All voters</th><td>' + fmt(r.ev) + '</td><td>' + fmt(r.ml) + '</td><td><b>' + pc1(r.vc ? r.ml / r.vc * 100 : null) + '</b></td></tr></tbody></table></div>';
+        }
+      } else if (who === 'prop' && P && r.pv) {
+        head(lead + ', by voting history', left ? 'Registered ' + P[1] + ' voters with no accepted ballot so far.' : 'Low-propensity voters voted in no more than one of the last three November elections, or voted in 2020 and 2024 but skipped the 2022 midterm.');
+        t += pxTable([['Low-propensity', 'var(--navy)', r.pv[p * 2], r.pr ? r.pr[p * 2] : null, null], ['Regular voters', '#8C9AB3', r.pv[p * 2 + 1], r.pr ? r.pr[p * 2 + 1] : null, null]], { of: of, cmp: cmp, left: left });
+      } else if (who === 'new' && P && r.pnv) {
+        var all = r.pty[p], nw = r.pnv[p], nwr = r.pnwr ? r.pnwr[p] : null;
+        head(lead + ': first-time registrants', 'People who registered in North Carolina for the first time this year' + (left ? ' and haven’t voted yet.' : ', next to everyone else in the party.'));
+        t += pxTable([['First-time registrants', 'var(--navy)', nw, nwr, r.nv && r.vc ? r.nv[0] / r.vc * 100 : null], ['Everyone else', '#CFC9BC', all - nw, nwr !== null && r.rpty ? r.rpty[p] - nwr : null, r.nv && r.vc ? (r.vc - r.nv[0]) / r.vc * 100 : null]], { of: of, cmp: cmp, left: left });
+      } else return '';
+      return t + '<p class="tt-pfoot">' + (left ? 'Registered voters are active and inactive voters in the State Board’s weekly registration file. ' : '') + 'Party registration, not vote choice. 2026 only: no comparison with past years for this breakdown yet.</p>';
+    }
     function partyBlock(r) {
       if (!r.vc) return '';
       if (dayOn() && !r.site && r.dd && r.dd[dayI]) return dayBlock(r);
       var hasAge = !!(r.age && r.age.some(function (x) { return x; }));
       var hasProp = !!r.lp && !r.site, hasRace = !!(r.race && r.race.some(function (x) { return x; }));
       var hasNew = !!(r.nv && r.nwr != null && !r.site && !FINAL);
-      if ((!hasAge && who === 'age') || (!hasProp && who === 'prop') || (!hasRace && who === 'race') || (!hasNew && who === 'new')) who = 'party';
+      var px = hasPx(r);
+      if (!px) whoP = -1;
+      if ((!hasAge && who === 'age') || (!hasProp && who === 'prop') || (!hasRace && who === 'race') || (!hasNew && who === 'new') || (!px && (who === 'gender' || who === 'method'))) who = 'party';
+      if (whoP >= 0 && who === 'party') who = 'age';
+      if (whoP >= 0 && who === 'new' && !r.pnv) who = 'age';
       var isAge = who === 'age';
       var tb = function (k, label) { return '<button type="button" data-who="' + k + '" aria-pressed="' + (who === k) + '"' + (who === k ? ' class="on"' : '') + '>' + label + '</button>'; };
-      var toggle = !hasAge && !hasProp ? '' : '<span class="tt-who tt-whotab" role="group" aria-label="Break down by">' + tb('party', 'Party') + (hasAge ? tb('age', 'Age') : '') + (hasRace ? tb('race', 'Race') : '') + (hasProp ? tb('prop', 'Propensity') : '') + (hasNew ? tb('new', 'New voters') : '') + '</span>';
+      var toggle = !hasAge && !hasProp ? '' : '<span class="tt-who tt-whotab" role="group" aria-label="Break down by">' + (whoP < 0 ? tb('party', 'Party') : '') + (hasAge ? tb('age', 'Age') : '') + (hasRace ? tb('race', 'Race') : '') +
+        (px ? tb('gender', 'Gender') + tb('method', 'Method') : '') + (hasProp ? tb('prop', 'Propensity') : '') + (hasNew && (whoP < 0 || r.pnv) ? tb('new', 'New voters') : '') + '</span>';
       var head = '<div class="tt-sec tt-whosec tt-nodayp"><div class="tt-sech">Who has voted' + (r.site ? ' here' : '') + '</div>' +
         (r.site ? '<div class="tt-calsub"><span>Showing <b>' + esc(r.site) + '</b> only</span><button type="button" class="tt-linkbtn tt-allsites2">Show all of ' + esc(r.county) + ' County</button></div>' : '');
       if (r.site && r.vc < SITE_MIN) return head + '<p class="tt-pnote" style="font-size:14px;color:var(--soft)">Too few early votes here so far (' + fmt(r.vc) + ') to show a breakdown. It appears once a site reaches ' + SITE_MIN + '.</p></div>';
       var canLeft = !r.site && !FINAL && !!r.rpty;   // "Haven't voted yet": registered voters with no accepted ballot so far
       if (canLeft) head += crow('View', seg(bt('data-left', 'false', 'Voted so far', !leftMode) + bt('data-left', 'true', 'Haven\u2019t voted yet', leftMode), 'Show', 'tt-leftsw'));
+      head += pxCtl(r);
       if (toggle) head += crow('By', toggle + (who === 'prop' ? lpQ() : ''));
+      var pxv = px && (whoP >= 0 || who === 'gender' || who === 'method') ? pxBlock(r) : '';
+      if (pxv) return head + pxv + '</div>';
       if (!(canLeft && leftMode) && who !== 'new') head += numCtl();
       if (canLeft && leftMode) return head + leftBlock(r) + '</div>';
       if (who === 'prop') return head + propBlock(r) + '</div>';
@@ -3644,10 +3741,10 @@
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
     /* The rest of the view rides along after the place, so a shared link opens on the same map, year, day and table:
        #nc-turnout=cd:4&map=county&area=in&show=lpgap&chg=1&vs=2022&day=6&rank=hd&rkchg=1&who=age */
-    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.'), fold: '', edpy: '2022', edpm: 'share' };
+    var VIEW_DEF = { byp: '0', dm: 'only', map: 'county', area: 'in', show: 'party', race: 'B.turn', chg: '0', vs: '2022', day: '', rank: 'county', rkchg: '0', who: 'party', cal: '', rkcols: RK_MAIN.join('.'), fold: '', edpy: '2022', edpm: 'share', wp: '' };
     function viewNow() {
       return { byp: calParty ? '1' : '0', dm: dayMode, map: mapTab, area: mapScope, show: mapMode, race: raceG + '.' + raceM, chg: mapChg ? '1' : '0', vs: vs, day: dayI === null ? '' : String(dayI + 1),
-        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.'), fold: Object.keys(folded).sort().join('.'), edpy: edpYr, edpm: edpM };
+        rank: rkGeo, rkchg: rkChg ? '1' : '0', who: who, cal: calYrs.slice().sort().join('.'), rkcols: rkCols.join('.'), fold: Object.keys(folded).sort().join('.'), edpy: edpYr, edpm: edpM, wp: whoP >= 0 ? 'dru'[whoP] : '' };
     }
     function hashFull() {
       var v = viewNow(), extra = Object.keys(VIEW_DEF).filter(function (k) { return v[k] !== VIEW_DEF[k] && !(k === 'race' && v.show !== 'race'); })
@@ -3669,6 +3766,7 @@
       if (q.rkchg === '1') rkChg = true;
       if (q.rkcols) { var kc = q.rkcols.split('.').filter(function (x) { return RK_MAIN.indexOf(x) >= 0 || rkX(x); }); if (kc.length) rkCols = kc; }
       if (q.who && WHO_SUB[q.who]) who = q.who;
+      if (q.wp && 'dru'.indexOf(q.wp) >= 0 && q.wp.length === 1) whoP = 'dru'.indexOf(q.wp);
       if (q.edpy && ED_YRS.indexOf(q.edpy) >= 0) edpYr = q.edpy;
       if (q.edpm && EDP_M[q.edpm]) edpM = q.edpm;
       if (q.fold) q.fold.split('.').forEach(function (k) { if (/^[a-z]+$/.test(k)) folded[k] = 1; });
