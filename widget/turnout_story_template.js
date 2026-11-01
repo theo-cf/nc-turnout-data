@@ -246,7 +246,7 @@
       S + ' .tt-edp{margin-top:26px;padding-top:18px;border-top:1px solid var(--rule)}' + S + ' .tt-edp .tt-shh{margin-bottom:10px}' +
       S + ' .tt-edpmap{position:relative;margin:4px 0 0}' + S + ' .tt-edpmap svg{display:block;width:100%;height:auto;max-height:560px}' + S + ' .tt-edpmap path{cursor:pointer}' + S + ' .tt-edpmap path.on{stroke:#1a1a1a!important;stroke-width:2px!important;vector-effect:non-scaling-stroke}' +
       S + ' .tt-edpleg{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;font-size:12px;color:var(--mute);margin:8px 0 0}' + S + ' .tt-edpleg .bar{display:inline-block;width:150px;height:10px;border:1px solid var(--rule)}' + S + ' .tt-edpleg i{display:inline-block;width:12px;height:12px;border:1px solid var(--rule);vertical-align:-2px;margin-right:4px}' +
-      S + ' .tt-edpt th{white-space:normal!important;vertical-align:bottom}' + S + ' .tt-edpt th .tt-sbtn{white-space:normal;text-align:inherit}' + S + ' .tt-edpt td:first-child{white-space:normal;min-width:110px}' + S + ' .tt-edpcap{min-height:20px;font-size:14px;margin:8px 0 14px;color:var(--ink)}' +
+      S + ' .tt-edpt th{white-space:normal!important;vertical-align:bottom}' + S + ' .tt-edpt th .tt-sbtn{white-space:normal;text-align:inherit}' + S + ' .tt-edpt td:first-child{white-space:normal;min-width:110px}' + S + ' .tt-natab td:first-child{white-space:normal;overflow-wrap:anywhere}' + S + ' .tt-natab{table-layout:auto;max-width:100%}' + S + ' .tt-natab th{white-space:normal!important;vertical-align:bottom}' + S + ' .tt-cal>.tt-d:last-child .tt-v{text-align:right;direction:rtl}' + S + ' .tt-cal>.tt-d:first-child .tt-v{text-align:left}' + S + ' .tt-rkt tr.tt-ednow td{background:#F7F4EC}' + S + ' .tt-edpcap{min-height:20px;font-size:14px;margin:8px 0 14px;color:var(--ink)}' +
       S + ' .tt-foldall{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 16px;margin:26px 0 -24px}' +
       S + ' .tt-foldall button{font:600 12px Inter,sans-serif;padding:3px 2px;border:0;background:none;color:var(--navy);text-decoration:underline;text-underline-offset:2px;cursor:pointer}',
       S + ' .tt-cal{display:grid;grid-template-columns:repeat(17,minmax(0,1fr));gap:3px;align-items:end;outline:none}',
@@ -3481,6 +3481,9 @@
         var ed = b[0], em = [0, 1, 2, 3].map(function (j) { return b[1][j] + b[2][j]; }), nE = dayN(ed), nM = dayN(em);
         return { y: y, ed: ed, em: em, nE: nE, nM: nM, all: nE + nM }; }).filter(function (q) { return q && q.all; });
       if (!rows.length) return '';
+      // 2026 so far: early and mail votes by party now; Election Day votes once the State Board posts them (no party until the final voter history)
+      var pOK = r.pty && sum(r.pty) === r.vc, edN = r.ed === null || r.ed === undefined || !HAS_ED ? null : r.ed;
+      rows.unshift({ y: '2026', cur: true, ed: null, em: pOK ? r.pty : null, nE: edN, nM: pOK ? r.vc : 0, all: tot(r) });
       var pc = function (a, j, n) { return V ? fmt(a[j]) : n ? (a[j] / n * 100).toFixed(1) + '%' : '—'; };
       var net = function (a, n) { var m = a[0] - a[1];
         if (V) return '<span style="color:' + (m > 0 ? 'var(--pd)' : m < 0 ? 'var(--pr)' : 'var(--ink)') + ';font-weight:700">' + (!m ? 'even' : (m > 0 ? 'D' : 'R') + ' +' + fmt(Math.abs(m))) + '</span>';
@@ -3489,15 +3492,17 @@
       if (m22 && m22.nE && m22.nM) { var a = (m22.ed[0] - m22.ed[1]) / m22.nE * 100, b = (m22.em[0] - m22.em[1]) / m22.nM * 100;
         lede = '<p class="tt-lede">In 2022, the last midterm, <b>' + fmt(m22.nE) + '</b> people voted on Election Day here, <b>' + (m22.nE / m22.all * 100).toFixed(1) + '%</b> of all votes. By party registration, Election Day voters were <b>' + dr(a, 0) + '</b>; early and mail voters were <b>' + dr(b, 0) + '</b>.</p>'; }
       var th = function (s, cls) { return '<th' + (cls ? ' class="' + cls + '"' : '') + ' style="padding:7px 6px">' + s + '</th>'; };
-      return '<div class="tt-sec tt-edh" data-csv="edh"><div class="tt-sech">Election Day in past years<span>2018–2024, final</span></div>' + lede + numCtl() +
+      return '<div class="tt-sec tt-edh" data-csv="edh"><div class="tt-sech">Election Day in past years<span>2018–2024 final \u00B7 2026 so far</span></div>' + lede + numCtl() +
         '<div class="tt-rkw"><table class="tt-rkt tt-fit"><thead><tr><th style="text-align:left;padding:7px 6px">Year</th>' + th('Election Day votes') + th('Share of all votes') +
         th('Dem.', 'tt-hide-s') + th('Rep.', 'tt-hide-s') + th('Unaff.', 'tt-hide-s') + th('Other', 'tt-hide-s') + th('D − R') + th('Early &amp; mail D − R') + '</tr></thead><tbody>' +
         rows.map(function (q) {
-          return '<tr><td style="text-align:left">' + q.y + '</td><td><b>' + fmt(q.nE) + '</b></td><td>' + (q.nE / q.all * 100).toFixed(1) + '%</td>' +
-            [0, 1, 2, 3].map(function (j) { return '<td class="tt-hide-s">' + pc(q.ed, j, q.nE) + '</td>'; }).join('') +
-            '<td>' + net(q.ed, q.nE) + '</td><td>' + net(q.em, q.nM) + '</td></tr>';
+          var na = '<span class="tt-na">\u2014</span>', hasE = q.nE !== null;
+          return '<tr' + (q.cur ? ' class="tt-ednow"' : '') + '><td style="text-align:left">' + (q.cur ? '<b>2026</b>' : q.y) + '</td><td>' + (hasE ? '<b>' + fmt(q.nE) + '</b>' : na) + '</td><td>' + (hasE && q.all ? (q.nE / q.all * 100).toFixed(1) + '%' : na) + '</td>' +
+            [0, 1, 2, 3].map(function (j) { return '<td class="tt-hide-s">' + (q.ed ? pc(q.ed, j, q.nE) : na) + '</td>'; }).join('') +
+            '<td>' + (q.ed ? net(q.ed, q.nE) : na) + '</td><td>' + (q.em && q.nM ? net(q.em, q.nM) : na) + '</td></tr>';
         }).join('') + '</tbody></table></div>' +
-        '<p class="tt-pnote">Election Day votes are ballots cast at the polls on Election Day: in person, curbside, provisional and transfer. ' + (V ? 'Party columns are Election Day votes by party; D − R is Democratic minus Republican votes.' : 'Party columns are shares of Election Day votes.') +
+        '<p class="tt-pnote">2026: early and mail votes so far. Its Election Day columns stay blank until the State Board posts Election Day counts' + (HAS_ED ? '; party breakdowns of Election Day votes come with the final voter history, weeks after the election' : '') + '. ' +
+        'Election Day votes are ballots cast at the polls on Election Day: in person, curbside, provisional and transfer. ' + (V ? 'Party columns are Election Day votes by party; D − R is Democratic minus Republican votes.' : 'Party columns are shares of Election Day votes.') +
         ' Final counts from the State Board’s voter history files. Party is registration, not vote choice.' +
         (state.geo === 'cd' || state.geo === 'hd' || state.geo === 'sd' ? ' Past years use today’s district lines: each past precinct is counted in the district that holds most of its voters.' : '') + '</p>' +
         '<div class="tt-dlrow">' + csvBtn() + '</div>' + edpBlock(r) + '</div>';
