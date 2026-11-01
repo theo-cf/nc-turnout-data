@@ -3283,7 +3283,7 @@
       var head = function (q, sub) { t += '<p class="tt-pq">' + q + '</p><p class="tt-pqs">' + sub + '</p>'; };
       var lead = left ? (P ? P[0] + ' who haven’t voted yet' : 'Registered voters who haven’t voted yet') : (P ? P[0] + ' who have voted' : 'Who has voted');
       if (who === 'age' && P) {
-        head(lead + ', by age', left ? 'Registered ' + P[1] + ' voters with no accepted ballot so far.' : 'Each age group’s share ' + of + ', next to its share ' + cmp + ', and turnout among the party’s registered voters in that age group.');
+        head(lead + ', by age', left ? 'Registered ' + P[1] + ' voters with no accepted ballot so far.' : 'Each age group’s share ' + of + ', next to its share ' + cmp + ', and turnout among registered ' + P[1] + ' voters in that age group.');
         t += pxTable(AGE.map(function (a, j) { return [a[0], 'var(--' + a[1] + ')', r.pa[p][j], r.rpa ? r.rpa[p][j] : null, pxShare(r.age, j)]; }), { of: of, cmp: cmp, left: left });
       } else if (who === 'race' && P) {
         var L = [];
