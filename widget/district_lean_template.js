@@ -224,7 +224,7 @@
     return null;
   }
   function scaleMax(k) { return layerOf(k) ? layerOf(k).max : 12; }
-  function isBg(r) { return r.lean >= -10 && r.lean <= 5; }
+  function isBg(r) { return r.lean >= -5 && r.lean <= 5; }
   function shown(r) { return ST.s === 'all' || isBg(r); }
 
   /* ---- page ---- */
@@ -237,7 +237,7 @@
     var h = '<div class="dl-crow"><span class="dl-lab">Districts</span>' + seg('data-c', [['cd', 'Congress'], ['hd', 'NC House'], ['sd', 'NC Senate']], ST.c, 'Districts') + '</div>' +
       '<div class="dl-crow"><span class="dl-lab">Map shows</span>' + seg('data-l', LAYERS.map(function (x) { return [x.k, x.name]; }), ST.layer, 'Map layer') + '</div>' +
       '<div class="dl-crow"><span class="dl-lab">Compare</span>' + seg('data-y', [['now', 'As of now'], ['22', 'Compared to 2022']], ST.y, 'Compare', !!Lr.no22) + qBtn('y22') + (Lr.no22 ? '<span class="dl-off">' + Lr.no22 + '</span>' : '') + '</div>' +
-      '<div class="dl-crow"><span class="dl-lab">Show</span>' + seg('data-s', [['bg', 'Battleground (R+10 to D+5)'], ['all', 'All districts']], ST.s, 'Which districts') + '</div>' +
+      '<div class="dl-crow"><span class="dl-lab">Show</span>' + seg('data-s', [['bg', 'Battleground (R+5 to D+5)'], ['all', 'All districts']], ST.s, 'Which districts') + '</div>' +
       '<div class="dl-layer"><p class="dl-lname">' + esc(Lr.name) + (ST.y === '22' && !Lr.no22 ? ', compared to 2022' : '') + (ST.y === '22' && !Lr.no22 ? qBtn(Lr.defs.concat(['y22']).join('+')) : qBtn(Lr.defs.join('+'))) + '</p><p class="dl-ldef">' + esc(layerSub()) + '</p></div>' +
       '<div class="dl-mapw" id="' + SLUG + '-mw"><div class="dl-zc"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="re" class="t" hidden>Reset</button></div>' +
       '<a class="dl-mark"' + (PAGE_URL ? ' href="' + PAGE_URL + '"' : '') + ' target="_blank" rel="noopener"><img src="' + CF_LOGO + '" alt=""><span style="display:block"><b>Carolina Forward</b><span>' + CF_URL + '</span></span></a>' +
@@ -268,7 +268,7 @@
     else if (k === 'pp') { lo = 'Redder by ' + mx + '+ pts'; hi = 'Bluer by ' + mx + '+ pts'; }
     else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; }
     else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
-    el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (ST.s === 'bg' ? '<span class="chip"><i></i>Outside R+10 to D+5</span>' : '') ;
+    el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (ST.s === 'bg' ? '<span class="chip"><i></i>Outside R+5 to D+5</span>' : '') ;
   }
 
   /* ---- map ---- */
@@ -384,7 +384,7 @@
       return (typeof x === 'string' ? x.localeCompare(y) : x - y) * ST.sort.d || a.d - b.d;
     });
     lastRows = rows;
-    mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+10 to D+5). ') +
+    mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+5 to D+5). ') +
       (V ? (y22 ? 'Numbers are the change in net votes (Democrats minus Republicans) since the same day of early voting in 2022. ' : 'Numbers are net votes: Democrats minus Republicans. ') + 'Registration is net registered voters; district lean and 2024 president stay in points. '
         : y22 ? 'Numbers are the change since the same point in 2022, relative to the state, in points. ' : '') + 'Click a column to sort, or a row to show it on the map.';
     var mx = {};   // the color's full strength: the biggest value in each column, so shading compares districts within a column
@@ -430,7 +430,7 @@
   function othOf(r) { return r.cand.some(function (c) { return c[1] !== 'D' && c[1] !== 'R'; }) ? 'Y' : 'N'; }
   function mapCsv() {   // every district in the chamber, all the numbers; points, positive = more Democratic
     var P = ' (pts, + = D)';
-    csv(['District', 'Counties', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?', 'Battleground (R+10 to D+5)', 'District lean' + P, 'Harris 2024 two-party %', 'Harris minus Trump 2024' + P, 'Votes so far', 'Registered voters',
+    csv(['District', 'Counties', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?', 'Battleground (R+5 to D+5)', 'District lean' + P, 'Harris 2024 two-party %', 'Harris minus Trump 2024' + P, 'Votes so far', 'Registered voters',
       'Party split' + P, 'Performance vs. presidential' + P,
       'Low-prop. margin' + P, 'Registration' + P, '2026 results vs. registration' + P, 'Party split, compared to 2022' + P, 'Low-prop. margin, compared to 2022' + P, 'Registration, compared to 2022' + P, '2026 results vs. registration, compared to 2022' + P],
       ROWS[ST.c].map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, r.cty.join('; '), i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r), isBg(r) ? 'Yes' : 'No', r.lean, r.h2, r.hm, r.votes, r.reg,
@@ -489,7 +489,7 @@
       var g = c.createLinearGradient(gx, 0, gx + rw, 0); g.addColorStop(0, '#B83A32'); g.addColorStop(0.5, '#F2F0EB'); g.addColorStop(1, '#2E6DB4'); c.fillStyle = g; c.fillRect(gx, ly - 6, rw, 14);
       c.fillStyle = '#3a3a3a'; c.fillText(hi, gx + rw + 12, ly + 6);
       var cx = gx + rw + 24 + c.measureText(hi).width; if (tall) { cx = P; ly += 34; }
-      if (ST.s === 'bg') { c.fillStyle = '#E4E1DA'; c.fillRect(cx, ly - 6, 14, 14); c.fillStyle = '#3a3a3a'; c.fillText('Outside R+10 to D+5', cx + 22, ly + 6); cx += 22 + c.measureText('Outside R+10 to D+5').width + 24; }
+      if (ST.s === 'bg') { c.fillStyle = '#E4E1DA'; c.fillRect(cx, ly - 6, 14, 14); c.fillStyle = '#3a3a3a'; c.fillText('Outside R+5 to D+5', cx + 22, ly + 6); cx += 22 + c.measureText('Outside R+5 to D+5').width + 24; }
       // source and name
       var sy = H - (tall ? 100 : 66); c.strokeStyle = '#d8d2c4'; c.lineWidth = 1; c.beginPath(); c.moveTo(P, sy - (tall ? 24 : 18)); c.lineTo(W - P, sy - (tall ? 24 : 18)); c.stroke();
       var lg = tall ? 48 : 38; if (logo) c.drawImage(logo, P, sy - 4, lg, lg);
