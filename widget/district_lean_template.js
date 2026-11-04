@@ -304,12 +304,12 @@
     wire(); drawMap(); legend(); table();
   }
   function footTxt() {
-    return (RES ? '2026 results: NC State Board of Elections unofficial count as of ' + resTime() + '; race calls by the AP and other news organizations, named in each district’s card. ' : '') +
+    return (RES ? '2026 results: NC State Board of Elections unofficial count' + (resTime() ? ' as of ' + resTime() : '') + '; race calls by the AP and other news organizations, named in each district’s card. ' : '') +
       'Votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting), compared with the same day of early voting in 2022, with 2022 voters placed on today’s district lines. Party is registration, not vote choice. Source: NC State Board of Elections. District lean: Carolina Forward analysis of 2024 Council of State results. 2024 presidential: Harris and Trump’s share of the two-party vote.';
   }
   function layerSub() {
     var k = ST.layer;
-    if (k === 'res') return 'Solid districts have been called by the AP or another major news organization, or had only one candidate on the ballot. Lighter districts show who leads in the State Board’s unofficial count, as of ' + resTime().replace(/\.$/, '') + '.';
+    if (k === 'res') return 'Solid districts have been called by the AP or another major news organization, or had only one candidate on the ballot. Lighter districts show who leads in the State Board’s unofficial count' + (resTime() ? ', as of ' + resTime().replace(/\.$/, '') : '') + '.';
     if (k === 'lean') return 'Blue districts vote more Democratic than North Carolina as a whole; red districts, more Republican.';
     if (k === 'pres') return 'Blue districts voted for Harris in 2024; red districts, for Trump. Darker means a bigger margin.';
     if (ST.y === '22') return 'Blue districts have moved toward Democrats since the same point in 2022, relative to the rest of the state; red districts, toward Republicans.';
