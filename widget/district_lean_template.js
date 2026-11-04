@@ -72,7 +72,7 @@
       S + ' .dl-mark b{display:block;font:700 13px/1.1 "Zilla Slab",Georgia,serif}',
       S + ' .dl-mark span{display:block;font:500 10px/1.2 Inter,sans-serif;color:var(--mute)}',
       S + ' .dl-leg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--soft)}',
-      S + ' .dl-won{display:inline-block;min-width:58px;box-sizing:border-box;text-align:center;padding:3px 9px;border-radius:999px;font-weight:700;font-size:12.5px;line-height:1.35;color:#fff;white-space:nowrap}' + S + ' .dl-rin{display:block;font-size:11px;color:var(--mute);margin-top:2px;white-space:nowrap}' + S + ' .dl-wn{font-weight:700}' + S + ' .dl-cv{margin-left:auto;padding-left:8px;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      S + ' .dl-won{font-weight:700;font-size:13px;line-height:1.35;white-space:nowrap}' + S + ' .dl-rin{display:block;font-size:11px;color:var(--mute);margin-top:2px;white-space:nowrap}' + S + ' .dl-wn{font-weight:700}' + S + ' .dl-cv{margin-left:auto;padding-left:8px;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}',
       S + ' .dl-leg .ramp{height:10px;flex:1 1 160px;min-width:100px;border-radius:1px}',
       S + ' .dl-leg .chip{display:inline-flex;align-items:center;gap:5px}',
       S + ' .dl-leg .chip i{width:12px;height:12px;border-radius:1px;background:var(--off);display:inline-block;border:1px solid var(--rule)}',
@@ -124,12 +124,12 @@
       S + ' table.dl-big tbody td:first-child,' + S + ' table.dl-big tr.dl-cols th:first-child{position:sticky;left:0;background:#fff;z-index:1;box-shadow:inset -1px 0 0 #EFEAE0}' + S + ' table.dl-big tr.dl-cols th:first-child{z-index:3}' + S + ' table.dl-big tr.dl-grp th:first-child{left:0;z-index:3}',
       S + ' .dl-dn{font-weight:700;color:var(--navy)}' + S + ' .dl-dc{display:block;font-size:11.5px;color:var(--mute);font-weight:400;margin-top:1px}',
       S + ' .dl-race{white-space:normal;min-width:190px;line-height:1.3}' + S + ' .dl-race div{margin:1px 0}' + S + ' .dl-race .dl-inc{margin-left:4px}' + S + ' .dl-race .dl-oth{font-size:11.5px;color:var(--mute)}',
-      S + ' .dl-pill{display:inline-block;min-width:58px;box-sizing:border-box;text-align:center;padding:3px 9px;border-radius:999px;font-weight:600;font-size:12.5px;line-height:1.35}',
+      S + ' .dl-pill{font-weight:600;font-size:13px;line-height:1.35}',   // table values: plain text colored by party, no background
       S + ' .dl-na{color:#b3ab9b}',
       S + ' .dl-held{display:inline-block;font:700 10px/16px Inter,sans-serif;color:#fff;border-radius:2px;padding:0 5px}',
       S + ' .dl-foot{font-size:12px;color:var(--mute);margin:0;max-width:80ch}',
       S + ' .dl-load{padding:40px 0;text-align:center;color:var(--mute)}',
-      '@media (max-width:600px){' + S + ' .dl-lab{min-width:0;flex:1 0 100%}' + S + ' table.dl-big tr.dl-grp{display:none}' + S + ' table.dl-big thead tr.dl-cols th{top:0}' + S + ' table.dl-big td{padding:8px 6px}' + S + ' .dl-pill{min-width:0;padding:3px 7px}' + S + ' .dl-lname{font-size:19px}' + S + ' .dl-mark span{display:none}' + S + ' .hide-s{display:none}' + S + ' table.dl-big td,' + S + ' table.dl-big th .sb{padding-left:5px;padding-right:5px}}'
+      '@media (max-width:600px){' + S + ' .dl-lab{min-width:0;flex:1 0 100%}' + S + ' table.dl-big tr.dl-grp{display:none}' + S + ' table.dl-big thead tr.dl-cols th{top:0}' + S + ' table.dl-big td{padding:8px 6px}' + S + S + ' .dl-lname{font-size:19px}' + S + ' .dl-mark span{display:none}' + S + ' .hide-s{display:none}' + S + ' table.dl-big td,' + S + ' table.dl-big th .sb{padding-left:5px;padding-right:5px}}'
     ].join('\n');
     document.head.appendChild(st);
   }
@@ -309,7 +309,7 @@
   }
   function footTxt() {
     return (RES ? '2026 results: NC State Board of Elections unofficial count' + (resTime() ? ' as of ' + resTime() : '') + '; race calls by the AP and other news organizations, named in each district’s card. ' : '') +
-      'Votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting), compared with the same day of early voting in 2022, with 2022 voters placed on today’s district lines. Party is registration, not vote choice. Source: NC State Board of Elections. District lean: Carolina Forward analysis of 2024 Council of State results. 2024 presidential: Harris and Trump’s share of the two-party vote.';
+      'Votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting), compared with the same day of early voting in 2022, with 2022 voters placed on today’s district lines. Party is registration, not vote choice. Source: NC State Board of Elections. District lean: Carolina Forward analysis of 2024 Council of State results. 2024 presidential: Harris’s margin over Trump in the two-party vote.';
   }
   function layerSub() {
     var k = ST.layer;
@@ -455,18 +455,16 @@
     mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+5 to D+5). ') +
       (V ? (y22 ? 'Numbers are the change in net votes (Democrats minus Republicans) since the same day of early voting in 2022. ' : 'Numbers are net votes: Democrats minus Republicans. ') + 'Registration is net registered voters; district lean and 2024 president stay in points. '
         : y22 ? 'Numbers are the change since the same point in 2022, relative to the state, in points. ' : '') + 'Click a column to sort, or a row to show it on the map.';
-    var mx = {};   // the color's full strength: the biggest value in each column, so shading compares districts within a column
-    cols.forEach(function (c) { if (c[3]) mx[c[0]] = Math.max(V && c[0] !== 'lean' && c[0] !== 'pres' ? 50 : 3, rows.reduce(function (m, r) { var v = tVal(r, c[0]); return v === null || isNaN(v) ? m : Math.max(m, Math.abs(v)); }, 0)); });
     var pill = function (v, k) {
       var s = tTxt(v, k); if (s === null) return '<span class="dl-na">—</span>';
-      var z = V && k !== 'lean' && k !== 'pres' ? Math.abs(v) < 0.5 : Math.abs(v) < 0.05, f = Math.min(1, Math.abs(v) / mx[k]);
-      var bg = z ? '#F2F0EB' : mix('#FFFFFF', v > 0 ? '#2E6DB4' : '#B83A32', 0.1 + 0.32 * f), fg = z ? '#1a1a1a' : v > 0 ? '#1d4a85' : '#8f2e28';
-      return '<span class="dl-pill" style="background:' + bg + ';color:' + fg + '">' + s + '</span>';
+      var z = V && k !== 'lean' && k !== 'pres' ? Math.abs(v) < 0.5 : Math.abs(v) < 0.05;
+      var fg = z ? '#3a3a3a' : v > 0 ? '#1d4a85' : '#8f2e28';
+      return '<span class="dl-pill" style="color:' + fg + '">' + s + '</span>';
     };
     var resCell = function (r) {
       if (!r.res) return '<span class="dl-na">—</span>';
       var sub = r.res.by === 'unopposed' ? 'Unopposed' : r.rm === null ? 'No votes yet' : (r.rw ? tTxt(tVal(r, 'res'), 'res') + ' · ' : '') + (r.res.in ? Math.round(r.rpct) + '% in' : 'Early & mail only');
-      if (r.rw) return '<span class="dl-won" style="background:' + (PCOL[r.rw] || '#6b6b6b') + '">✓ ' + esc(r.rw) + ' won</span><span class="dl-rin">' + sub + '</span>';
+      if (r.rw) return '<span class="dl-won" style="color:' + ({ D: '#1d4a85', R: '#8f2e28' }[r.rw] || '#3a3a3a') + '">✓ ' + esc(r.rw) + ' won</span><span class="dl-rin">' + sub + '</span>';
       return (r.rm === null ? '<span class="dl-na">—</span>' : pill(tVal(r, 'res'), 'res')) + '<span class="dl-rin">' + sub + '</span>';
     };
     var groups = []; cols.forEach(function (c) { var g = groups[groups.length - 1]; if (g && g[0] === c[3]) g[1]++; else groups.push([c[3], 1, c]); });

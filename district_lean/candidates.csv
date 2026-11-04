@@ -79,7 +79,6 @@ House,20,Tim,Merrick,N,D
 House,21,Ya,Liu,I,D
 House,21,Bryson,Johnson,N,R
 House,22,Wellie,Jackson,N,R
-House,22,Jimmy,Melvin,N,D
 House,23,Brent,Roberson,N,R
 House,23,Patricia,Smith,N,D
 House,24,Dante,Pittman,I,D
@@ -121,7 +120,6 @@ House,42,Mike,Colvin,I,D
 House,43,Diane,Wheatley,I,R
 House,43,Janene,Ackles,N,D
 House,44,Charles,Smith,I,D
-House,44,Jackie,Weyhenmeyer,N,R
 House,45,Frances,Jackson,I,D
 House,46,Brenden,Jones,I,R
 House,46,Brittany,Newton,N,D
@@ -140,7 +138,7 @@ House,53,Howard,Penny Jr.,I,R
 House,53,Kevin,Thurman,N,D
 House,53,Christopher,Sessions,N,L
 House,54,Robert,Reives,I,D
-House,55,Clancy,Baucom,N,D
+House,55,Clancy,Baucom,N,R
 House,55,John,Kirkpatrick IV,N,D
 House,56,Allen,Buansi,I,D
 House,56,Matthew,Clements,N,L
@@ -149,7 +147,7 @@ House,58,Amos,Quick,I,D
 House,59,Alan,Branson,I,R
 House,59,Elma,Hairston,N,D
 House,60,Amanda,Cook,I,D
-House,60,Jospeh,Perrotta,N,R
+House,60,Joseph,Perrotta,N,R
 House,61,"Mary ""Pricey""",Harrison,I,D
 House,62,John,Blust,I,R
 House,62,Shelly,Headen,N,D
@@ -169,7 +167,7 @@ House,69,Heidi,Sinsley,N,D
 House,70,Brian,Biggs,I,R
 House,70,Bill,McCaskill,N,D
 House,71,Kanika,Brown,I,D
-House,71,Matthew,Mena,N,G
+House,71,Mathew,Mena,N,G
 House,72,Amber,Baker,I,D
 House,73,Jonathan,Almond,I,R
 House,73,Thomas,Monks,N,D
@@ -224,7 +222,6 @@ House,99,Veleria,Levy,N,D
 House,100,Julia,Greenfield,I,D
 House,101,Carolyn,Logan,I,D
 House,102,Becky,Carney,I,D
-House,102,Daniel,Schmidt,N,R
 House,103,Laura,Budd,I,D
 House,104,Brandon,Lofton,I,D
 House,104,Trina,Boyd,N,R
@@ -273,7 +270,6 @@ Senate,8,William,Rabon,I,R
 Senate,8,Richard,Combes,N,D
 Senate,8,Tim,White,N,L
 Senate,9,Brent,Jackson,I,R
-Senate,9,Helen,Bronson,N,D
 Senate,10,Benton,Sawrey,I,R
 Senate,10,Pat,LeGrand,N,D
 Senate,10,Kevin,Terrett,N,L
