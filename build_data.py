@@ -271,10 +271,12 @@ out['state']['cure'] = int(len(cure))
 # Every returned ballot that was not accepted, statewide, by ballot type and State Board status: [status, ballots, voters with no
 # accepted ballot of any kind]. Shown in "How we count" so readers can see what happened to them.
 _na = df[df.st.notna() & ~df.st.isin(ACCEPTED) & (df.st != 'PENDING')]
+# Checked once here: isin against the accepted-voter set costs a second or more per call, and na_table runs for every place
+_na = _na.assign(novote=~_na.ncid.isin(accepted_ids))
 
 
 def na_table(sub):
-    return {t: [[st, int(len(g)), int((~g.drop_duplicates('ncid').ncid.isin(accepted_ids)).sum())]
+    return {t: [[st, int(len(g)), int(g.drop_duplicates('ncid').novote.sum())]
                 for st, g in sorted(sub[sub.rtype.map(TYPES) == t].groupby('st'), key=lambda x: (-len(x[1]), x[0]))]
             for t in ('ml', 'ev')}
 
