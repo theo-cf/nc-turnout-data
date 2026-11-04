@@ -12,7 +12,7 @@ With no results file it downloads https://er.ncsbe.gov/enr/20261103/data/results
 Output: {"asof": State Board file time (ISO, UTC), "built": ..., "cd"|"hd"|"sd": {"1": {
     "c": [[name, party, votes], ...] (most votes first), "in": precincts reporting, "of": precincts,
     "w": winning party or absent, "by": "AP" | "unopposed" | ..., "at": when called}}}
-Parties: D, R, L, G, U (unaffiliated); write-ins are left out.
+Parties: D, R, L, G, I (unaffiliated); write-ins are left out.
 """
 import csv
 import datetime as dt
@@ -23,7 +23,7 @@ import sys
 import urllib.request
 
 URL = 'https://er.ncsbe.gov/enr/20261103/data/results_0.txt'
-PTY = {'DEM': 'D', 'REP': 'R', 'LIB': 'L', 'GRE': 'G', 'UNA': 'U'}
+PTY = {'DEM': 'D', 'REP': 'R', 'LIB': 'L', 'GRE': 'G', 'UNA': 'I'}   # I = unaffiliated, as in candidates.csv
 RACE = [(re.compile(r'^US HOUSE OF REPRESENTATIVES DISTRICT 0*(\d+)\b'), 'cd'),
         (re.compile(r'^NC HOUSE OF REPRESENTATIVES DISTRICT 0*(\d+)\b'), 'hd'),
         (re.compile(r'^NC STATE SENATE DISTRICT 0*(\d+)\b'), 'sd')]
