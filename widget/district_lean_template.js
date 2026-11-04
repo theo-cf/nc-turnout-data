@@ -144,7 +144,7 @@
     rg: 'Democrats minus Republicans among all registered voters in the district.',
     vr: 'The party split of people who have voted minus the party split of registered voters. A positive number means Democrats’ lead over Republicans is bigger among people who have voted than among registered voters.',
     y22: 'How far a district has moved toward or away from Democrats since the same point in 2022, relative to the rest of the state.',
-    res: 'The State Board of Elections’ unofficial count so far: the Democrat’s share of all votes in the race minus the Republican’s, with the share of precincts reporting. A check mark means the AP has called the race; a seat with only one candidate on the ballot is marked won.'
+    res: 'The State Board of Elections’ unofficial count so far: the Democrat’s share of all votes in the race minus the Republican’s, with the share of precincts reporting. A check mark means the AP or another major news organization has called the race (the district’s card says which); a seat with only one candidate on the ballot is marked won.'
   };
   var DLAB = { lean: 'District Lean', split: 'Party Split', pres: '2024 Presidential', pp: 'Performance vs. Presidential', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022', res: '2026 Results' };
   var LAYERS = [   // no22: no Compared to 2022 view; the 2022 change lives on Party Split and Registration. max: points at which the color is fullest
@@ -253,7 +253,7 @@
   function candBy(r, p) { var c = r.cand.filter(function (x) { return x[1] === p; })[0]; if (c) return c[0]; var y = r.res ? r.res.c.filter(function (x) { return x[1] === p; })[0] : null; return y ? y[0] : p; }
   function resLine(r) {   // one line for tooltips: who won, who leads, or nothing yet
     if (!r.res) return 'no results yet';
-    if (r.rw) return candBy(r, r.rw) + ' (' + r.rw + ') won' + (r.res.by === 'unopposed' ? ', unopposed' : '');
+    if (r.rw) return candBy(r, r.rw) + ' (' + r.rw + ') won' + (r.res.by === 'unopposed' ? ', unopposed' : ', per ' + r.res.by);
     if (r.rm === null) return 'no votes counted yet';
     return dr(r.rm, 1) + ' so far, ' + (r.res.in ? Math.round(r.rpct) + '% of precincts in' : 'early and mail votes only');
   }
@@ -304,12 +304,12 @@
     wire(); drawMap(); legend(); table();
   }
   function footTxt() {
-    return (RES ? '2026 results: NC State Board of Elections unofficial count as of ' + resTime() + '; race calls by the Associated Press. ' : '') +
+    return (RES ? '2026 results: NC State Board of Elections unofficial count as of ' + resTime() + '; race calls by the AP and other news organizations, named in each district’s card. ' : '') +
       'Votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting), compared with the same day of early voting in 2022, with 2022 voters placed on today’s district lines. Party is registration, not vote choice. Source: NC State Board of Elections. District lean: Carolina Forward analysis of 2024 Council of State results. 2024 presidential: Harris and Trump’s share of the two-party vote.';
   }
   function layerSub() {
     var k = ST.layer;
-    if (k === 'res') return 'Solid districts have been called by the AP or had only one candidate on the ballot. Lighter districts show who leads in the State Board’s unofficial count, as of ' + resTime().replace(/\.$/, '') + '.';
+    if (k === 'res') return 'Solid districts have been called by the AP or another major news organization, or had only one candidate on the ballot. Lighter districts show who leads in the State Board’s unofficial count, as of ' + resTime().replace(/\.$/, '') + '.';
     if (k === 'lean') return 'Blue districts vote more Democratic than North Carolina as a whole; red districts, more Republican.';
     if (k === 'pres') return 'Blue districts voted for Harris in 2024; red districts, for Trump. Darker means a bigger margin.';
     if (ST.y === '22') return 'Blue districts have moved toward Democrats since the same point in 2022, relative to the rest of the state; red districts, toward Republicans.';
@@ -397,7 +397,7 @@
     var h = '<button type="button" class="dl-cx" aria-label="Close">×</button><h3>' + LONG[ST.c] + ' ' + r.d + '</h3>' +
       (r.cty.length ? '<p class="dl-cty">' + esc(r.cty.join(', ')) + (r.cty.length > 1 ? ' (largest parts)' : '') + '</p>' : '') +
       (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span><span' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '>' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + '</span>' + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + cv(r, c[1]) + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
-      (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by the AP' : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : col(r.rm)) : '') +
+      (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by ' + esc(r.res.by) : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : col(r.rm)) : '') +
       kv('District lean (COS-No-Gov)' + qBtn('lean'), dr(r.lean, 1)) +
       (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', hmTxt(hm))) +
       kv('Votes so far', fmt(r.votes) + ' · ' + (r.reg ? (r.votes / r.reg * 100).toFixed(1) + '% of registered' : '')) +
@@ -572,7 +572,7 @@
       var lg = tall ? 48 : 38; if (logo) c.drawImage(logo, P, sy - 4, lg, lg);
       c.font = '700 ' + (tall ? 20 : 16) + 'px "Zilla Slab", Georgia, serif'; c.fillStyle = '#253551'; c.fillText('Carolina Forward', P + lg + 10, sy + (tall ? 16 : 12));
       c.font = '400 ' + (tall ? 15 : 13) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b'; c.fillText(PAGE_URL ? PAGE_URL.replace(/^https?:\/\/(www\.)?/, '') : CF_URL, P + lg + 10, sy + (tall ? 38 : 30));
-      var src = k === 'res' ? 'Unofficial results: NC State Board of Elections, as of ' + resTime() + '. Race calls: Associated Press. Solid: called or unopposed; light: leading, not called.' : 'Early and mail votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting)' + (y22 ? ', compared with the same day in 2022 on today’s lines' : '') + '. Party is registration, not vote choice. ' + (k === 'pres' || k === 'pp' ? 'Presidential: 2024 Harris vs. Trump, two-party vote. ' : k === 'lean' ? 'District lean: 2024 Council of State races other than governor. ' : '') + 'Source: NC State Board of Elections.';
+      var src = k === 'res' ? 'Unofficial results: NC State Board of Elections, as of ' + resTime() + '. Race calls: AP and other news organizations. Solid: called or unopposed; light: leading, not called.' : 'Early and mail votes through ' + longDay(K.full) + ' (day ' + K.day + ' of early voting)' + (y22 ? ', compared with the same day in 2022 on today’s lines' : '') + '. Party is registration, not vote choice. ' + (k === 'pres' || k === 'pp' ? 'Presidential: 2024 Harris vs. Trump, two-party vote. ' : k === 'lean' ? 'District lean: 2024 Council of State races other than governor. ' : '') + 'Source: NC State Board of Elections.';
       var sx = P + lg + (tall ? 230 : 200); c.font = '400 ' + (tall ? 14 : 12) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b';
       wrap(c, src, W - P - sx).forEach(function (l, i) { c.fillText(l, sx, sy + 8 + i * (tall ? 19 : 16)); });
       cv.toBlob(function (b) { save(b, fname(k, 'png').replace('.png', '-' + fmt + '.png')); }, 'image/png');
