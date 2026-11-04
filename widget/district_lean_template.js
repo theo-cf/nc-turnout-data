@@ -144,13 +144,15 @@
     rg: 'Democrats minus Republicans among all registered voters in the district.',
     vr: 'The party split of people who have voted minus the party split of registered voters. A positive number means Democrats’ lead over Republicans is bigger among people who have voted than among registered voters.',
     y22: 'How far a district has moved toward or away from Democrats since the same point in 2022, relative to the rest of the state.',
+    vl: 'How far tonight’s result is running ahead of or behind this district’s lean, given tonight’s statewide environment: (the district’s two-party margin − the statewide two-party margin) − 2 × its district lean. The statewide margin is the average of tonight’s statewide partisan races (U.S. Senate, Supreme Court and Court of Appeals). The lean is doubled to put it in margin points. Positive means the Democrat is running ahead of the lean; negative, behind it. Uses the unofficial count.',
     ov: 'Tonight’s result minus Harris’s 2024 margin over Trump: (Democrat − Republican tonight) − (Harris − Trump). Positive means the Democrat is running ahead of Harris’s margin; negative, behind it. It uses the unofficial count, so it will move as votes come in. Left blank where only one party has a candidate.',
     res: 'The State Board of Elections’ unofficial count so far: the Democrat’s share of all votes in the race minus the Republican’s, with the share of precincts reporting. A check mark means the AP or another major news organization has called the race (the district’s card says which); a seat with only one candidate on the ballot is marked won.'
   };
-  var DLAB = { lean: 'District Lean', split: 'Party Split', pres: '2024 Presidential', pp: 'Performance vs. Presidential', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022', res: '2026 Results', ov: 'Over/Underperformance' };
+  var DLAB = { lean: 'District Lean', split: 'Party Split', pres: '2024 Presidential', pp: 'Performance vs. Presidential', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022', res: '2026 Results', ov: 'Over/Underperformance', vl: 'Performance vs. Lean' };
   var LAYERS = [   // max: points at which the color is fullest
     { k: 'res', name: '2026 Results', defs: ['res'], max: 20 },
     { k: 'ov', name: 'Over/Underperformance', defs: ['ov'], max: 15 },
+    { k: 'vl', name: 'Performance vs. Lean', defs: ['lean', 'vl'], max: 15 },
     { k: 'pres', name: '2024 Presidential', defs: ['pres'], max: 30 },
     { k: 'lean', name: 'District Lean', defs: ['lean'], max: 12 },
     { k: 'rg', name: 'Registration', defs: ['rg'], max: 30 }
@@ -226,7 +228,7 @@
   function attachRes() {
     ['hd', 'sd', 'cd'].forEach(function (g) {
       (ROWS[g] || []).forEach(function (r) {
-        var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.ov = null; r.flip = null; r.close = false; r.rw = x && x.w ? x.w : null;
+        var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.ov = null; r.vl = null; r.flip = null; r.close = false; r.rw = x && x.w ? x.w : null;
         // our candidate list still has a few who withdrew (HD 22, 44, 102, SD 9); once the ballot is known, show only who is on it
         r.cand0 = r.cand0 || r.cand;
         var onBallot = x ? r.cand0.filter(function (c) { return x.c.some(function (y) { return y[1] === c[1]; }); }) : [];
@@ -238,6 +240,8 @@
         var both = x.c.some(function (c) { return c[1] === 'D'; }) && x.c.some(function (c) { return c[1] === 'R'; });
         r.hold = HOLD[g][String(r.d)] || null; r.flip = r.rw && r.hold && r.rw !== r.hold ? r.rw : null;
         r.close = both && r.rm !== null && Math.abs(r.rm) <= CLOSE;
+        var d2 = v.D + v.R;   // tonight's two-party margin vs. the statewide one, minus the lean in margin points
+        r.vl = both && d2 > 0 && RES.st && r.lean !== null && r.lean !== undefined ? ((v.D - v.R) / d2 * 100 - RES.st.m) - 2 * r.lean : null;
         r.ov = both && r.rm !== null && r.hm !== null && r.hm !== undefined ? r.rm - r.hm : null;   // (D − R tonight) − (Harris − Trump)
       });
     });
@@ -280,6 +284,7 @@
     var y = ST.y === '22';
     if (k === 'res') return r.rm === undefined ? null : r.rm;
     if (k === 'ov') return r.ov === undefined ? null : r.ov;
+    if (k === 'vl') return r.vl === undefined ? null : r.vl;
     if (k === 'lean') return r.lean; if (k === 'pres') return r.hm;
     if (k === 'sp') return y ? r.spo : r.sp;   // compared to 2022: the change in party split relative to the state
     if (k === 'pp') return r.spp;
@@ -324,6 +329,7 @@
     if (k === 'res') return 'Solid districts have been called by the AP or another major news organization, or had only one candidate on the ballot. Lighter districts show who leads in the State Board’s unofficial count' + (resTime() ? ', as of ' + resTime().replace(/\.$/, '') : '') + '.';
     if (k === 'lean') return 'Blue districts vote more Democratic than North Carolina as a whole; red districts, more Republican.';
     if (k === 'pres') return 'Blue districts voted for Harris in 2024; red districts, for Trump. Darker means a bigger margin.';
+    if (k === 'vl') return 'Blue districts are running ahead of their district lean, given tonight’s statewide results' + (RES && RES.st ? ' (D+' + RES.st.m.toFixed(1) + ' on average)' : '') + '; red districts, behind it. Gray districts have only one party on the ballot or no votes yet.';
     if (k === 'ov') return 'Blue districts are running ahead of Harris’s 2024 margin in tonight’s unofficial count; red districts, behind it. Gray districts have only one party on the ballot or no votes yet.';
     if (k === 'rg') return 'Blue districts have more registered Democrats than Republicans; red districts, more Republicans.';
     return '';
@@ -333,7 +339,7 @@
     var k = ST.layer, mx = scaleMax(k), el = mount.querySelector('#' + SLUG + '-leg');
     if (k === 'res') { el.innerHTML = resKeys().map(function (x) { return '<span class="chip"><i style="background:' + x[0] + '"></i>' + x[1] + '</span>'; }).join('') + (outLab() ? '<span class="chip"><i></i>' + outLab() + '</span>' : ''); return; }
     var lo, hi;
-    if (k === 'ov') { lo = 'Behind Harris by ' + mx + '+ pts'; hi = 'Ahead of Harris by ' + mx + '+ pts'; }
+    if (k === 'ov') { lo = 'Behind Harris by ' + mx + '+ pts'; hi = 'Ahead of Harris by ' + mx + '+ pts'; } else if (k === 'vl') { lo = 'Behind its lean by ' + mx + '+ pts'; hi = 'Ahead of its lean by ' + mx + '+ pts'; }
     else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; }
     else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
     el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (outLab() ? '<span class="chip"><i></i>' + outLab() + '</span>' : '') ;
@@ -390,7 +396,7 @@
   function tipEl() { return mount.querySelector('.dl-tip'); }
   function tipShow(e, r) {
     var t = tipEl(), mw = mount.querySelector('#' + SLUG + '-mw'), rc = mw.getBoundingClientRect(), v = value(r, ST.layer), k = ST.layer;
-    var vs = k === 'res' ? resLine(r) : k === 'lean' ? dr(v, 1) + ' district lean' : k === 'pres' ? hmTxt(v) + ' in 2024' : k === 'rg' ? dr(v) + ' registration' : v === null ? 'no comparison (one party on the ballot, or no votes yet)' : gp(v) + ' vs. Harris’s 2024 margin';
+    var vs = k === 'res' ? resLine(r) : k === 'lean' ? dr(v, 1) + ' district lean' : k === 'pres' ? hmTxt(v) + ' in 2024' : k === 'rg' ? dr(v) + ' registration' : v === null ? 'no comparison (one party on the ballot, or no votes yet)' : k === 'vl' ? gp(v) + ' vs. its lean' : gp(v) + ' vs. Harris’s 2024 margin';
     t.innerHTML = '<b>' + PRE[ST.c] + ' ' + r.d + '</b> ' + esc(vs); t.hidden = false;
     t.style.left = Math.min(e.clientX - rc.left + 12, mw.clientWidth - t.offsetWidth - 4) + 'px'; t.style.top = (e.clientY - rc.top + 14) + 'px';
   }
@@ -410,6 +416,7 @@
       (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by ' + esc(r.res.by) : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : col(r.rm)) : '') +
       (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', hmTxt(hm))) +
       (r.res ? kv('Over/underperformance' + qBtn('ov') + '<span class="dl-sub">Tonight’s margin minus Harris’s</span>', r.ov === null ? '—' : gp(r.ov), col(r.ov)) : '') +
+      (r.res ? kv('Performance vs. lean' + qBtn('vl') + '<span class="dl-sub">Vs. the statewide result' + (RES.st ? ' (D+' + RES.st.m.toFixed(1) + ')' : '') + ' and its lean</span>', r.vl === null ? '—' : gp(r.vl), col(r.vl)) : '') +
       '<p class="dl-ch">Baseline</p>' +
       kv('District lean (COS-No-Gov)' + qBtn('lean'), dr(r.lean, 1)) +
       kv('Registration' + qBtn('rg') + '<span class="dl-sub">' + fmt(r.reg) + ' registered voters</span>', dr(r.rg));
@@ -427,6 +434,7 @@
   function tVal(r, k) {   // a table cell's number, in points or votes; district lean and 2024 presidential are always points
     if (k === 'res') return r.res && r.res.by === 'unopposed' ? null : r.rm;   // unopposed seats sort to the bottom
     if (k === 'ov') return r.ov;
+    if (k === 'vl') return r.vl;
     if (ST.u !== 'votes' || k === 'lean' || k === 'pres') return value(r, k);
     if (ST.y === '22') return r.nv[k] === null || r.nv[k] === undefined || r.nv22[k] === null || r.nv22[k] === undefined ? null : r.nv[k] - r.nv22[k];
     return r.nv[k] === undefined ? null : r.nv[k];
@@ -435,19 +443,19 @@
     if (v === null || v === undefined || isNaN(v)) return null;
     if (k === 'pres') return hmTxt(v);
     if (ST.u === 'votes' && k !== 'lean') { var n = Math.round(v); return !n ? 'even' : (n > 0 ? 'D+' : 'R+') + fmt(Math.abs(n)); }
-    if (k === 'ov') return gp(v);
+    if (k === 'ov' || k === 'vl') return gp(v);
     return dr(v, k === 'lean' || k === 'res' ? 1 : 0);
   }
   function tCols() {   // [key, label, ? definition, group]
     return [['d', 'District', null, ''], ['race', 'Candidates', null, '']]
-      .concat(RES ? [['res', '2026 result', 'res', 'Results'], ['pres', '2024 president', 'pres', 'Results'], ['ov', 'Over/\u200Bunder', 'ov', 'Results']] : [['pres', '2024 president', 'pres', 'Results']])
+      .concat(RES ? [['res', '2026 result', 'res', 'Results'], ['pres', '2024 president', 'pres', 'Results'], ['ov', 'Over/\u200Bunder', 'ov', 'Results'], ['vl', 'Vs. lean', 'vl', 'Results']] : [['pres', '2024 president', 'pres', 'Results']])
       .concat([['lean', 'District lean', 'lean', 'Baseline'], ['rg', 'Registration', 'rg', 'Baseline']]);
   }
 
   function table() {
     var tab = mount.querySelector('#' + SLUG + '-tab'); if (!tab) return;
     var y22 = ST.y === '22', V = ST.u === 'votes', cols = tCols();
-    var HIDE = RES ? { race: 1, rg: 1, lean: 1 } : { race: 1, rg: 1 };   // phones: district and the three results columns
+    var HIDE = RES ? { race: 1, rg: 1, lean: 1, vl: 1 } : { race: 1, rg: 1 };   // phones: district and the three results columns
     var get = function (r, k) { return k === 'd' ? r.d : k === 'race' ? (incOf(r) ? incOf(r)[1] + incOf(r)[0] : 'Z') : tVal(r, k); };
     if (cols.every(function (c) { return c[0] !== ST.sort.k; })) ST.sort.k = 'lean';
     var rows = ROWS[ST.c].filter(shown).slice().sort(function (a, b) {
@@ -507,16 +515,16 @@
   function mapCsv() {   // every district in the chamber, all the numbers; points, positive = more Democratic
     var P = ' (pts, + = D)';
     csv(['District', 'Counties', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?', 'Battleground (R+5 to D+5)', 'District lean' + P, 'Harris 2024 two-party %', 'Harris minus Trump 2024' + P, 'Registered voters', 'Registration' + P]
-      .concat(RES ? resHead().concat(['Over/underperformance vs. Harris (pts, + = D ahead)']) : []),
+      .concat(RES ? resHead().concat(['Over/underperformance vs. Harris (pts, + = D ahead)', 'Performance vs. lean (pts, + = D ahead)']) : []),
       ROWS[ST.c].map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, r.cty.join('; '), i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r), isBg(r) ? 'Yes' : 'No', r.lean, r.h2, r.hm, r.reg, r.rg]
-        .concat(RES ? resCsv(r).concat([r.ov]) : []); }), fname('data', 'csv'));
+        .concat(RES ? resCsv(r).concat([r.ov, r.vl]) : []); }), fname('data', 'csv'));
   }
 
   function resHead() { return ['Winner', 'Winner party', 'Called by', '2026 result, unofficial count' + ' (pts, + = D)', 'Net votes, unofficial count (+ = D)', 'Precincts reporting', 'Precincts', 'Count as of', 'Seat held by (2025-26)', 'Flip']; }
   function resCsv(r) { return r.res ? [r.rw ? candBy(r, r.rw) : '', r.rw || '', r.rw ? r.res.by : '', r.rm, r.rnv, r.res.in, r.res.of, RES.asof, r.hold || '', r.flip ? 'Yes' : ''] : ['', '', '', null, null, null, null, '', r.hold || '', '']; }
   function tableCsv(rows) {   // the table as shown: its districts, columns, sort, units and As of now / Compared to 2022 setting
     var y22 = ST.y === '22', V = ST.u === 'votes', ks = tCols().slice(2);
-    var unit = function (k) { return k === 'res' ? ' (unofficial count, pts, + = D)' : k === 'ov' ? ' (vs. Harris 2024 margin, pts, + = D ahead)' : k === 'pres' ? ' (Harris minus Trump, pts, two-party)' : V && k !== 'lean' ? (k === 'rg' ? (y22 ? ' (change in net registered voters since 2022, + = D)' : ' (net registered voters, + = D)') : y22 ? ' (change in net votes since 2022, + = D)' : ' (net votes, + = D)') : (y22 && k !== 'lean' ? ' (change since 2022, pts, + = D)' : ' (pts, + = D)'); };
+    var unit = function (k) { return k === 'res' ? ' (unofficial count, pts, + = D)' : k === 'ov' ? ' (vs. Harris 2024 margin, pts, + = D ahead)' : k === 'vl' ? ' (vs. district lean, pts, + = D ahead)' : k === 'pres' ? ' (Harris minus Trump, pts, two-party)' : V && k !== 'lean' ? (k === 'rg' ? (y22 ? ' (change in net registered voters since 2022, + = D)' : ' (net registered voters, + = D)') : y22 ? ' (change in net votes since 2022, + = D)' : ' (net votes, + = D)') : (y22 && k !== 'lean' ? ' (change since 2022, pts, + = D)' : ' (pts, + = D)'); };
     csv(['District', 'Incumbent', 'Incumbent party', 'Challenger', 'Other candidates?'].concat(ks.map(function (k) { return k[1] + unit(k[0]); })).concat(RES ? ['Winner', 'Called by'] : []),
       rows.map(function (r) { var i = incOf(r); return [PRE[ST.c] + ' ' + r.d, i ? i[0] : 'Open seat', i ? i[1] : '', chalOf(r).map(function (c) { return c[0] + ' (' + c[1] + ')'; }).join('; '), othOf(r)]
         .concat(ks.map(function (k) { var v = tVal(r, k[0]); return v === null || v === undefined ? null : V && k[0] !== 'lean' && k[0] !== 'pres' ? Math.round(v) : v; })).concat(RES ? [r.rw ? candBy(r, r.rw) : '', r.rw ? r.res.by : ''] : []); }), fname('table' + (V ? '-votes' : ''), 'csv'));
@@ -529,7 +537,7 @@
       c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.fillStyle = '#253551'; c.fillRect(0, 0, W, 8);
       var y = P + 10;
       c.font = '700 ' + (tall ? 17 : 14) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b'; c.textBaseline = 'alphabetic';
-      var kick = (CH_NAME[ST.c] + ({ bg: ' · battleground', close: ' · close races', flip: ' · flips' }[ST.s] || '') + (ST.layer === 'res' || ST.layer === 'ov' ? ' · count as of ' + resTime() : '')).toUpperCase();
+      var kick = (CH_NAME[ST.c] + ({ bg: ' · battleground', close: ' · close races', flip: ' · flips' }[ST.s] || '') + (ST.layer === 'res' || ST.layer === 'ov' || ST.layer === 'vl' ? ' · count as of ' + resTime() : '')).toUpperCase();
       if (c.letterSpacing !== undefined) c.letterSpacing = '1px'; c.fillText(kick, P, y); if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
       y += tall ? 54 : 42; c.font = '700 ' + (tall ? 46 : 36) + 'px "Zilla Slab", Georgia, serif'; c.fillStyle = '#253551';
       wrap(c, Lr.name + (y22 ? ', compared to 2022' : ''), W - 2 * P).forEach(function (l, i) { if (i) y += tall ? 52 : 40; c.fillText(l, P, y); });
@@ -561,7 +569,7 @@
       c.restore();
       // legend
       var ly = H - foot + (tall ? 40 : 30), lo, hi;
-      if (k === 'ov') { lo = 'Behind Harris by ' + mx + '+ pts'; hi = 'Ahead of Harris by ' + mx + '+ pts'; } else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; } else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
+      if (k === 'ov') { lo = 'Behind Harris by ' + mx + '+ pts'; hi = 'Ahead of Harris by ' + mx + '+ pts'; } else if (k === 'vl') { lo = 'Behind its lean by ' + mx + '+ pts'; hi = 'Ahead of its lean by ' + mx + '+ pts'; } else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; } else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
       c.font = '500 ' + (tall ? 18 : 15) + 'px Inter, sans-serif'; c.fillStyle = '#3a3a3a';
       if (k === 'res') {   // swatches instead of a ramp, wrapping to a second line when needed
         var keys = resKeys().concat(outLab() ? [['#E4E1DA', outLab()]] : []), kx = P;
@@ -578,7 +586,7 @@
       var lg = tall ? 48 : 38; if (logo) c.drawImage(logo, P, sy - 4, lg, lg);
       c.font = '700 ' + (tall ? 20 : 16) + 'px "Zilla Slab", Georgia, serif'; c.fillStyle = '#253551'; c.fillText('Carolina Forward', P + lg + 10, sy + (tall ? 16 : 12));
       c.font = '400 ' + (tall ? 15 : 13) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b'; c.fillText(PAGE_URL ? PAGE_URL.replace(/^https?:\/\/(www\.)?/, '') : CF_URL, P + lg + 10, sy + (tall ? 38 : 30));
-      var src = (k === 'res' || k === 'ov' ? 'Unofficial results: NC State Board of Elections, as of ' + resTime() + '. ' : '') + (k === 'res' ? 'Race calls: AP and other news organizations. Solid: called or unopposed; light: leading, not called. ' : '') + (k === 'pres' || k === 'ov' ? 'Presidential: 2024 Harris vs. Trump, two-party vote. ' : '') + (k === 'lean' ? 'District lean: 2024 Council of State races other than governor. ' : '') + (k === 'rg' ? 'Registration: NC State Board of Elections. ' : '') + 'Analysis: Carolina Forward.';
+      var src = (k === 'res' || k === 'ov' || k === 'vl' ? 'Unofficial results: NC State Board of Elections, as of ' + resTime() + '. ' : '') + (k === 'res' ? 'Race calls: AP and other news organizations. Solid: called or unopposed; light: leading, not called. ' : '') + (k === 'pres' || k === 'ov' ? 'Presidential: 2024 Harris vs. Trump, two-party vote. ' : '') + (k === 'lean' || k === 'vl' ? 'District lean: 2024 Council of State races other than governor. ' : '') + (k === 'vl' && RES && RES.st ? 'Statewide: average of tonight’s U.S. Senate, Supreme Court and Court of Appeals races. ' : '') + (k === 'rg' ? 'Registration: NC State Board of Elections. ' : '') + 'Analysis: Carolina Forward.';
       var sx = P + lg + (tall ? 230 : 200); c.font = '400 ' + (tall ? 14 : 12) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b';
       wrap(c, src, W - P - sx).forEach(function (l, i) { c.fillText(l, sx, sy + 8 + i * (tall ? 19 : 16)); });
       cv.toBlob(function (b) { save(b, fname(k, 'png').replace('.png', '-' + fmt + '.png')); }, 'image/png');

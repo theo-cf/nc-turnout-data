@@ -11,7 +11,8 @@ With no results file it downloads https://er.ncsbe.gov/enr/20261103/data/results
 
 Output: {"asof": State Board file time (ISO, UTC), "built": ..., "cd"|"hd"|"sd": {"1": {
     "c": [[name, party, votes], ...] (most votes first), "in": precincts reporting, "of": precincts,
-    "w": winning party or absent, "by": "AP" | "unopposed" | ..., "at": when called}}}
+    "w": winning party or absent, "by": "AP" | "unopposed" | ..., "at": when called}},
+    "st": {"m": average two-party D-R margin across tonight's statewide partisan races, "races": [[name, margin], ...]}}
 Parties: D, R, L, G, I (unaffiliated); write-ins are left out.
 """
 import csv
@@ -27,6 +28,9 @@ PTY = {'DEM': 'D', 'REP': 'R', 'LIB': 'L', 'GRE': 'G', 'UNA': 'I'}   # I = unaff
 RACE = [(re.compile(r'^US HOUSE OF REPRESENTATIVES DISTRICT 0*(\d+)\b'), 'cd'),
         (re.compile(r'^NC HOUSE OF REPRESENTATIVES DISTRICT 0*(\d+)\b'), 'hd'),
         (re.compile(r'^NC STATE SENATE DISTRICT 0*(\d+)\b'), 'sd')]
+# Tonight's statewide environment, for "vs. lean": the average two-party margin across the statewide partisan races,
+# mirroring the lean itself (an average of statewide Council of State races)
+STATEWIDE = re.compile(r'^(US SENATE|NC SUPREME COURT ASSOCIATE JUSTICE SEAT \d+|NC COURT OF APPEALS JUDGE SEAT \d+)\b')
 CH = {'congress': 'cd', 'cd': 'cd', 'us house': 'cd', 'nc house': 'hd', 'house': 'hd', 'hd': 'hd',
       'nc senate': 'sd', 'senate': 'sd', 'sd': 'sd'}
 
@@ -47,7 +51,10 @@ def main():
     out_path = sys.argv[3] if len(sys.argv) > 3 else 'results.json'
     rows, lm = load(src)
     out = {'cd': {}, 'hd': {}, 'sd': {}}
+    sw = {}
     for x in rows:
+        if STATEWIDE.match(x['cnm']) and x['pty'] in ('DEM', 'REP'):
+            sw.setdefault(x['cnm'].split(' (')[0], {})[x['pty']] = int(x['vct'])
         for rx, g in RACE:
             m = rx.match(x['cnm'])
             if not m:
@@ -75,7 +82,9 @@ def main():
     except FileNotFoundError:
         pass
     asof = email.utils.parsedate_to_datetime(lm).isoformat() if lm else None
-    out = {'asof': asof, 'built': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), **out}
+    races = [[n, round((v['DEM'] - v['REP']) / (v['DEM'] + v['REP']) * 100, 2)] for n, v in sorted(sw.items()) if v.get('DEM', 0) + v.get('REP', 0) > 0 and 'DEM' in v and 'REP' in v]
+    st = {'m': round(sum(m for _, m in races) / len(races), 2), 'races': races} if races else None
+    out = {'asof': asof, 'built': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'st': st, **out}
     with open(out_path, 'w') as f:
         json.dump(out, f, separators=(',', ':'))
     print({g: (len(out[g]), sum(1 for r in out[g].values() if 'w' in r)) for g in ('cd', 'hd', 'sd')}, 'calls:', n_calls)
