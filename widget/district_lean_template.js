@@ -72,7 +72,7 @@
       S + ' .dl-mark b{display:block;font:700 13px/1.1 "Zilla Slab",Georgia,serif}',
       S + ' .dl-mark span{display:block;font:500 10px/1.2 Inter,sans-serif;color:var(--mute)}',
       S + ' .dl-leg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--soft)}',
-      S + ' .dl-won{font-weight:700;font-size:13px;line-height:1.35;white-space:nowrap}' + S + ' .dl-rin{display:block;font-size:11px;color:var(--mute);margin-top:2px;white-space:nowrap}' + S + ' .dl-rin b{font-weight:700}' + '@media (max-width:600px){' + S + ' .dl-by{display:none}' + S + ' table.dl-big td,' + S + ' table.dl-big th{padding-left:3px;padding-right:3px}' + S + ' .dl-thw{padding:6px 2px 6px 4px}' + S + ' .sb{white-space:normal}' + S + ' .dl-rin{white-space:normal;max-width:76px;margin-left:auto}' + S + ' .dl-pill{font-size:12.5px}}' + S + ' .dl-wn{font-weight:700}' + S + ' .dl-cv{margin-left:auto;padding-left:8px;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      S + ' .dl-won{font-weight:700;font-size:13px;line-height:1.35;white-space:nowrap}' + S + ' .dl-rin{display:block;font-size:11px;color:var(--mute);margin-top:2px;white-space:nowrap}' + S + ' .dl-rin b{font-weight:700}' + '@media (max-width:600px){' + S + ' .dl-by{display:none}' + S + ' table.dl-big td,' + S + ' table.dl-big th{padding-left:3px;padding-right:3px}' + S + ' .dl-thw{padding:6px 2px 6px 4px}' + S + ' .sb{white-space:normal}' + S + ' .dl-rin{white-space:normal;max-width:76px;margin-left:auto}' + S + ' .dl-pill{font-size:12.5px}}' + S + ' .dl-wn{font-weight:700}' + S + ' .dl-ftag{display:inline-block;margin-left:6px;padding:0 5px;border-radius:2px;color:#fff;font:700 10px/16px Inter,sans-serif;letter-spacing:.04em;vertical-align:1px}' + S + ' .dl-cv{margin-left:auto;padding-left:8px;font-size:12px;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}',
       S + ' .dl-leg .ramp{height:10px;flex:1 1 160px;min-width:100px;border-radius:1px}',
       S + ' .dl-leg .chip{display:inline-flex;align-items:center;gap:5px}',
       S + ' .dl-leg .chip i{width:12px;height:12px;border-radius:1px;background:var(--off);display:inline-block;border:1px solid var(--rule)}',
@@ -156,6 +156,7 @@
     { k: 'rg', name: 'Registration', defs: ['rg'], max: 30 }
   ];
   var PRES = {"cd":{"1":44.14,"2":67.2,"3":43.13,"4":73.02,"5":41.04,"6":41.32,"7":42.99,"8":40.25,"9":41.99,"10":41.06,"11":45.17,"12":73.52,"13":41.65,"14":42.39},"hd":{"1":34.99,"2":55.14,"3":39.84,"4":37.75,"5":46.63,"6":38.74,"7":43.68,"8":63.57,"9":45.05,"10":41.76,"11":66.66,"12":44.16,"13":29.57,"14":34.08,"15":33.1,"16":30.17,"17":38.33,"18":60.8,"19":39.41,"20":44.8,"21":63.49,"22":36.47,"23":56.32,"24":49.16,"25":49.95,"26":44.1,"27":58.58,"28":32.74,"29":84.89,"30":86.22,"31":80.69,"32":50.23,"33":71.06,"34":65.69,"35":49.05,"36":55.98,"37":48.53,"38":81.6,"39":62.78,"40":64.07,"41":67.47,"42":73.62,"43":43.66,"44":60.37,"45":57.61,"46":32.49,"47":37.91,"48":50.45,"49":70.58,"50":57.64,"51":37.02,"52":40.46,"53":36.99,"54":54.25,"55":36.98,"56":86.45,"57":67.96,"58":75.34,"59":44.99,"60":62.4,"61":78.55,"62":46.94,"63":46.11,"64":45.64,"65":31.91,"66":64.03,"67":26.08,"68":39.85,"69":37.38,"70":23.28,"71":69.49,"72":74.88,"73":46.78,"74":46.23,"75":43.97,"76":37.82,"77":23.05,"78":25.03,"79":36.21,"80":24.46,"81":27.9,"82":45.68,"83":34.21,"84":31.93,"85":26.32,"86":29.24,"87":25.16,"88":69.35,"89":25.21,"90":21.53,"91":32.64,"92":69.86,"93":41.8,"94":20.9,"95":36.22,"96":36.5,"97":26.97,"98":51.34,"99":82.95,"100":62.91,"101":69.07,"102":74.78,"103":57.39,"104":59.75,"105":50.32,"106":76.04,"107":80.5,"108":34.88,"109":42.43,"110":33.74,"111":25.96,"112":76.82,"113":34.13,"114":58.88,"115":48.53,"116":80.99,"117":43.8,"118":37.51,"119":43.63,"120":25.38},"sd":{"1":42.52,"2":41.46,"3":40.11,"4":44.95,"5":54.86,"6":31.84,"7":47.18,"8":40.46,"9":35.23,"10":39.11,"11":48.24,"12":38.04,"13":52.36,"14":73.83,"15":68.82,"16":67.78,"17":64.98,"18":49.75,"19":64.38,"20":72.37,"21":38.54,"22":79.94,"23":65.2,"24":42.45,"25":40.16,"26":38.94,"27":60.17,"28":76.45,"29":30.91,"30":26.28,"31":38.38,"32":70.27,"33":29.42,"34":45.85,"35":37.73,"36":20.74,"37":36.5,"38":68.59,"39":66.98,"40":75.09,"41":76.27,"42":53.33,"43":38.84,"44":28.8,"45":28.71,"46":33.91,"47":35.47,"48":37.0,"49":68.38,"50":35.17}};   // Harris share of the 2024 two-party presidential vote, by district
+  var HOLD = {"hd":{"1":"R","2":"D","3":"R","4":"R","5":"R","6":"R","7":"R","8":"D","9":"R","10":"R","11":"D","12":"R","13":"R","14":"R","15":"R","16":"R","17":"R","18":"D","19":"R","20":"R","21":"D","22":"R","23":"D","24":"D","25":"R","26":"R","27":"D","28":"R","29":"D","30":"D","31":"D","32":"D","33":"D","34":"D","35":"R","36":"D","37":"R","38":"D","39":"D","40":"D","41":"D","42":"D","43":"R","44":"D","45":"D","46":"R","47":"R","48":"D","49":"D","50":"D","51":"R","52":"R","53":"R","54":"D","55":"R","56":"D","57":"D","58":"D","59":"R","60":"D","61":"D","62":"R","63":"R","64":"R","65":"R","66":"D","67":"R","68":"R","69":"R","70":"R","71":"D","72":"D","73":"R","74":"R","75":"R","76":"R","77":"R","78":"R","79":"R","80":"R","81":"R","82":"R","83":"R","84":"R","85":"R","86":"R","87":"R","88":"D","89":"R","90":"R","91":"R","92":"D","93":"R","94":"R","95":"R","96":"R","97":"R","98":"D","99":"D","100":"D","101":"D","102":"D","103":"D","104":"D","105":"R","106":"D","107":"D","108":"R","109":"R","110":"R","111":"R","112":"D","113":"R","114":"D","115":"D","116":"D","117":"R","118":"R","119":"R","120":"R"},"sd":{"1":"R","2":"R","3":"R","4":"R","5":"D","6":"R","7":"R","8":"R","9":"R","10":"R","11":"R","12":"R","13":"D","14":"D","15":"D","16":"D","17":"D","18":"D","19":"D","20":"D","21":"R","22":"D","23":"D","24":"R","25":"R","26":"R","27":"D","28":"D","29":"R","30":"R","31":"R","32":"D","33":"R","34":"R","35":"R","36":"R","37":"R","38":"D","39":"D","40":"D","41":"D","42":"D","43":"R","44":"R","45":"R","46":"R","47":"R","48":"R","49":"D","50":"R"},"cd":{"1":"D","2":"D","3":"R","4":"D","5":"R","6":"R","7":"R","8":"R","9":"R","10":"R","11":"R","12":"D","13":"R","14":"R"}};   // party holding each seat before this election (NC legislature membership list, 2025-26; Congress: current members, CD 11 Edwards)
   var PRE = { hd: 'HD', sd: 'SD', cd: 'CD' }, LONG = { hd: 'NC House District', sd: 'NC Senate District', cd: 'Congressional District' };
   var PCOL = { D: '#2E6DB4', R: '#B83A32', L: '#8a7a3a', G: '#3f7d4a', I: '#6b6b6b' };
   var ST = { c: 'cd', layer: 'lean', y: 'now', u: 'pts', s: 'all', pick: null, vb: null, sort: { k: 'lean', d: -1 } };   // y and u stay fixed: the early-vote views are gone
@@ -225,7 +226,7 @@
   function attachRes() {
     ['hd', 'sd', 'cd'].forEach(function (g) {
       (ROWS[g] || []).forEach(function (r) {
-        var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.ov = null; r.rw = x && x.w ? x.w : null;
+        var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.ov = null; r.flip = null; r.close = false; r.rw = x && x.w ? x.w : null;
         // our candidate list still has a few who withdrew (HD 22, 44, 102, SD 9); once the ballot is known, show only who is on it
         r.cand0 = r.cand0 || r.cand;
         var onBallot = x ? r.cand0.filter(function (c) { return x.c.some(function (y) { return y[1] === c[1]; }); }) : [];
@@ -235,6 +236,8 @@
         if (tot > 0) { r.rm = (v.D - v.R) / tot * 100; r.rnv = v.D - v.R; }
         r.rlead = tot > 0 ? x.c[0][1] : null; r.rpct = x.of ? x.in / x.of * 100 : null;
         var both = x.c.some(function (c) { return c[1] === 'D'; }) && x.c.some(function (c) { return c[1] === 'R'; });
+        r.hold = HOLD[g][String(r.d)] || null; r.flip = r.rw && r.hold && r.rw !== r.hold ? r.rw : null;
+        r.close = both && r.rm !== null && Math.abs(r.rm) <= CLOSE;
         r.ov = both && r.rm !== null && r.hm !== null && r.hm !== undefined ? r.rm - r.hm : null;   // (D − R tonight) − (Harris − Trump)
       });
     });
@@ -263,6 +266,7 @@
     if (r.rm === null) return 'no votes counted yet';
     return dr(r.rm, 1) + ' so far, ' + (r.res.in ? Math.round(r.rpct) + '% of precincts in' : 'early and mail votes only');
   }
+  function flipTag(p) { return '<span class="dl-ftag" style="background:' + (PCOL[p] || '#6b6b6b') + '" title="Seat flipped from ' + ({ D: 'Democrats', R: 'Republicans' }[p === 'D' ? 'R' : 'D']) + '">FLIP</span>'; }
   function resColor(r) {
     if (!r.res || r.rlead === null && !r.rw) return '#FFFFFF';
     if (r.rw) return PCOL[r.rw] || '#6b6b6b';
@@ -284,7 +288,9 @@
   }
   function scaleMax(k) { return layerOf(k) ? layerOf(k).max : 12; }
   function isBg(r) { return r.lean >= -5 && r.lean <= 5; }
-  function shown(r) { return ST.s === 'all' || isBg(r); }
+  var CLOSE = 10;   // "Close races": both parties on the ballot and tonight's margin within this many points
+  function shown(r) { return ST.s === 'all' || (ST.s === 'bg' ? isBg(r) : ST.s === 'flip' ? !!r.flip : ST.s === 'close' ? r.close : true); }
+  function outLab() { return ST.s === 'bg' ? 'Outside R+5 to D+5' : ST.s === 'flip' ? 'No flip' : ST.s === 'close' ? 'Not close, or one party only' : ''; }
 
   /* ---- page ---- */
   function qBtn(key) { return '<button type="button" class="dl-q" data-q="' + key + '" aria-label="What does this mean?">?</button>'; }
@@ -295,7 +301,7 @@
     var Lr = layerOf(ST.layer);
     var h = '<div class="dl-crow"><span class="dl-lab">Districts</span>' + seg('data-c', [['cd', 'Congress'], ['hd', 'NC House'], ['sd', 'NC Senate']], ST.c, 'Districts') + '</div>' +
       '<div class="dl-crow"><span class="dl-lab">Map shows</span>' + seg('data-l', LAYERS.filter(function (x) { return x.k !== 'res' || RES; }).map(function (x) { return [x.k, x.name]; }), ST.layer, 'Map layer') + '</div>' +
-      '<div class="dl-crow"><span class="dl-lab">Show</span>' + seg('data-s', [['bg', 'Battleground (R+5 to D+5)'], ['all', 'All districts']], ST.s, 'Which districts') + '</div>' +
+      '<div class="dl-crow"><span class="dl-lab">Show</span>' + seg('data-s', [['all', 'All districts'], ['bg', 'Battleground (R+5 to D+5)']].concat(RES ? [['close', 'Close races (within ' + CLOSE + ' pts)'], ['flip', 'Flips']] : []), ST.s, 'Which districts') + '</div>' +
       '<div class="dl-layer"><p class="dl-lname">' + esc(Lr.name) + qBtn(Lr.defs.join('+')) + '</p><p class="dl-ldef">' + esc(layerSub()) + '</p></div>' +
       '<div class="dl-mapw" id="' + SLUG + '-mw"><div class="dl-zc"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button><button type="button" data-z="re" class="t" hidden>Reset</button></div>' +
       '<a class="dl-mark"' + (PAGE_URL ? ' href="' + PAGE_URL + '"' : '') + ' target="_blank" rel="noopener"><img src="' + CF_LOGO + '" alt=""><span style="display:block"><b>Carolina Forward</b><span>' + CF_URL + '</span></span></a>' +
@@ -325,12 +331,12 @@
   function longDay(iso) { var d = new Date(iso + 'T12:00:00Z'); return ['Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.', 'Sat.'][d.getUTCDay()] + ', ' + ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'][d.getUTCMonth()] + ' ' + d.getUTCDate(); }
   function legend() {
     var k = ST.layer, mx = scaleMax(k), el = mount.querySelector('#' + SLUG + '-leg');
-    if (k === 'res') { el.innerHTML = resKeys().map(function (x) { return '<span class="chip"><i style="background:' + x[0] + '"></i>' + x[1] + '</span>'; }).join('') + (ST.s === 'bg' ? '<span class="chip"><i></i>Outside R+5 to D+5</span>' : ''); return; }
+    if (k === 'res') { el.innerHTML = resKeys().map(function (x) { return '<span class="chip"><i style="background:' + x[0] + '"></i>' + x[1] + '</span>'; }).join('') + (outLab() ? '<span class="chip"><i></i>' + outLab() + '</span>' : ''); return; }
     var lo, hi;
     if (k === 'ov') { lo = 'Behind Harris by ' + mx + '+ pts'; hi = 'Ahead of Harris by ' + mx + '+ pts'; }
     else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; }
     else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
-    el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (ST.s === 'bg' ? '<span class="chip"><i></i>Outside R+5 to D+5</span>' : '') ;
+    el.innerHTML = '<span>' + lo + '</span><span class="ramp" style="background:linear-gradient(90deg,#B83A32,#F2F0EB,#2E6DB4)"></span><span>' + hi + '</span>' + (outLab() ? '<span class="chip"><i></i>' + outLab() + '</span>' : '') ;
   }
 
   /* ---- map ---- */
@@ -400,7 +406,7 @@
     var hm = r.hm;
     var h = '<button type="button" class="dl-cx" aria-label="Close">×</button><h3>' + LONG[ST.c] + ' ' + r.d + '</h3>' +
       (r.cty.length ? '<p class="dl-cty">' + esc(r.cty.join(', ')) + (r.cty.length > 1 ? ' (largest parts)' : '') + '</p>' : '') +
-      (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span><span' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '>' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + '</span>' + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + cv(r, c[1]) + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
+      (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span><span' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '>' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + '</span>' + (r.flip === c[1] ? flipTag(c[1]) : '') + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + cv(r, c[1]) + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
       (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by ' + esc(r.res.by) : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : col(r.rm)) : '') +
       (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', hmTxt(hm))) +
       (r.res ? kv('Over/underperformance' + qBtn('ov') + '<span class="dl-sub">Tonight’s margin minus Harris’s</span>', r.ov === null ? '—' : gp(r.ov), col(r.ov)) : '') +
@@ -450,7 +456,7 @@
       return (typeof x === 'string' ? x.localeCompare(y) : x - y) * ST.sort.d || a.d - b.d;
     });
     lastRows = rows;
-    mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (ST.s === 'all' ? ' districts. ' : ' battleground districts (R+5 to D+5). ') +
+    mount.querySelector('#' + SLUG + '-tnote').textContent = rows.length + (rows.length === 1 ? { all: ' district. ', bg: ' battleground district (R+5 to D+5). ', close: ' close race: both parties on the ballot, tonight’s margin within ' + CLOSE + ' points. ', flip: ' district flipped, among races called so far. ' } : { all: ' districts. ', bg: ' battleground districts (R+5 to D+5). ', close: ' close races: both parties on the ballot, tonight’s margin within ' + CLOSE + ' points. ', flip: ' districts flipped, among races called so far. ' })[ST.s] +
       (RES ? '2026 results are the unofficial count and will change as votes come in. ' : '') + 'Click a column to sort, or a row to show it on the map.';
     var pill = function (v, k) {
       var s = tTxt(v, k); if (s === null) return '<span class="dl-na">—</span>';
@@ -476,7 +482,7 @@
       }).join('') + '</tr></thead><tbody>' + rows.map(function (r) {
         var cand = r.cand.filter(function (c) { return c[1] === 'D' || c[1] === 'R'; }).sort(function (a, b) { return b[2] - a[2] || (a[1] < b[1] ? -1 : 1); }), oth = r.cand.filter(function (c) { return c[1] !== 'D' && c[1] !== 'R'; });
         return '<tr data-d="' + r.d + '" tabindex="0"' + (ST.pick === r.d ? ' class="me"' : '') + '><td class="l"><span class="dl-dn">' + PRE[ST.c] + ' ' + r.d + '</span>' + (r.cty.length ? '<span class="dl-dc">' + esc(r.cty[0]) + '</span>' : '') + '</td>' +
-          '<td class="l dl-race hide-s">' + cand.map(function (c) { return '<div' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '><span class="dl-held" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span> ' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + (c[2] ? '<span class="dl-inc">incumbent</span>' : '') + '</div>'; }).join('') +
+          '<td class="l dl-race hide-s">' + cand.map(function (c) { return '<div' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '><span class="dl-held" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span> ' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + (r.flip === c[1] ? flipTag(c[1]) : '') + (c[2] ? '<span class="dl-inc">incumbent</span>' : '') + '</div>'; }).join('') +
             (cand.every(function (c) { return !c[2]; }) ? '<div class="dl-oth">Open seat</div>' : '') +
             (oth.length ? '<div class="dl-oth">Also: ' + oth.map(function (c) { return esc(c[0]) + ' (' + (OTH_NAME[c[1]] || c[1]) + ')'; }).join(', ') + '</div>' : '') + '</td>' +
           cols.slice(2).map(function (c) { return '<td class="' + (first[c[0]] ? 'dl-g' : '') + hs(c[0]) + '">' + (c[0] === 'res' ? resCell(r) : pill(tVal(r, c[0]), c[0])) + '</td>'; }).join('') + '</tr>';
@@ -506,8 +512,8 @@
         .concat(RES ? resCsv(r).concat([r.ov]) : []); }), fname('data', 'csv'));
   }
 
-  function resHead() { return ['Winner', 'Winner party', 'Called by', '2026 result, unofficial count' + ' (pts, + = D)', 'Net votes, unofficial count (+ = D)', 'Precincts reporting', 'Precincts', 'Count as of']; }
-  function resCsv(r) { return r.res ? [r.rw ? candBy(r, r.rw) : '', r.rw || '', r.rw ? r.res.by : '', r.rm, r.rnv, r.res.in, r.res.of, RES.asof] : ['', '', '', null, null, null, null, '']; }
+  function resHead() { return ['Winner', 'Winner party', 'Called by', '2026 result, unofficial count' + ' (pts, + = D)', 'Net votes, unofficial count (+ = D)', 'Precincts reporting', 'Precincts', 'Count as of', 'Seat held by (2025-26)', 'Flip']; }
+  function resCsv(r) { return r.res ? [r.rw ? candBy(r, r.rw) : '', r.rw || '', r.rw ? r.res.by : '', r.rm, r.rnv, r.res.in, r.res.of, RES.asof, r.hold || '', r.flip ? 'Yes' : ''] : ['', '', '', null, null, null, null, '', r.hold || '', '']; }
   function tableCsv(rows) {   // the table as shown: its districts, columns, sort, units and As of now / Compared to 2022 setting
     var y22 = ST.y === '22', V = ST.u === 'votes', ks = tCols().slice(2);
     var unit = function (k) { return k === 'res' ? ' (unofficial count, pts, + = D)' : k === 'ov' ? ' (vs. Harris 2024 margin, pts, + = D ahead)' : k === 'pres' ? ' (Harris minus Trump, pts, two-party)' : V && k !== 'lean' ? (k === 'rg' ? (y22 ? ' (change in net registered voters since 2022, + = D)' : ' (net registered voters, + = D)') : y22 ? ' (change in net votes since 2022, + = D)' : ' (net votes, + = D)') : (y22 && k !== 'lean' ? ' (change since 2022, pts, + = D)' : ' (pts, + = D)'); };
@@ -523,7 +529,7 @@
       c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.fillStyle = '#253551'; c.fillRect(0, 0, W, 8);
       var y = P + 10;
       c.font = '700 ' + (tall ? 17 : 14) + 'px Inter, sans-serif'; c.fillStyle = '#6b6b6b'; c.textBaseline = 'alphabetic';
-      var kick = (CH_NAME[ST.c] + (ST.s === 'bg' ? ' · battleground' : '') + (ST.layer === 'res' || ST.layer === 'ov' ? ' · count as of ' + resTime() : '')).toUpperCase();
+      var kick = (CH_NAME[ST.c] + ({ bg: ' · battleground', close: ' · close races', flip: ' · flips' }[ST.s] || '') + (ST.layer === 'res' || ST.layer === 'ov' ? ' · count as of ' + resTime() : '')).toUpperCase();
       if (c.letterSpacing !== undefined) c.letterSpacing = '1px'; c.fillText(kick, P, y); if (c.letterSpacing !== undefined) c.letterSpacing = '0px';
       y += tall ? 54 : 42; c.font = '700 ' + (tall ? 46 : 36) + 'px "Zilla Slab", Georgia, serif'; c.fillStyle = '#253551';
       wrap(c, Lr.name + (y22 ? ', compared to 2022' : ''), W - 2 * P).forEach(function (l, i) { if (i) y += tall ? 52 : 40; c.fillText(l, P, y); });
@@ -558,14 +564,14 @@
       if (k === 'ov') { lo = 'Behind Harris by ' + mx + '+ pts'; hi = 'Ahead of Harris by ' + mx + '+ pts'; } else if (k === 'pres') { lo = 'Trump +' + mx + ' or more'; hi = 'Harris +' + mx + ' or more'; } else { lo = 'R+' + mx + ' or more'; hi = 'D+' + mx + ' or more'; }
       c.font = '500 ' + (tall ? 18 : 15) + 'px Inter, sans-serif'; c.fillStyle = '#3a3a3a';
       if (k === 'res') {   // swatches instead of a ramp, wrapping to a second line when needed
-        var keys = resKeys().concat(ST.s === 'bg' ? [['#E4E1DA', 'Outside R+5 to D+5']] : []), kx = P;
+        var keys = resKeys().concat(outLab() ? [['#E4E1DA', outLab()]] : []), kx = P;
         keys.forEach(function (q) { var w = 22 + c.measureText(q[1]).width + 22; if (kx + w > W - P) { kx = P; ly += tall ? 32 : 26; } c.fillStyle = q[0]; c.fillRect(kx, ly - 6, 14, 14); c.strokeStyle = 'rgba(37,53,81,.35)'; c.lineWidth = 1; c.strokeRect(kx + .5, ly - 5.5, 13, 13); c.fillStyle = '#3a3a3a'; c.fillText(q[1], kx + 22, ly + 6); kx += w; });
       } else {
       var lw = c.measureText(lo).width, rw = tall ? 300 : 260, gx = P + lw + 12; c.fillText(lo, P, ly + 6);
       var g = c.createLinearGradient(gx, 0, gx + rw, 0); g.addColorStop(0, '#B83A32'); g.addColorStop(0.5, '#F2F0EB'); g.addColorStop(1, '#2E6DB4'); c.fillStyle = g; c.fillRect(gx, ly - 6, rw, 14);
       c.fillStyle = '#3a3a3a'; c.fillText(hi, gx + rw + 12, ly + 6);
       var cx = gx + rw + 24 + c.measureText(hi).width; if (tall) { cx = P; ly += 34; }
-      if (ST.s === 'bg') { c.fillStyle = '#E4E1DA'; c.fillRect(cx, ly - 6, 14, 14); c.fillStyle = '#3a3a3a'; c.fillText('Outside R+5 to D+5', cx + 22, ly + 6); cx += 22 + c.measureText('Outside R+5 to D+5').width + 24; }
+      if (outLab()) { c.fillStyle = '#E4E1DA'; c.fillRect(cx, ly - 6, 14, 14); c.fillStyle = '#3a3a3a'; c.fillText(outLab(), cx + 22, ly + 6); cx += 22 + c.measureText(outLab()).width + 24; }
       }
       // source and name
       var sy = H - (tall ? 100 : 66); c.strokeStyle = '#d8d2c4'; c.lineWidth = 1; c.beginPath(); c.moveTo(P, sy - (tall ? 24 : 18)); c.lineTo(W - P, sy - (tall ? 24 : 18)); c.stroke();
