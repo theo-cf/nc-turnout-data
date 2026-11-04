@@ -9,6 +9,9 @@ on:
     - cron: '23 12-23 4 11 *'    # then hourly on Nov. 4
     - cron: '23 */3 5-13 11 *'   # then every 3 hours through the county canvass
   workflow_dispatch: {}
+  workflow_run:                # backstop: GitHub's 10-minute timer is unreliable, so also refresh after every turnout update
+    workflows: ['Update turnout data']
+    types: [completed]
 
 permissions:
   contents: write
