@@ -383,7 +383,7 @@
     function naFill(r, k) {   // what happened to returned ballots that were not accepted here, by State Board status
       var box = mount.querySelector('div.tt-na'); if (!box) return;
       var N = k === 'state' ? D.not_accepted : (r.na || { ml: [], ev: [] }), where = k === 'state' ? 'statewide' : 'in ' + LONG[k](r.name);
-      var CURE = { 'PENDING CURE': 1, 'PHOTO ID CURABLE': 1, 'ID NOT PROVIDED': 1, 'AFFIDAVIT REVIEW PENDING': 1, 'CONFLICT': 1, 'VOTER SIGNATURE MISSING': 1, 'AFFIDAVIT INCOMPLETE': 1, 'PHOTO ID NONCOMPLIANT': 1 };
+      var CURE = { 'PENDING CURE': 1, 'PHOTO ID CURABLE': 1, 'ID NOT PROVIDED': 1, 'AFFIDAVIT REVIEW PENDING': 1, 'CONFLICT': 1, 'VOTER SIGNATURE MISSING': 1, 'AFFIDAVIT INCOMPLETE': 1, 'PHOTO ID NONCOMPLIANT': 1, 'SIGNATURE DIFFERENT': 1 };
       var NOTE = { 'SPOILED - EV': 'voided because the voter voted early in person instead' };
       function table(rows, kind) {
         if (!rows || !rows.length) return '<p class="tt-nanone">None so far.</p>';

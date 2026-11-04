@@ -1,0 +1,43 @@
+name: Update election results
+
+# The State Board's live unofficial count for congressional, NC House and NC Senate races, plus AP race calls
+# (calls.csv), published as results.json on the `results` branch for the district lean widget. Kept off main and
+# out of the turnout update so the two never collide; the widget reads it from raw.githubusercontent.com.
+on:
+  schedule:
+    - cron: '*/10 0-11 4 11 *'   # election night: every 10 minutes, 7 p.m. Nov. 3 to about 7 a.m. Nov. 4 Eastern
+    - cron: '23 12-23 4 11 *'    # then hourly on Nov. 4
+    - cron: '23 */3 5-13 11 *'   # then every 3 hours through the county canvass
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-results
+  cancel-in-progress: false
+
+jobs:
+  results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: main
+      - uses: actions/checkout@v4
+        with:
+          ref: results
+          path: out
+      - name: Build results.json
+        run: python3 -I main/build_results.py - out/calls.csv out/results.json
+      - name: Publish
+        working-directory: out
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results.json
+          if git diff --cached --quiet; then echo "No change."; exit 0; fi
+          git commit -q -m "Update results ($(date -u +%FT%TZ))"
+          for i in 1 2 3; do git pull -q --rebase && git push -q && exit 0; sleep 5; done
+          exit 1

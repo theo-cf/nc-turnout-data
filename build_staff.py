@@ -39,7 +39,7 @@ CURE = NEEDS_CURE - {'PENDING'}
 # Short keys for every status a voter can be waiting on, in the State Board's own words.
 CURE_KEYS = [('pend', 'PENDING CURE'), ('idc', 'PHOTO ID CURABLE'), ('idn', 'ID NOT PROVIDED'), ('conf', 'CONFLICT'),
              ('sig', 'VOTER SIGNATURE MISSING'), ('affi', 'AFFIDAVIT INCOMPLETE'), ('idnc', 'PHOTO ID NONCOMPLIANT'),
-             ('aff', 'AFFIDAVIT REVIEW PENDING')]
+             ('aff', 'AFFIDAVIT REVIEW PENDING'), ('sigd', 'SIGNATURE DIFFERENT')]
 assert {s for _, s in CURE_KEYS} == CURE
 CURE_KEY = {s: k for k, s in CURE_KEYS}
 PARTIES = ['DEM', 'REP', 'UNA', 'OTH']
