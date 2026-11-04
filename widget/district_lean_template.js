@@ -226,6 +226,10 @@
     ['hd', 'sd', 'cd'].forEach(function (g) {
       (ROWS[g] || []).forEach(function (r) {
         var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.rw = x && x.w ? x.w : null;
+        // our candidate list still has a few who withdrew (HD 22, 44, 102, SD 9); once the ballot is known, show only who is on it
+        r.cand0 = r.cand0 || r.cand;
+        var onBallot = x ? r.cand0.filter(function (c) { return x.c.some(function (y) { return y[1] === c[1]; }); }) : [];
+        r.cand = onBallot.length ? onBallot : r.cand0;
         if (!x) return;
         var tot = 0, v = { D: 0, R: 0 }; x.c.forEach(function (c) { tot += c[2]; if (c[1] in v) v[c[1]] += c[2]; });
         if (tot > 0) { r.rm = (v.D - v.R) / tot * 100; r.rnv = v.D - v.R; }
