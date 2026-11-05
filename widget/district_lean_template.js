@@ -228,18 +228,20 @@
   function attachRes() {
     ['hd', 'sd', 'cd'].forEach(function (g) {
       (ROWS[g] || []).forEach(function (r) {
-        var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.ov = null; r.vl = null; r.flip = null; r.close = false; r.rw = x && x.w ? x.w : null;
+        var x = RES && RES[g] ? RES[g][String(r.d)] : null; r.res = x || null; r.rm = null; r.rnv = null; r.rx = null; r.ov = null; r.vl = null; r.flip = null; r.close = false; r.rw = x && x.w ? x.w : null;
         // our candidate list still has a few who withdrew (HD 22, 44, 102, SD 9); once the ballot is known, show only who is on it
         r.cand0 = r.cand0 || r.cand;
         var onBallot = x ? r.cand0.filter(function (c) { return x.c.some(function (y) { return y[1] === c[1]; }); }) : [];
         r.cand = onBallot.length ? onBallot : r.cand0;
         if (!x) return;
         var tot = 0, v = { D: 0, R: 0 }; x.c.forEach(function (c) { tot += c[2]; if (c[1] in v) v[c[1]] += c[2]; });
-        if (tot > 0) { r.rm = (v.D - v.R) / tot * 100; r.rnv = v.D - v.R; }
+        var noD = !x.c.some(function (c) { return c[1] === 'D'; }) && x.c.length > 1;   // e.g. HD 51, unaffiliated vs. Republican: D minus R would read as a Republican landslide
+        if (tot > 0 && noD) { var s2 = x.c.slice().sort(function (a, b) { return b[2] - a[2]; }); r.rx = { p: s2[0][1], o: s2[1][1], m: (s2[0][2] - s2[1][2]) / tot * 100, n: s2[0][2] - s2[1][2] }; }
+        else if (tot > 0) { r.rm = (v.D - v.R) / tot * 100; r.rnv = v.D - v.R; }
         r.rlead = tot > 0 ? x.c[0][1] : null; r.rpct = x.of ? x.in / x.of * 100 : null;
         var both = x.c.some(function (c) { return c[1] === 'D'; }) && x.c.some(function (c) { return c[1] === 'R'; });
         r.hold = HOLD[g][String(r.d)] || null; r.flip = r.rw && r.hold && r.rw !== r.hold ? r.rw : null;
-        r.close = both && r.rm !== null && Math.abs(r.rm) <= CLOSE;
+        r.close = both && r.rm !== null && Math.abs(r.rm) <= CLOSE || !!(r.rx && r.rx.o && r.rx.m <= CLOSE);
         var d2 = v.D + v.R;   // tonight's two-party margin vs. the statewide one, minus the lean in margin points
         r.vl = both && d2 > 0 && RES.st && r.lean !== null && r.lean !== undefined ? ((v.D - v.R) / d2 * 100 - RES.st.m) - 2 * r.lean : null;
         r.ov = both && r.rm !== null && r.hm !== null && r.hm !== undefined ? r.rm - r.hm : null;   // (D − R tonight) − (Harris − Trump)
@@ -263,20 +265,27 @@
     var day = t.toLocaleDateString('en-CA', o), hm = t.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' });
     return longDay(day).replace(/^\w+\., /, '') + ' at ' + hm.replace(' AM', ' a.m.').replace(' PM', ' p.m.');
   }
+  function rxTxt(r) { return r.rx.p + '+' + r.rx.m.toFixed(1) + ' over ' + r.rx.o; }
+  var PNAME = { D: 'Democrat', R: 'Republican', I: 'Unaffiliated', L: 'Libertarian', G: 'Green' };
   function candBy(r, p) { var c = r.cand.filter(function (x) { return x[1] === p; })[0]; if (c) return c[0]; var y = r.res ? r.res.c.filter(function (x) { return x[1] === p; })[0] : null; return y ? y[0] : p; }
   function resLine(r) {   // one line for tooltips: who won, who leads, or nothing yet
     if (!r.res) return 'no results yet';
     if (r.rw) return candBy(r, r.rw) + ' (' + r.rw + ') won' + (r.res.by === 'unopposed' ? ', unopposed' : ', per ' + r.res.by);
+    if (r.rx) return candBy(r, r.rx.p) + ' (' + r.rx.p + ') leads by ' + r.rx.m.toFixed(1) + ' pts (' + fmt(r.rx.n) + ' votes), not called';
     if (r.rm === null) return 'no votes counted yet';
     return dr(r.rm, 1) + ' so far, ' + (r.res.in ? Math.round(r.rpct) + '% of precincts in' : 'early and mail votes only');
   }
-  function flipTag(p) { return '<span class="dl-ftag" style="background:' + (PCOL[p] || '#6b6b6b') + '" title="Seat flipped from ' + ({ D: 'Democrats', R: 'Republicans' }[p === 'D' ? 'R' : 'D']) + '">FLIP</span>'; }
+  function flipTag(p, from) { var nm = { D: 'Democrats', R: 'Republicans', I: 'an unaffiliated member' }; return '<span class="dl-ftag" style="background:' + (PCOL[p] || '#6b6b6b') + '" title="Seat flipped' + (nm[from] ? ' from ' + nm[from] : '') + '">FLIP</span>'; }
   function resColor(r) {
     if (!r.res || r.rlead === null && !r.rw) return '#FFFFFF';
     if (r.rw) return PCOL[r.rw] || '#6b6b6b';
     return mix('#F2F0EB', PCOL[r.rlead] || '#6b6b6b', 0.38);
   }
-  function resKeys() { return [[PCOL.D, 'Democrat won'], [PCOL.R, 'Republican won'], [mix('#F2F0EB', PCOL.D, 0.38), 'Democrat ahead'], [mix('#F2F0EB', PCOL.R, 0.38), 'Republican ahead'], ['#FFFFFF', 'No votes counted yet']]; }
+  function resKeys() {
+    var o = (ROWS[ST.c] || []).filter(function (r) { return r.rw && !PCOL_DR[r.rw] || !r.rw && r.rx && !PCOL_DR[r.rx.p]; }), won = o.some(function (r) { return r.rw; }), ahead = o.some(function (r) { return !r.rw; });
+    return [[PCOL.D, 'Democrat won'], [PCOL.R, 'Republican won']].concat(won ? [[PCOL.I, 'Unaffiliated won']] : []).concat([[mix('#F2F0EB', PCOL.D, 0.38), 'Democrat ahead'], [mix('#F2F0EB', PCOL.R, 0.38), 'Republican ahead']]).concat(ahead ? [[mix('#F2F0EB', PCOL.I, 0.38), 'Unaffiliated ahead']] : []).concat([['#FFFFFF', 'No votes counted yet']]);
+  }
+  var PCOL_DR = { D: 1, R: 1 };
   function fillOf(r, k) { return !shown(r) ? '#E4E1DA' : k === 'res' ? resColor(r) : color(value(r, k), scaleMax(k)); }
   function sum(a) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s; }
   function layerOf(k) { for (var i = 0; i < LAYERS.length; i++) if (LAYERS[i].k === k) return LAYERS[i]; }
@@ -412,8 +421,8 @@
     var hm = r.hm;
     var h = '<button type="button" class="dl-cx" aria-label="Close">×</button><h3>' + LONG[ST.c] + ' ' + r.d + '</h3>' +
       (r.cty.length ? '<p class="dl-cty">' + esc(r.cty.join(', ')) + (r.cty.length > 1 ? ' (largest parts)' : '') + '</p>' : '') +
-      (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span><span' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '>' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + '</span>' + (r.flip === c[1] ? flipTag(c[1]) : '') + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + cv(r, c[1]) + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
-      (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by ' + esc(r.res.by) : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : col(r.rm)) : '') +
+      (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span><span' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '>' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + '</span>' + (r.flip === c[1] ? flipTag(c[1], r.hold) : '') + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + cv(r, c[1]) + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
+      (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by ' + esc(r.res.by) : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rx ? esc(rxTxt(r)) : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : r.rx ? 'color:#4a4a4a' : col(r.rm)) : '') +
       (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', hmTxt(hm))) +
       (r.res ? kv('Over/underperformance' + qBtn('ov') + '<span class="dl-sub">Tonight’s margin minus Harris’s</span>', r.ov === null ? '—' : gp(r.ov), col(r.ov)) : '') +
       (r.res ? kv('Performance vs. lean' + qBtn('vl') + '<span class="dl-sub">Vs. the statewide result' + (RES.st ? ' (D+' + RES.st.m.toFixed(1) + ')' : '') + ' and its lean</span>', r.vl === null ? '—' : gp(r.vl), col(r.vl)) : '') +
@@ -475,6 +484,8 @@
     var resCell = function (r) {   // tonight's margin on top; below it, whether it's called and how much is counted
       if (!r.res) return '<span class="dl-na">—</span>';
       if (r.res.by === 'unopposed') return '<span class="dl-rin" style="margin:0">Unopposed</span>';
+      var pc0 = (r.res.in ? Math.round(r.rpct) + '% in' : 'Early & mail only');
+      if (r.rx) return '<span class="dl-pill" style="color:#4a4a4a">' + esc(r.rx.p) + '+' + r.rx.m.toFixed(1) + '</span><span class="dl-rin">' + (r.rw ? '<b style="color:#3a3a3a">✓ ' + esc(r.rw) + ' won</b><span class="dl-by"> · ' + esc(r.res.by) + '</span>' : esc(PNAME[r.rx.p] || r.rx.p) + ' ahead of ' + esc(r.rx.o) + ' · not called') + ' · ' + pc0 + '</span>';
       if (r.rm === null) return '<span class="dl-na">—</span><span class="dl-rin">No votes yet</span>';
       var pc = (r.res.in ? Math.round(r.rpct) + '% in' : 'Early & mail only');
       return pill(r.rm, 'res') + '<span class="dl-rin">' + (r.rw ? '<b style="color:' + ({ D: '#1d4a85', R: '#8f2e28' }[r.rw] || '#3a3a3a') + '">✓ ' + esc(r.rw) + ' won</b><span class="dl-by"> · ' + esc(r.res.by) + '</span>' : 'Not called') + ' · ' + pc + '</span>';
@@ -488,9 +499,10 @@
         var on = ST.sort.k === c[0], cls = (on ? 'on' : '') + (c[3] ? '' : ' l') + (first[c[0]] ? ' dl-g' : '') + hs(c[0]);
         return '<th class="' + cls + '"' + (on ? ' aria-sort="' + (ST.sort.d > 0 ? 'ascending' : 'descending') + '"' : '') + '><div class="dl-thw"><button type="button" class="sb" data-ts="' + c[0] + '">' + c[1] + (on ? (ST.sort.d > 0 ? ' ▲' : ' ▼') : '') + '</button>' + (c[2] ? qBtn(c[2]) : '') + '</div></th>';
       }).join('') + '</tr></thead><tbody>' + rows.map(function (r) {
-        var cand = r.cand.filter(function (c) { return c[1] === 'D' || c[1] === 'R'; }).sort(function (a, b) { return b[2] - a[2] || (a[1] < b[1] ? -1 : 1); }), oth = r.cand.filter(function (c) { return c[1] !== 'D' && c[1] !== 'R'; });
+        var main = function (c) { return c[1] === 'D' || c[1] === 'R' || !!(r.rx && (c[1] === r.rx.p || c[1] === r.rx.o)); };
+        var cand = r.cand.filter(main).sort(function (a, b) { return b[2] - a[2] || (a[1] < b[1] ? -1 : 1); }), oth = r.cand.filter(function (c) { return !main(c); });
         return '<tr data-d="' + r.d + '" tabindex="0"' + (ST.pick === r.d ? ' class="me"' : '') + '><td class="l"><span class="dl-dn">' + PRE[ST.c] + ' ' + r.d + '</span>' + (r.cty.length ? '<span class="dl-dc">' + esc(r.cty[0]) + '</span>' : '') + '</td>' +
-          '<td class="l dl-race hide-s">' + cand.map(function (c) { return '<div' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '><span class="dl-held" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span> ' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + (r.flip === c[1] ? flipTag(c[1]) : '') + (c[2] ? '<span class="dl-inc">incumbent</span>' : '') + '</div>'; }).join('') +
+          '<td class="l dl-race hide-s">' + cand.map(function (c) { return '<div' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '><span class="dl-held" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span> ' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + (r.flip === c[1] ? flipTag(c[1], r.hold) : '') + (c[2] ? '<span class="dl-inc">incumbent</span>' : '') + '</div>'; }).join('') +
             (cand.every(function (c) { return !c[2]; }) ? '<div class="dl-oth">Open seat</div>' : '') +
             (oth.length ? '<div class="dl-oth">Also: ' + oth.map(function (c) { return esc(c[0]) + ' (' + (OTH_NAME[c[1]] || c[1]) + ')'; }).join(', ') + '</div>' : '') + '</td>' +
           cols.slice(2).map(function (c) { return '<td class="' + (first[c[0]] ? 'dl-g' : '') + hs(c[0]) + '">' + (c[0] === 'res' ? resCell(r) : pill(tVal(r, c[0]), c[0])) + '</td>'; }).join('') + '</tr>';
