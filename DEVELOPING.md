@@ -64,6 +64,7 @@ Routes are hash links: `#nc-turnout=state`, `county:Wake`, `cd:1`, `hd:22`, `sd:
 - Run `git pull --rebase` before every push. The workflow commits data, too.
 - Commit messages end with the attribution lines the session gives you.
 - After a run, check the **Pages** URL, not raw.githubusercontent. Pages is deployed from Actions.
+- **If the Pages publish fails, don't keep retrying on the same commit.** Each Pages deployment is named after the commit. On Nov. 6 four retries on one commit failed, first stalling in "syncing_files", then "Deployment failed, try again later". A new commit to `main` and a fresh run published right away. The publish timeout is now 30 minutes.
 
 ### Security and approval rules (Theo's, still in force)
 
