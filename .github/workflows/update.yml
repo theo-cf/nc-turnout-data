@@ -195,6 +195,8 @@ jobs:
       - name: Publish to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 1800000   # 30 minutes; GitHub's file sync stalled past the 10-minute default on Nov. 6
 
   staff-alert:
     # Fails (and so sends GitHub's failure email) when the staff data couldn't be built or locked,
