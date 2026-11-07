@@ -438,6 +438,10 @@
       return null;
     }
     function tot(r) { return r.vc + (r.ed || 0); }
+    /* Turnout in the map cards and Rankings counts Election Day votes once the State Board posts them, and is then compared with
+       the picked year's final turnout. A picked day of early voting, or "through" a day, still counts early and mail votes only. */
+    function edIn(row) { return HAS_ED && !dayOn() && !thruOn() && !!row && !row.asof && row.ed !== undefined && row.ed !== null; }
+    function turnN(row) { return edIn(row) ? tot(row) : row.vc; }
     function rate(a, b) { if (!b) return ''; var p = a / b * 100; if (p > 100) return '\u2014'; return (p > 0 && p < 0.1 ? '<0.1' : p.toFixed(1)) + '%'; }   // a dash if registration lags behind (never over 100%)
     var HAS_ED = D.state.ed != null, FINAL = !!D.final;
     function dek(r) {
@@ -628,10 +632,11 @@
         vreg: '<b>Vs. registration, in votes:</b> how many more votes Democrats (D) or Republicans (R) have than they would if the votes split the same way as registered voters here.',
         lpturn: '<b>Low-prop. voters:</b> low-propensity Democrats and Republicans who have voted. Click the heading again to sort by Democrats, Republicans or the gap between them.',
         lpgap: '<b>Low-prop. net:</b> low-propensity Democrats who have voted minus low-propensity Republicans.' }[k];
+      if (rkCtx.ed && k === 'turn') base = rkCtx.votes ? '<b>Votes:</b> early, mail and Election Day votes cast.' : '<b>Turnout:</b> share of registered voters who have voted, counting early, mail and Election Day votes. Election Day votes are the State Board\u2019s unofficial count.';
       if (rkCtx.day) base = base.replace(/who have voted/g, 'who voted that day').replace(/ so far/g, ' that day').replace(/early and mail votes cast/, 'early in-person votes cast');
       t = P + base + '</p>';
-      if (ch && rkCtx.votes) t += P + 'Change in votes since the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + '. More people are registered than in past years, so counts tend to rise even when turnout rates don\u2019t.' + (rkCtx.geo !== 'county' ? ' Past years use today\u2019s district lines.' : '') + '</p>';
-      else if (ch) t += P + (k === 'turn' ? 'Change since the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + ', in percentage points.' : k === 'lpturn' ? 'The change in the Democratic rate minus the change in the Republican rate since the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + ', in percentage points.' : 'The shift toward Democrats (D) or Republicans (R) since the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + ', in percentage points.') + (rkCtx.geo !== 'county' ? ' Past years use today\u2019s district lines.' : '') + '</p>';
+      if (ch && rkCtx.votes) t += P + 'Change in votes since ' + (rkCtx.ed && k === 'turn' ? 'final turnout' : 'the same ' + (rkCtx.day ? 'day' : 'point')) + ' in ' + y + '. More people are registered than in past years, so counts tend to rise even when turnout rates don\u2019t.' + (rkCtx.geo !== 'county' ? ' Past years use today\u2019s district lines.' : '') + '</p>';
+      else if (ch) t += P + (k === 'turn' ? 'Change since ' + (rkCtx.ed ? 'final turnout' : 'the same ' + (rkCtx.day ? 'day' : 'point')) + ' in ' + y + ', in percentage points.' : k === 'lpturn' ? 'The change in the Democratic rate minus the change in the Republican rate since the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + ', in percentage points.' : 'The shift toward Democrats (D) or Republicans (R) since the same ' + (rkCtx.day ? 'day' : 'point') + ' in ' + y + ', in percentage points.') + (rkCtx.geo !== 'county' ? ' Past years use today\u2019s district lines.' : '') + '</p>';
       if (k === 'lpturn' || k === 'lpgap') t += P + esc(LP_DEF) + '</p>';
       if (rkCtx.pick) t += P + 'Each row is only the part inside ' + esc(rkCtx.pick) + ', with only the voters who live there, on today\u2019s lines.</p>';
       if (k !== 'turn') t += '<p style="margin:0;font-style:italic">Party is registration, not vote choice.</p>';
@@ -1334,7 +1339,7 @@
       now.lpturn = now.lprates && now.lprates[0] !== null && now.lprates[1] !== null ? now.lprates[0] - now.lprates[1] : null;
       now.lpgap = row.lp && sum(row.lp) > 0 ? (row.lp[0] - row.lp[1]) / sum(row.lp) * 100 : null;
       now.lpshare = row.lp && n >= PROP_MIN ? sum(row.lp) / (row.pty[0] + row.pty[1] + row.pty[2]) * 100 : null;
-      now.turn = row.reg ? row.vc / row.reg * 100 : null;
+      now.turn = row.reg ? turnN(row) / row.reg * 100 : null;
       now.lpdsh = row.lp && sum(row.lp) >= LP_MIN * 3 ? row.lp[0] / sum(row.lp) * 100 : null;   // Democrats' share of low-propensity voters who have voted
       now.regm = regM(row.rpty); now.vreg = vsReg(now.party, now.regm);
       if (b) {
@@ -1345,7 +1350,7 @@
         var tlp = p.lp ? p.lp[0][i] + p.lp[1][i] + p.lp[2][i] : 0;
         then.lpgap = tlp > 0 ? (p.lp[0][i] - p.lp[1][i]) / tlp * 100 : null;
         then.lpshare = p.lp && pn >= PROP_MIN ? (p.lp[0][i] + p.lp[1][i] + p.lp[2][i]) / (p.p[0][i] + p.p[1][i] + p.p[2][i]) * 100 : null;
-        then.turn = p.reg ? p.c[i] / p.reg * 100 : null;
+        then.turn = p.reg ? (edIn(row) && p.fin ? p.fin : p.c[i]) / p.reg * 100 : null;
         then.lpdsh = p.lp && (p.lp[0][i] + p.lp[1][i] + p.lp[2][i]) >= LP_MIN * 3 ? p.lp[0][i] / (p.lp[0][i] + p.lp[1][i] + p.lp[2][i]) * 100 : null;
         then.regm = regM(p.rp); then.vreg = vsReg(then.party, then.regm);
       }
@@ -1577,8 +1582,8 @@
       var m = measures(row), d = m.now.turn && m.then.turn ? Math.round((m.now.turn / m.then.turn - 1) * 100) : null;
       return '<div class="tt-mcard" role="dialog" aria-label="' + esc(lab) + '"><button type="button" class="tt-mcx" aria-label="Close">\u00D7</button>' +
         '<div class="tt-mcn">' + esc(lab) + '</div>' + (row.piece ? '<div class="tt-mcs">Only the voters inside ' + esc(LONG[state.geo](state.sel[state.geo])) + '</div>' : '') +
-        '<div class="tt-mch"><span class="tt-mcbig">' + (m.now.turn === null ? '—' : m.now.turn.toFixed(dayOn() ? 2 : 1) + '%') + '</span><span class="tt-mcs">' + (dayOn() ? 'of registered voters voted early in person on ' + dayLab() + '<br>' + fmt(m.now.n || 0) + ' votes that day' : 'of registered voters have voted<br>' + fmt(row.vc) + ' votes so far') + '</span></div>' +
-        (d === null ? '' : '<span class="tt-chip ' + (d === 0 ? 'ev' : d > 0 ? 'up' : 'dn') + '">' + (d === 0 ? 'Same' : (d > 0 ? '▲ ' : '▼ ') + Math.abs(d) + '%') + ' vs. ' + (dayOn() ? 'the same day in ' : 'same point in ') + vs + '</span>') +
+        '<div class="tt-mch"><span class="tt-mcbig">' + (m.now.turn === null ? '—' : m.now.turn.toFixed(dayOn() ? 2 : 1) + '%') + '</span><span class="tt-mcs">' + (dayOn() ? 'of registered voters voted early in person on ' + dayLab() + '<br>' + fmt(m.now.n || 0) + ' votes that day' : 'of registered voters have voted<br>' + fmt(turnN(row)) + (edIn(row) ? ' votes, including Election Day' : ' votes so far')) + '</span></div>' +
+        (d === null ? '' : '<span class="tt-chip ' + (d === 0 ? 'ev' : d > 0 ? 'up' : 'dn') + '">' + (d === 0 ? 'Same' : (d > 0 ? '▲ ' : '▼ ') + Math.abs(d) + '%') + ' vs. ' + (dayOn() ? 'the same day in ' : edIn(row) ? 'final turnout in ' : 'same point in ') + vs + '</span>') +
         '<div class="tt-mcg">' + cardRow('Party split', m.now.party, m.then.party, 'party') + cardRow('Party split of registered voters', m.now.regm, m.then.regm, 'reg') + cardRow('Vs. registration' + regQ(), m.now.vreg, m.then.vreg, 'party') +
         lpRateRow(m.now.lprates, m.then.lprates) + cardRow('Low-propensity margin' + lpQ(), m.now.lpgap, m.then.lpgap, 'party') + '</div>' +
         ((geo === 'county' || row.piece) && !dayOn() ? raceCard(row) : '') +
@@ -1806,7 +1811,7 @@
           o.name = geo === 'county' ? row.name : +row.name.replace(/\D/g, '');
           return o;
         }
-        o.turn = row.reg ? row.vc / row.reg * 100 : null;
+        o.turn = row.reg ? turnN(row) / row.reg * 100 : null;
         o.party = n > 0 ? (row.pty[0] - row.pty[1]) / n * 100 : null;
         // low-propensity turnout: D and R rates (sorted by D minus R); margin: D minus R share of low-propensity voters who have voted
         o.lprates = row.lp && row.lpr ? [row.lpr[0] ? row.lp[0] / row.lpr[0] * 100 : null, row.lpr[1] ? row.lp[1] / row.lpr[1] * 100 : null] : null;
@@ -1817,7 +1822,7 @@
         // change since the picked year, in percentage points: 2026 minus the same point that year (final numbers once 2026 is final)
         o.dturn = o.dparty = o.dlpturn = o.dlpgap = null;
         if (p && Y && kn !== null) {
-          var i = FINAL || HAS_ED ? p.c.length - 1 : Math.min(Math.max(kn - Y.k0, 0), p.c.length - 1), th = FINAL ? p.fin : p.c[i];
+          var i = FINAL || HAS_ED ? p.c.length - 1 : Math.min(Math.max(kn - Y.k0, 0), p.c.length - 1), th = FINAL || (edIn(row) && p.fin) ? p.fin : p.c[i];
           var pp = FINAL && p.fp ? p.fp : p.p.map(function (a) { return a[i]; }), pn = pp[0] + pp[1] + pp[2] + pp[3];
           var tParty = pn > 0 ? (pp[0] - pp[1]) / pn * 100 : null;
           var tLp = p.lp && p.lpr && p.lpr[0] && p.lpr[1] ? p.lp[0][i] / p.lpr[0] * 100 - p.lp[1][i] / p.lpr[1] * 100 : null;
@@ -1830,7 +1835,7 @@
           var pastC = { turn: th, party: pp[0] - pp[1], lp: p.lp ? [p.lp[0][i], p.lp[1][i]] : null }, pastN = pn, pastV = tV;
           o.px = rkComp(pp, p.reg, p.rp, p.lp ? [p.lp[0][i], p.lp[1][i], p.lp[2][i]] : null, p.lpr);
         }
-        if (votesOn()) rkVotes(o, { turn: row.vc, party: n > 0 ? row.pty[0] - row.pty[1] : null, lp: row.lp ? [row.lp[0], row.lp[1]] : null }, pastC || null, n, pastN || 0, pastV);
+        if (votesOn()) rkVotes(o, { turn: turnN(row), party: n > 0 ? row.pty[0] - row.pty[1] : null, lp: row.lp ? [row.lp[0], row.lp[1]] : null }, pastC || null, n, pastN || 0, pastV);
         o.name = geo === 'county' ? row.name : +row.name.replace(/\D/g, '');
         return o;
       });
@@ -1908,7 +1913,7 @@
         }).join('') + '</tbody></table></div>' +
         (rs.length > 10 ? '<button type="button" class="tt-more tt-rkall">' + (rkAll ? 'Show the top 10' : 'Show all ' + rs.length) + '</button>' : '') +
         '<p class="tt-pfoot">Click or tap a row to open ' + (pick ? 'all of it' : 'it') + '.</p></div>';
-      rkCtx = { vs: vs, chg: rkChg, day: dayOn(), votes: votesOn(), geo: geo, pick: pick ? LONG[state.geo](state.sel[state.geo]) : null };
+      rkCtx = { vs: vs, chg: rkChg, ed: HAS_ED && !dayOn() && !thruOn(), day: dayOn(), votes: votesOn(), geo: geo, pick: pick ? LONG[state.geo](state.sel[state.geo]) : null };
       return t;
     }
     /* "Who has voted" as a PNG: the section as shown, re-laid at a fixed width with the Carolina Forward name, title and source.

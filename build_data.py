@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from election_day import PRECINCT_MIN, TOP_CONTEST, district_ed, district_tables, load_lookup, precinct_tables, read_results
+from election_day import PRECINCT_MIN, TOP_CONTEST, district_ed, district_tables, load_lookup, piece_ed, precinct_tables, read_results
 from ncsbe import history_tier, tier_counts
 from ncsbe import ACCEPTED, COUNTY_NAME, DISTRICTS, ETHS, KNOWN, NC_COUNTIES, NEEDS_CURE, RACES, REJECTED, TYPES, eth_code, norm, num, race_code
 
@@ -502,6 +502,7 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pieces' in _P:
                          'sd': acc.nc_senate_desc.map(lambda v: num(v) or None if pd.notna(v) else None).values},
                         index=acc.index)
     PIECES = {'asof': ASOF, 'p': {}, 'sites': {}}
+    _ped = piece_ed(ed_pct, lookup) if ed_pct is not None else {}
     for k1, k2 in (('county', 'cd'), ('county', 'hd'), ('county', 'sd'), ('cd', 'hd'), ('cd', 'sd'), ('hd', 'sd')):
         lab = lambda k: _loc[k] if k == 'county' else _loc[k].map(lambda x: None if x is None or pd.isna(x) else str(int(x)))
         key = (lab(k1) + '|' + lab(k2)).dropna()
@@ -519,6 +520,11 @@ if HAS_HIST and POOL_FILE and os.path.exists(POOL_FILE) and 'pieces' in _P:
         for kk, x in regs.items():   # a piece with registered voters but no votes yet
             if kk not in res:
                 res[kk] = {'vc': 0, 'reg': x['n'], 'rpty': x['pty'], 'rage': x['age'], 'rrace': x['race'], 'reth': x['eth'], 'lpr': x['lpr']}
+        if ed_pct is not None:   # Election Day votes, from the precinct results file (election_day.piece_ed)
+            for kk, n in _ped.get(k1 + '|' + k2, {}).items():
+                res.setdefault(kk, {'vc': 0})['ed'] = n
+            for row in res.values():
+                row.setdefault('ed', 0)
         PIECES['p'][k1 + '|' + k2] = res
     _ev = ev.join(_loc[['cd', 'hd', 'sd']])
     for k in ('cd', 'hd', 'sd'):

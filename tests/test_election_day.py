@@ -40,3 +40,13 @@ assert tidy('MCDOWELL TECH COMMUNITY COLLEGE') == 'McDowell Tech Community Colle
 assert tidy('PRECINCT 01-49') == 'Precinct 01-49'
 assert tidy('PCT 012') == 'PCT 012'
 print('all checks passed')
+
+# Election Day votes by piece: each precinct counts in its county and its districts; unplaced precincts are left out.
+from election_day import piece_ed  # noqa: E402
+lk2 = pd.DataFrame({'county': ['WAKE', 'WAKE', 'ORANGE'], 'code': ['1', '2', '3'], 'name': ['A', 'B', 'C'],
+                    'cd': ['02', '13', '04'], 'hd': ['034', '035', '050'], 'sd': ['15', '15', '23']})
+ed2 = pd.DataFrame({'county': ['WAKE', 'WAKE', 'ORANGE', 'ORANGE'], 'code': ['1', '2', '3', 'ABS'], 'real': ['Y', 'Y', 'Y', 'N'], 'ed': [10, 20, 30, 5]})
+pe = piece_ed(ed2, lk2)
+assert pe['county|cd'] == {'Wake|2': 10, 'Wake|13': 20, 'Orange|4': 30}, pe
+assert pe['county|sd'] == {'Wake|15': 30, 'Orange|23': 30}, pe
+assert pe['cd|hd'] == {'2|34': 10, '13|35': 20, '4|50': 30}, pe

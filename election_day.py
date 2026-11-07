@@ -162,3 +162,22 @@ def district_ed(ed_by_pct, lookup):
         res[k] = {int(d): int(v) for d, v in g.groupby(g[k].astype(int)).ed.sum().items()}
         res[k + '_unassigned'] = int(m.ed.sum() - g.ed.sum())
     return res
+
+
+PIECE_PAIRS = (('county', 'cd'), ('county', 'hd'), ('county', 'sd'), ('cd', 'hd'), ('cd', 'sd'), ('hd', 'sd'))
+
+
+def piece_ed(ed_by_pct, lookup):
+    """Election Day votes for each piece (one layer's place inside another's), keyed like the tracker's pieces:
+    {'county|hd': {'Orange|50': n, ...}, 'cd|hd': {'4|50': n, ...}, ...}. A precinct split by district lines counts in the
+    district where most of its voters are, as in district_ed; votes the lookup can't place are left out."""
+    m = ed_by_pct.merge(lookup[['county', 'code', 'cd', 'hd', 'sd']], on=['county', 'code'], how='inner')
+    lab = {'county': m.county.map(lambda c: COUNTY_NAME.get(c, c.title()))}
+    for k in ('cd', 'hd', 'sd'):
+        n = pd.to_numeric(m[k], errors='coerce')
+        lab[k] = n.map(lambda x: None if pd.isna(x) else str(int(x)))
+    res = {}
+    for k1, k2 in PIECE_PAIRS:
+        key = (lab[k1] + '|' + lab[k2]).dropna()
+        res[k1 + '|' + k2] = {kk: int(v) for kk, v in m.loc[key.index].groupby(key.values).ed.sum().items()}
+    return res
