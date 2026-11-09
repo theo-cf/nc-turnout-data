@@ -132,7 +132,20 @@
     var A = D.access || { area: 'all', desc: 'Statewide', label: '' }, all = A.area === 'all';
     var places = { state: [Object.assign({ name: 'North Carolina' }, D.state)] };
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) { places[k] = D.geo[k]; });
-    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false, list: 'wait', sorts: ['', '', ''], race: '', eth: '' };
+    var state = { geo: 'state', sel: { state: 'North Carolina' }, q: '', party: '', status: '', hist: '', all: false, allPl: false, list: 'wait', sorts: ['', '', ''], race: '', eth: '',
+      mode: 'mail', pq: '', pgrp: 'act', pwhy: '', pst: '', pparty: '', pwhen: '', psort: '', pall: false };
+    /* Provisional ballots (from the State Board's provisional file, once it's posted). */
+    var P = D.prov || null, PN = {};
+    if (P) {
+      P.voters.forEach(function (v) {
+        v.g = v.why >= 0 ? P.reasons[v.why][1] : 'rev';
+        v.hay = [v.name, v.reg, v.county, v.precinct, v.rpct, v.home, v.phone].join(' ').toLowerCase();
+        var need = v.st === 'pend' && (v.g === 'id' || v.g === 'num') ? 1 : 0;
+        [['state', 'North Carolina'], ['county', v.county], ['cd', 'CD ' + v.cd], ['hd', 'HD ' + v.hd], ['sd', 'SD ' + v.sd]].forEach(function (kk) {
+          var key = kk[0] + '|' + kk[1]; PN[key] = PN[key] || { n: 0, need: 0 }; PN[key].n++; PN[key].need += need;
+        });
+      });
+    }
     ['county', 'cd', 'hd', 'sd'].forEach(function (k) {
       state.sel[k] = places[k].reduce(function (a, r) { return r.wait > a.wait ? r : a; }).name;
     });
@@ -149,6 +162,7 @@
 
     var h = '<div class="kick">' + updatedLabel(D.updated, D.asof) + '</div>';
     h += '<div class="warn"><b>Contains voter names and addresses.</b> For cure outreach only. Don’t forward, post or screenshot, and delete exports when you’re done.</div>';
+    if (P) h += '<div class="mode" role="group" aria-label="Which ballots"><button type="button" data-m="mail">Mail ballots</button><button type="button" data-m="prov">Provisional ballots</button></div>';
     h += '<div class="tabs" role="group" aria-label="Geography">';
     GEO.forEach(function (g) { h += '<button type="button" data-g="' + g[0] + '" aria-pressed="false">' + g[1] + '</button>'; });
     h += '</div><div class="find"><label class="findl" for="' + SLUG + '-find">Find a county or district</label>' +
@@ -156,13 +170,15 @@
       '<div id="' + SLUG + '-res" class="res" role="listbox" hidden></div></div>';
     h += '<div class="pick" hidden><button type="button" class="step" data-d="-1" aria-label="Previous">&#8249;</button><select class="sel" aria-label="Choose a place"></select><button type="button" class="step" data-d="1" aria-label="Next">&#8250;</button></div>';
     h += '<div class="view" aria-live="polite"></div>';
-    h += '<details class="how"><summary>How this is counted</summary>' +
+    h += '<details class="how mailhow"><summary>How this is counted</summary>' +
       '<p>Each voter is counted once. A voter with a returned mail ballot lands in one group: <b>voted in person instead</b> if an early in-person ballot was accepted; otherwise <b>accepted by mail</b> if a mail ballot was accepted; ' +
       'otherwise <b>waiting on the voter</b> if a ballot has a status that needs the voter to act; otherwise <b>not counted</b> if it was rejected. Ballots that were only spoiled, cancelled or duplicated are left out of all four.</p>' +
       '<p>Waiting on the voter covers every State Board status that needs the voter to act: ' + D.cure_keys.map(function (k) { return STATUS[k[0]]; }).join(', ') + '. ' +
       'A voter with more than one such ballot is listed under the most recent one. “Days waiting” counts from the day that ballot was returned to the file date.</p>' +
       '<p>Totals and the voter list cover the whole state. The State Board file doesn’t include phone numbers or say exactly what each “Pending Cure” ballot is missing; the county board’s notice to the voter does. Party is current registration.</p></details>';
-    h += '<div class="foot"><span>Source: <a href="https://www.ncsbe.gov/results-data/absentee-data" target="_blank" rel="noopener">NC State Board of Elections</a> absentee file. Analysis: Carolina Forward.</span>' +
+    var SRC_MAIL = 'Source: <a href="https://www.ncsbe.gov/results-data/absentee-data" target="_blank" rel="noopener">NC State Board of Elections</a> absentee file. Analysis: Carolina Forward.';
+    var SRC_PROV = 'Source: <a href="https://www.ncsbe.gov/results-data/absentee-and-provisional-data" target="_blank" rel="noopener">NC State Board of Elections</a> provisional file. Analysis: Carolina Forward.';
+    h += '<div class="foot"><span class="src">' + SRC_MAIL + '</span>' +
       '<button type="button" class="copy">Copy link to this view</button></div>';
     mount.innerHTML = h;
 
@@ -185,6 +201,9 @@
     function show() {
       var k = state.geo, r = current();
       if (!r) return;
+      each(mount.querySelectorAll('.mode button'), function (b) { var on = b.getAttribute('data-m') === state.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+      q('.mailhow').hidden = state.mode === 'prov'; q('.src').innerHTML = state.mode === 'prov' ? SRC_PROV : SRC_MAIL;
+      if (state.mode === 'prov') { provShow(k, r); setHash(); return; }
       var V = D.voters.filter(inPlace), partial = V.length < r.wait;
       var v = '<div class="place">' + esc(LONG[k](r.name)) + '</div>';
       v += '<div class="head"><span class="big">' + fmt(r.wait) + '</span><span class="hl">' + (r.wait === 1 ? 'voter needs' : 'voters need') + ' to fix their mail ballot</span></div>';
@@ -415,11 +434,206 @@
       draw();
     }
 
+
+    /* ================= Provisional ballots ================= */
+    var PGROUP = [['id', 'Bring a photo ID', 'Must show an acceptable photo ID at the county board of elections office.'],
+      ['num', 'May need to send ID information', 'Registration Repair (DL/SSN) and HAVA ID provisionals. Only voters whose number didn’t validate, or who left it out, need to act; the county board contacts them.'],
+      ['rev', 'Board checking eligibility', 'The county board is researching registration, removal, a move or the address. The voter isn’t asked to bring anything, but proof of a registration attempt (a DMV or registration receipt) can help.'],
+      ['na', 'No action expected', 'Photo ID exception forms, wrong-precinct ballots (counted for the contests the voter could vote in) and extended-hours ballots.']];
+    var PGNAME = {}; PGROUP.forEach(function (g) { PGNAME[g[0]] = g[1]; });
+    var PST = { pend: 'Pending', ok: 'Counted', part: 'Partly counted', no: 'Not counted' };
+    var PSORTS = [['', 'County, precinct, name'], ['name', 'Name'], ['why', 'Reason'], ['party', 'Party'], ['voted', 'Date cast'], ['hd', 'NC House district']];
+    function etDate(s) { return new Date(s + ':00-05:00'); }
+    function apTime(s) {
+      var m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(s), h = +m[2];
+      var t = h === 12 && m[3] === '00' ? 'noon' : (h % 12 || 12) + (m[3] === '00' ? '' : ':' + m[3]) + ' ' + (h < 12 ? 'a.m.' : 'p.m.');
+      return t + ' ' + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(m[1] + 'T12:00:00').getDay()] + ', ' + apDate(m[1]);
+    }
+    function provRows() { return P.voters.filter(inPlace); }
+    function pcount(V, f) { var n = 0; V.forEach(function (x) { if (f(x)) n++; }); return n; }
+
+    function provShow(k, r) {
+      var V = provRows(), now = Date.now(), open = now < etDate(P.deadline);
+      var pend = function (x) { return x.st === 'pend'; };
+      var nId = pcount(V, function (x) { return x.g === 'id' && pend(x); }), nNum = pcount(V, function (x) { return x.g === 'num' && pend(x); });
+      var nEd = pcount(V, function (x) { return x.voted === P.election_day; });
+      var dec = pcount(V, function (x) { return !pend(x); });
+      var v = '<div class="place">' + esc(LONG[k](r.name)) + '</div>';
+      v += open ? '<div class="dl"><b>Deadline: ' + apTime(P.deadline) + '.</b> Voters who need to show a photo ID, or send a missing ID number, must reach the county board of elections office by then. County boards decide every provisional ballot at the county canvass, ' + apTime(P.canvass) + '.</div>'
+        : '<div class="dl past"><b>The ID deadline passed at ' + apTime(P.deadline) + '.</b> County boards decide every provisional ballot at the county canvass, ' + apTime(P.canvass) + '. Statuses update as boards rule.</div>';
+      v += '<div class="head"><span class="big">' + fmt(nId) + '</span><span class="hl">' + (nId === 1 ? 'voter needs' : 'voters need') + ' to bring a photo ID to the county board</span></div>';
+      v += '<p class="dek">' + (V.length ? 'Another ' + fmt(nNum) + ' cast a Registration Repair or HAVA ID provisional and may need to send ID information by the same deadline. ' +
+        fmt(V.length) + ' provisional ' + (V.length === 1 ? 'ballot was' : 'ballots were') + ' cast here in all, ' + fmt(nEd) + ' of them on Election Day.' : 'No provisional ballots were cast here.') + '</p>';
+      v += '<div class="row">' + PGROUP.map(function (g, i) {
+        var n = pcount(V, function (x) { return x.g === g[0] && pend(x); });
+        return cell(g[1], n, i < 2 ? 'fix' : '', i < 2 ? 'Pending, deadline ' + apDate(P.deadline.slice(0, 10)) : 'Pending');
+      }).join('') + cell('Decided', dec, dec ? 'ok' : '', dec ? fmt(pcount(V, function (x) { return x.st === 'ok' || x.st === 'part'; })) + ' counted in whole or part' : 'Boards haven’t ruled yet') + '</div>';
+      v += provListBlock();
+      v += provReasonBlock(V, dec);
+      v += provNotCounted(V);
+      v += provWhere(k, r, V);
+      v += '<details class="how"><summary>How this is counted</summary>' +
+        '<p>Each row in the State Board’s provisional file is one ballot. Ballots are grouped by the reason the poll worker recorded. <b>Bring a photo ID</b>: the voter didn’t show an acceptable ID and didn’t fill out an exception form. <b>May need to send ID information</b>: Registration Repair (DL/SSN) and HAVA ID provisionals; under the State Board’s Numbered Memo 2025-02, only voters whose driver’s license or Social Security number didn’t validate, or who left it blank, still need to act, and the file doesn’t say which. All three are due by ' + apTime(P.deadline) + '.</p>' +
+        '<p>Districts come from the precinct the voter is registered in, or, for voters with no registration on file, the precinct they voted in. ' + fmt(P.unplaced) + ' statewide couldn’t be placed in a district. Provisional voters with no registration have no NCID or voting history. Party is as recorded on the provisional application. Election Day means the ballot was cast Nov. 3; the rest were cast during early voting.</p>' +
+        '<p>Voters can check their ballot with the PIN from their provisional receipt at <a href="https://vt.ncsbe.gov/RegProvPIN/" target="_blank" rel="noopener">the State Board’s provisional search</a>.</p></details>';
+      view.innerHTML = v;
+      provWire(r);
+      var mb = view.querySelector('.more.pl'); if (mb) mb.addEventListener('click', function () { state.allPl = !state.allPl; show(); });
+      each(view.querySelectorAll('tr.go'), function (tr) {
+        function go() { state.sel.county = tr.getAttribute('data-c'); setGeo('county'); if (mount.scrollIntoView) mount.scrollIntoView(); }
+        tr.addEventListener('click', go);
+        tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+      });
+    }
+
+    function provReasonBlock(V, dec) {
+      if (!V.length) return '';
+      var keys = PARTY.map(function (p) { return p[0]; });
+      var t = '<div class="sec"><div class="sech">Why they voted provisionally<span>Reason as the poll worker recorded it</span></div><div class="tw"><table class="narrow"><thead><tr><th>Reason</th>' +
+        PARTY.map(function (p) { return '<th>' + p[0] + '</th>'; }).join('') + '<th>Total</th>' + (dec ? '<th>Counted</th><th>Not counted</th>' : '') + '</tr></thead><tbody>';
+      PGROUP.forEach(function (g) {
+        var rows = P.reasons.map(function (re, i) { return [re, i]; }).filter(function (x) { return x[0][1] === g[0]; });
+        var body = '', gt = [0, 0, 0, 0];
+        rows.forEach(function (x) {
+          var W = V.filter(function (v) { return v.why === x[1]; }); if (!W.length) return;
+          var pc = keys.map(function (pk) { return pcount(W, function (v) { return v.party === pk; }); });
+          pc.forEach(function (c, i) { gt[i] += c; });
+          body += '<tr><td>' + esc(x[0][0]) + '</td>' + pc.map(function (c) { return '<td>' + fmt(c) + '</td>'; }).join('') + '<td><b>' + fmt(W.length) + '</b></td>' +
+            (dec ? '<td>' + fmt(pcount(W, function (v) { return v.st === 'ok' || v.st === 'part'; })) + '</td><td>' + fmt(pcount(W, function (v) { return v.st === 'no'; })) + '</td>' : '') + '</tr>';
+        });
+        if (body) t += '<tr class="grp"><td colspan="' + (dec ? 8 : 6) + '">' + esc(g[1]) + '</td></tr>' + body;
+      });
+      return t + '<tr class="tot"><td>Total</td>' + keys.map(function (pk) { return '<td>' + fmt(pcount(V, function (v) { return v.party === pk; })) + '</td>'; }).join('') + '<td>' + fmt(V.length) + '</td>' +
+        (dec ? '<td>' + fmt(pcount(V, function (v) { return v.st === 'ok' || v.st === 'part'; })) + '</td><td>' + fmt(pcount(V, function (v) { return v.st === 'no'; })) + '</td>' : '') + '</tr></tbody></table></div>' +
+        '<p class="note">' + PGROUP.map(function (g) { return '<b>' + g[1] + ':</b> ' + g[2]; }).join(' ') + '</p></div>';
+    }
+
+    function provNotCounted(V) {
+      var by = {}; V.forEach(function (x) { if (x.st === 'no') by[x.nc || 'No reason given'] = (by[x.nc || 'No reason given'] || 0) + 1; });
+      var ks = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
+      if (!ks.length) return '';
+      return '<div class="sec"><div class="sech">Why ballots weren’t counted<span>As county boards recorded it</span></div><div class="tw"><table class="narrow"><thead><tr><th>Reason</th><th>Ballots</th></tr></thead><tbody>' +
+        ks.map(function (k2) { return '<tr><td>' + esc(k2) + '</td><td>' + fmt(by[k2]) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+    }
+
+    function provWhere(k, r, V) {
+      var by = {};
+      V.forEach(function (x) {
+        var key = k === 'state' ? x.county : k === 'county' ? x.precinct : x.county + ' · ' + x.precinct;
+        if (!by[key]) by[key] = { name: key, link: k === 'state' ? x.county : '', n: 0, id: 0, num: 0, ed: 0 };
+        var o = by[key]; o.n++; if (x.voted === P.election_day) o.ed++;
+        if (x.st === 'pend' && x.g === 'id') o.id++; if (x.st === 'pend' && x.g === 'num') o.num++;
+      });
+      var rows = Object.keys(by).map(function (key) { return by[key]; });
+      if (!rows.length) return '';
+      rows.sort(function (a, b) { return (b.id + b.num) - (a.id + a.num) || b.n - a.n || a.name.localeCompare(b.name); });
+      var LIM = 15, total = rows.length, shown = state.allPl ? rows : rows.slice(0, LIM), unit = k === 'state' ? 'County' : 'Precinct';
+      var t = '<div class="sec"><div class="sech">' + (k === 'state' ? 'Where they are' : 'By precinct') + '<span>' + fmt(total) + ' ' + (unit === 'County' ? 'counties' : 'precincts') + ' with provisional ballots</span></div>' +
+        '<div class="tw"><table class="cards"><thead><tr><th>' + unit + '</th><th>Provisional</th><th>Election Day</th><th>Photo ID</th><th>ID info</th></tr></thead><tbody>';
+      shown.forEach(function (o) {
+        t += '<tr' + (o.link ? ' class="go" tabindex="0" data-c="' + esc(o.link) + '"' : '') + '><td>' + esc(o.name) + '</td><td data-l="Provisional">' + fmt(o.n) + '</td><td data-l="Election Day">' + fmt(o.ed) + '</td>' +
+          '<td data-l="Photo ID"><b>' + fmt(o.id) + '</b></td><td data-l="ID info">' + fmt(o.num) + '</td></tr>';
+      });
+      t += '</tbody></table></div>';
+      if (total > LIM) t += '<button type="button" class="more pl">' + (state.allPl ? 'Show fewer' : 'Show all ' + total) + '</button>';
+      return t + '<p class="note">' + (k === 'state' ? 'Select a county to see its precincts. ' : '') + 'Precinct is where the ballot was cast. Photo ID and ID info count pending ballots only.</p></div>';
+    }
+
+    function provListBlock() {
+      var opts = function (list, cur) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (cur === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); };
+      var used = {}; provRows().forEach(function (x) { used[x.why] = 1; });
+      return '<div class="sec"><div class="sech">Provisional voters<span>Phone numbers as written on the provisional application</span></div>' +
+        '<div class="vbar"><label class="sr" for="' + SLUG + '-pq">Search provisional voters</label><input id="' + SLUG + '-pq" type="search" placeholder="Search name, reg number, precinct, address or phone" value="' + esc(state.pq) + '">' +
+        '<select class="pg" aria-label="Action">' + opts([['act', 'Needs ID (photo ID or ID info)'], ['', 'All provisional voters']].concat(PGROUP.map(function (g) { return [g[0], g[1]]; })), state.pgrp) + '</select>' +
+        '<select class="pw" aria-label="Reason"><option value="">All reasons</option>' + opts(P.reasons.map(function (re, i) { return [String(i), re[0]]; }).filter(function (o) { return used[+o[0]]; }), state.pwhy) + '</select>' +
+        '<select class="ps2" aria-label="Status">' + opts([['', 'All statuses'], ['pend', 'Pending'], ['ok', 'Counted'], ['part', 'Partly counted'], ['no', 'Not counted']], state.pst) + '</select>' +
+        '<select class="pp" aria-label="Party"><option value="">All parties</option>' + opts(PARTY.map(function (p) { return [p[0], p[1]]; }), state.pparty) + '</select>' +
+        '<select class="pv" aria-label="When cast">' + opts([['', 'Election Day and early voting'], ['ed', 'Election Day only'], ['ev', 'Early voting only']], state.pwhen) + '</select>' +
+        '<button type="button" class="exp">Export CSV</button></div>' +
+        '<div class="sbar"><span class="sbl">Sort by</span><select class="pso" aria-label="Sort by">' + opts(PSORTS, state.psort) + '</select></div>' +
+        '<div class="tw vt"></div><div class="vcount"></div></div>';
+    }
+    function provWire(r) {
+      var V = provRows(), box = view.querySelector('.vt'), cnt = view.querySelector('.vcount');
+      function filtered() {
+        var words = state.pq.toLowerCase().split(/\s+/).filter(Boolean);
+        var out = V.filter(function (x) {
+          if (state.pgrp === 'act' ? !(x.g === 'id' || x.g === 'num') : state.pgrp && x.g !== state.pgrp) return false;
+          if (state.pwhy !== '' && x.why !== +state.pwhy) return false;
+          if (state.pst && x.st !== state.pst) return false;
+          if (state.pparty && x.party !== state.pparty) return false;
+          if (state.pwhen === 'ed' && x.voted !== P.election_day) return false;
+          if (state.pwhen === 'ev' && x.voted === P.election_day) return false;
+          return words.every(function (w) { return x.hay.indexOf(w) !== -1; });
+        });
+        var s = state.psort;
+        out.sort(function (a, b) {
+          var d = 0;
+          if (s === 'name') d = a.name.localeCompare(b.name);
+          else if (s === 'why') d = a.why - b.why;
+          else if (s === 'party') d = (PORDER[a.party] == null ? 3 : PORDER[a.party]) - (PORDER[b.party] == null ? 3 : PORDER[b.party]);
+          else if (s === 'voted') d = (b.voted || '').localeCompare(a.voted || '');
+          else if (s === 'hd') d = (+a.hd || 999) - (+b.hd || 999);
+          return d || ((a.g === 'id' ? 0 : 1) - (b.g === 'id' ? 0 : 1)) || a.county.localeCompare(b.county) || String(a.precinct).localeCompare(String(b.precinct), undefined, { numeric: true }) || a.name.localeCompare(b.name);
+        });
+        return out;
+      }
+      function draw() {
+        var rows = filtered(), LIM = 25, shown = state.pall ? rows : rows.slice(0, LIM);
+        view.querySelector('.exp').disabled = !rows.length;
+        if (!rows.length) { box.innerHTML = '<div class="none">' + (V.length ? 'No provisional voters match.' : 'No provisional ballots here.') + '</div>'; cnt.textContent = ''; return; }
+        var t = '<table class="cards vtab ptab"><thead><tr><th>Voter</th><th class="l">Reason</th><th class="l">Phone</th><th class="l">Cast</th><th class="l">Home address</th></tr></thead><tbody>';
+        shown.forEach(function (x) {
+          var re = x.why >= 0 ? P.reasons[x.why][0] : 'Unknown';
+          t += '<tr><td><span class="vn">' + esc(x.name) + '</span> ' + pbadge(x) + '<span class="vid">' + (x.reg ? 'Reg no. ' + esc(x.reg) : 'No registration on file') + '</span>' + rtag(x) + '</td>' +
+            '<td class="l" data-l="Reason"><span class="pill g' + x.g + '">' + esc(re) + '</span>' + (x.imp ? '<span class="vid">' + esc(x.imp) + '</span>' : '') +
+            '<span class="vid pst ' + x.st + '">' + esc(PST[x.st] || x.st) + (x.nc ? ': ' + esc(x.nc.toLowerCase()) : '') + '</span></td>' +
+            '<td class="l" data-l="Phone">' + (x.phone ? '<a href="tel:' + esc(x.phone.replace(/\D/g, '')) + '">' + esc(x.phone) + '</a>' : '<span style="color:var(--mute)">None given</span>') + '</td>' +
+            '<td class="l" data-l="Cast">' + (x.voted ? (x.voted === P.election_day ? 'Election Day' : 'Early voting, ' + apDate(x.voted)) : 'Date not listed') + (x.curb ? ' (curbside)' : '') +
+            '<span class="vid">' + esc(x.county) + ' · ' + esc(x.precinct) + (x.rpct ? ' (registered in ' + esc(x.rpct) + ')' : '') + '</span>' +
+            (x.cd ? '<span class="vid">CD ' + esc(x.cd) + ' · HD ' + esc(x.hd) + ' · SD ' + esc(x.sd) + '</span>' : '') + '</td>' +
+            '<td class="l" data-l="Home">' + esc(x.home) + '</td></tr>';
+        });
+        t += '</tbody></table>';
+        if (rows.length > LIM) t += '<button type="button" class="more vm">' + (state.pall ? 'Show fewer' : 'Show all ' + fmt(rows.length)) + '</button>';
+        box.innerHTML = t;
+        var vm = box.querySelector('.vm'); if (vm) vm.addEventListener('click', function () { state.pall = !state.pall; draw(); });
+        cnt.textContent = fmt(rows.length) + ' of ' + fmt(V.length) + ' provisional ' + (V.length === 1 ? 'voter' : 'voters') + ' here match.' + (rows.length > LIM && !state.pall ? ' Showing the first ' + LIM + '.' : '') + ' Export includes every voter that matches, in this order.';
+      }
+      var bind = function (sel, key, num) { var el = view.querySelector(sel); el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', function () { state[key] = el.value; state.pall = false; draw(); }); };
+      bind('#' + SLUG + '-pq', 'pq'); bind('.pg', 'pgrp'); bind('.pw', 'pwhy'); bind('.ps2', 'pst'); bind('.pp', 'pparty'); bind('.pv', 'pwhen'); bind('.pso', 'psort');
+      view.querySelector('.exp').addEventListener('click', function () {
+        var cols = [['Name', 'name'], ['Voter reg number', 'reg'], ['Action', function (x) { return PGNAME[x.g]; }], ['Reason', function (x) { return x.why >= 0 ? P.reasons[x.why][0] : ''; }],
+          ['State Board reason', function (x) { return x.why >= 0 ? P.reasons[x.why][2] : ''; }], ['Exception reason', 'imp'], ['Status', function (x) { return PST[x.st] || x.st; }], ['Not counted reason', 'nc'],
+          ['Phone', 'phone'], ['Cast', function (x) { return x.voted === P.election_day ? 'Election Day' : x.voted ? 'Early voting' : ''; }], ['Date cast', 'voted'], ['Curbside', function (x) { return x.curb ? 'Yes' : ''; }],
+          ['Party', function (x) { return x.pcode || x.party; }], ['County', 'county'], ['Precinct voted in', 'precinct'], ['Precinct registered in', function (x) { return x.rpct || (x.reg ? x.precinct : ''); }],
+          ['Congressional district', 'cd'], ['NC House district', 'hd'], ['NC Senate district', 'sd'], ['Home address', 'home'],
+          ['Race', function (x) { return x.race ? RNAME[x.race] || '' : ''; }], ['Ethnicity', function (x) { return x.eth ? ({ HL: 'Hispanic or Latino', NL: 'Not Hispanic or Latino', UN: 'Left blank' })[x.eth] : ''; }]];
+        var lines = [cols.map(function (c) { return c[0]; }).join(',')];
+        filtered().forEach(function (x) {
+          lines.push(cols.map(function (c) {
+            var s = String(typeof c[1] === 'function' ? c[1](x) : (x[c[1]] == null ? '' : x[c[1]]));
+            if (/^[=+\-@]/.test(s)) s = "'" + s;
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          }).join(','));
+        });
+        var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'provisional-voters-' + LONG[state.geo](r.name).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + D.asof + '.csv';
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.parentNode.removeChild(a); }, 500);
+      });
+      draw();
+    }
+
     function fill() {
       var k = state.geo;
       pick.hidden = k === 'state';
       if (k !== 'state') {
-        sel.innerHTML = sorted(k).map(function (r) { return '<option value="' + esc(r.name) + '">' + esc(LONG[k](r.name)) + (r.wait ? ' (' + fmt(r.wait) + ')' : '') + '</option>'; }).join('');
+        sel.innerHTML = sorted(k).map(function (r) {
+          var c = state.mode === 'prov' ? ((PN[k + '|' + r.name] || {}).need || 0) : r.wait;
+          return '<option value="' + esc(r.name) + '">' + esc(LONG[k](r.name)) + (c ? ' (' + fmt(c) + ')' : '') + '</option>';
+        }).join('');
         sel.value = state.sel[k];
       }
       state.allPl = false; state.all = false;
@@ -433,8 +647,10 @@
 
     /* Links to a view: #cure=county:Orange (or cd:4, hd:22, sd:9). */
     function hashKey() { return state.geo === 'state' ? 'state' : state.geo + ':' + state.sel[state.geo].replace(/^[A-Z]+ /, ''); }
-    function setHash() { try { history.replaceState(null, '', '#' + (KEY ? 'key=' + encodeURIComponent(KEY) + '&' : '') + 'cure=' + encodeURIComponent(hashKey()).replace('%3A', ':')); } catch (e) { /* ignore */ } }
+    function modeHash() { return state.mode === 'prov' ? '&ballots=provisional' : ''; }
+    function setHash() { try { history.replaceState(null, '', '#' + (KEY ? 'key=' + encodeURIComponent(KEY) + '&' : '') + 'cure=' + encodeURIComponent(hashKey()).replace('%3A', ':') + modeHash()); } catch (e) { /* ignore */ } }
     function readHash() {
+      if (P && /ballots=prov/.test(location.hash || '')) state.mode = 'prov';
       var m = /cure=([^&]+)/.exec(location.hash || ''); if (!m) return;
       var p = decodeURIComponent(m[1]).split(':'), k = p[0];
       if (!places[k]) return;
@@ -447,12 +663,13 @@
     }
     var copyBtn = q('.copy');
     copyBtn.addEventListener('click', function () {
-      var url = location.href.split('#')[0] + '#cure=' + encodeURIComponent(hashKey()).replace('%3A', ':');
+      var url = location.href.split('#')[0] + '#cure=' + encodeURIComponent(hashKey()).replace('%3A', ':') + modeHash();
       function done(ok) { copyBtn.textContent = ok ? 'Link copied' : url; setTimeout(function () { copyBtn.textContent = 'Copy link to this view'; }, 2500); }
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function () { done(true); }, function () { done(false); }); else done(false);
     });
 
     each(mount.querySelectorAll('.tabs button'), function (b) { b.addEventListener('click', function () { setGeo(b.getAttribute('data-g')); }); });
+    each(mount.querySelectorAll('.mode button'), function (b) { b.addEventListener('click', function () { if (state.mode !== b.getAttribute('data-m')) { state.mode = b.getAttribute('data-m'); fill(); } }); });
     sel.addEventListener('change', function () { state.sel[state.geo] = sel.value; state.allPl = false; state.all = false; show(); });
     each(mount.querySelectorAll('.step'), function (b) {
       b.addEventListener('click', function () {

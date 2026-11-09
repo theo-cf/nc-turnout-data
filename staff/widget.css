@@ -174,3 +174,24 @@ details.how p{margin:8px 0 0}
 .cards.vtab td:nth-child(6)[data-l]:before{content:"Ballot mailed to: ";display:inline;font:inherit;text-transform:none;letter-spacing:0;color:var(--mute)}
 }
 @media print{.tabs,.find,.pick,.vbar,.more,.lockbtn{display:none}}
+
+/* provisional ballots */
+.mode{display:flex;gap:0;margin-bottom:16px;border:2px solid var(--navy);border-radius:3px;width:fit-content;max-width:100%}
+.mode button{background:#fff;border:0;padding:10px 18px;font-size:14px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--navy);cursor:pointer}
+.mode button+button{border-left:2px solid var(--navy)}
+.mode button.on{background:var(--navy);color:#fff}
+.dl{border-left:4px solid var(--navy);background:#eef2f8;font-size:15px;padding:10px 12px;margin:10px 0 18px;max-width:76ch}
+.dl b{color:var(--navy)}
+.dl.past{border-left-color:var(--mute);background:var(--parch)}
+.dl.past b{color:var(--ink)}
+tr.grp td{text-align:left;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--navy);background:var(--parch);border-bottom:1px solid var(--ink);padding-top:10px}
+.pill.gid{background:#fbe3e1;color:var(--red)}
+.pill.gnum{background:#fdf0d6;color:#7a4d00}
+.pst.ok,.pst.part{color:#1F6B45;font-weight:600}
+.pst.no{color:var(--red);font-weight:600}
+.ptab td:nth-child(3){white-space:nowrap}
+.ptab td:nth-child(4){min-width:170px}
+.ptab td:nth-child(5){min-width:170px;max-width:230px}
+.ptab a{color:var(--navy)}
+@media (max-width:600px){.mode{width:100%}.mode button{flex:1;padding:10px 8px}}
+.ptab .pill{white-space:normal}

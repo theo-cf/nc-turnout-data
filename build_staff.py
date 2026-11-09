@@ -254,6 +254,21 @@ for key, _, _ in GEOS:
     if sum(r['n'] for r in out['geo'][key]) + int(v[dict((g[0], g[1]) for g in GEOS)[key]].isna().sum()) != s['n']:
         fail(f'{key} totals do not add up')
 
+# ---- provisional ballots (optional): PROV_FILE is the State Board's provisional file ----
+PROV_FILE = os.environ.get('PROV_FILE', '').strip()
+if PROV_FILE and os.path.exists(PROV_FILE):
+    try:
+        from build_provisional import build as build_prov
+        out['prov'] = build_prov(PROV_FILE, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'precincts.csv'))
+        pm = os.environ.get('PROV_MODIFIED', '').strip()
+        if pm:
+            out['prov']['updated'] = parsedate_to_datetime(pm).astimezone(ZoneInfo('America/New_York')).isoformat(timespec='minutes')
+        p = out['prov']['state']
+        print(f"provisional ballots: {p['n']:,}; pending {p['pend']:,}; approved {p['ok']:,}; partial {p['part']:,}; "
+              f"not counted {p['no']:,}; photo ID {p['id']:,}; ID numbers {p['num']:,}; no district {out['prov']['unplaced']:,}")
+    except Exception as e:   # a provisional problem must not stop the mail cure list (counts only in the log)
+        print(f'::warning::Provisional ballots skipped: {type(e).__name__}', file=sys.stderr)
+
 os.makedirs(OUT, exist_ok=True)
 with open(os.path.join(OUT, 'data.json'), 'w') as f:
     json.dump(out, f, separators=(',', ':'))

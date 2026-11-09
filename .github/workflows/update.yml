@@ -173,6 +173,15 @@ jobs:
           PLAIN="$RUNNER_TEMP/staff-plain"
           trap 'rm -rf "$PLAIN"' EXIT
           if [ -f history/lookup.pkl.gz ]; then export HISTORY_FILE=history/lookup.pkl.gz; fi
+          # Provisional ballots (posted after Election Day). Voter-level: kept in the runner's temp folder.
+          PURL=https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03/provisional_20261103.txt
+          if curl -fsSL --retry 2 --retry-delay 20 -o "$RUNNER_TEMP/provisional.txt" "$PURL"; then
+            export PROV_FILE="$RUNNER_TEMP/provisional.txt"
+            export PROV_MODIFIED="$(curl -fsSI "$PURL" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')"
+            trap 'rm -rf "$PLAIN" "$RUNNER_TEMP/provisional.txt"' EXIT
+          else
+            echo "No provisional file posted yet."
+          fi
           python build_staff.py "$SRC" "$PLAIN" "$(cat last_modified.txt)"
           mkdir -p _site/vault && cp "$PLAIN/data.json" _site/vault/data.json
 
