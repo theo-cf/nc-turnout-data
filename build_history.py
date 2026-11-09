@@ -95,9 +95,15 @@ def main():
         out = pd.concat([out, pd.DataFrame({c: 0 for c in out.columns}, index=extra).astype(out.dtypes.to_dict())])
         print(f'first-time 2026 registrants: {int(nw.sum()):,}; 2024 snapshot voters added: {len(extra):,}')
 
-    # Sanity checks: each November must have millions of voters, or the history file is incomplete.
+    # Sanity checks: each November must have millions of voters, or the history file is incomplete. The State Board's
+    # file keeps only the last 10 years, so an election older than that (2016, from Nov. 2026 on) is allowed to be empty;
+    # its bit is then 0 for everyone.
+    cutoff = (pd.Timestamp.now() - pd.DateOffset(years=10)).normalize()
     for lbl, bit in ELECTIONS.items():
         n = int(((out.b & bit) > 0).sum())
+        if pd.to_datetime(lbl, format='%m/%d/%Y') < cutoff:
+            print(f'note: {lbl} is past the State Board\'s 10-year history window; {n:,} voters have it')
+            continue
         if n < 2_500_000:
             raise SystemExit(f'STOPPING: only {n:,} voters in the {lbl} history; the file looks incomplete')
     out.to_pickle(a.out)
