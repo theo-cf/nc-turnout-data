@@ -122,3 +122,47 @@ def build(path, precincts_csv='precincts.csv'):
         'reasons': [[LABEL.get(r, r.capitalize()), GROUP.get(r, 'rev'), r] for r in reasons],
         'state': summary, 'unplaced': unplaced, 'voters': rows,
     }
+
+
+def counting_progress(results_pct):
+    """Provisional votes counted so far, per county, from the State Board's precinct results file
+    (results_pct_20261103.txt): the U.S. Senate race, which nearly every voter marks. Counts only."""
+    r = pd.read_csv(results_pct, sep='\t', dtype=str, keep_default_na=False, usecols=['County', 'Contest Name', 'Provisional'])
+    s = r[r['Contest Name'].str.startswith('US SENATE')]
+    if not len(s):
+        raise ValueError('no U.S. Senate rows in the precinct results file')
+    return {_title(c): int(v) for c, v in pd.to_numeric(s.Provisional, errors='coerce').fillna(0).groupby(s.County).sum().items()}
+
+
+def district_counts(path, precincts_csv='precincts.csv', results_pct=None):
+    """Counts only, for the public district lean widget: provisional ballots cast in each district (by the precinct
+    the voter is registered in, else the one they voted in), and how many of those are in counties that haven't
+    added any provisional votes to their count yet."""
+    d = pd.read_csv(path, sep='\t', encoding='utf-16', dtype=str, keep_default_na=False,
+                    usecols=lambda c: c.strip() in ('county_name', 'reg_pct_lbl', 'voted_pct_lbl'))
+    d.columns = [c.strip() for c in d.columns]
+    d = d.apply(lambda s: s.str.strip())
+    p = pd.read_csv(precincts_csv, dtype=str)
+    pk = {(r.county.upper(), r.code.strip()): (num(r.cd), num(r.hd), num(r.sd)) for r in p.itertuples()}
+    county = d.county_name.str.upper()
+    home = d.reg_pct_lbl.where(d.reg_pct_lbl != '', d.voted_pct_lbl)
+    counted = counting_progress(results_pct) if results_pct else None
+    waiting = {c.upper() for c, n in counted.items() if n == 0} if counted else set()
+    out = {'cd': {}, 'hd': {}, 'sd': {}}
+    for c, x in zip(county, home):
+        dist = pk.get((c, x))
+        if not dist:
+            continue
+        for g, n in zip(('cd', 'hd', 'sd'), dist):
+            o = out[g].setdefault(str(n), [0, 0, set()])
+            o[0] += 1
+            if c in waiting:
+                o[1] += 1
+                o[2].add(_title(c))
+    cast = county.value_counts()
+    summary = {'cast': int(len(d)), 'counties': {_title(c): [int(cast.get(c, 0)), counted.get(_title(c), 0) if counted else None]
+                                               for c in sorted(set(cast.index) | {x.upper() for x in (counted or {})})}}
+    if counted:
+        summary['counted'] = int(sum(counted.values()))
+        summary['wait'] = sorted(c for c, n in counted.items() if n == 0 and cast.get(c.upper(), 0))
+    return out, summary

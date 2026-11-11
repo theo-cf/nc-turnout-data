@@ -179,6 +179,8 @@ jobs:
             export PROV_FILE="$RUNNER_TEMP/provisional.txt"
             export PROV_MODIFIED="$(curl -fsSI "$PURL" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')"
             trap 'rm -rf "$PLAIN" "$RUNNER_TEMP/provisional.txt"' EXIT
+            RP=$(find raw_results -type f -iname '*.txt' 2>/dev/null | head -1)
+            if [ -n "$RP" ]; then export RESULTS_PCT="$RP"; [ -f results_modified.txt ] && export RESULTS_PCT_MODIFIED="$(cat results_modified.txt)"; fi
           else
             echo "No provisional file posted yet."
           fi

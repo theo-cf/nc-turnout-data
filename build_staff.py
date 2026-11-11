@@ -260,6 +260,13 @@ if PROV_FILE and os.path.exists(PROV_FILE):
     try:
         from build_provisional import build as build_prov
         out['prov'] = build_prov(PROV_FILE, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'precincts.csv'))
+        rp = os.environ.get('RESULTS_PCT', '').strip()   # precinct results: provisional votes counted so far, by county
+        if rp and os.path.exists(rp):
+            from build_provisional import counting_progress
+            out['prov']['counted'] = counting_progress(rp)
+            rm = os.environ.get('RESULTS_PCT_MODIFIED', '').strip()
+            if rm:
+                out['prov']['counted_asof'] = parsedate_to_datetime(rm).astimezone(ZoneInfo('America/New_York')).isoformat(timespec='minutes')
         pm = os.environ.get('PROV_MODIFIED', '').strip()
         if pm:
             out['prov']['updated'] = parsedate_to_datetime(pm).astimezone(ZoneInfo('America/New_York')).isoformat(timespec='minutes')

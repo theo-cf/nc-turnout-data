@@ -450,6 +450,13 @@
       return t + ' ' + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(m[1] + 'T12:00:00').getDay()] + ', ' + apDate(m[1]);
     }
     function provRows() { return P.voters.filter(inPlace); }
+    /* Provisional votes already in the count (U.S. Senate race, precinct results file), for the state or a county. */
+    function countedIn(k, r) {
+      var C = P.counted; if (!C) return null;
+      if (k === 'state') { var t = 0; Object.keys(C).forEach(function (c) { t += C[c]; }); return t; }
+      return k === 'county' ? (C[r.name] || 0) : null;
+    }
+    function waitingCounties() { var C = P.counted || {}; return Object.keys(C).filter(function (c) { return !C[c] && P.voters.some(function (v) { return v.county === c; }); }).sort(); }
     function pcount(V, f) { var n = 0; V.forEach(function (x) { if (f(x)) n++; }); return n; }
 
     function provShow(k, r) {
@@ -457,17 +464,22 @@
       var pend = function (x) { return x.st === 'pend'; };
       var nId = pcount(V, function (x) { return x.g === 'id' && pend(x); }), nNum = pcount(V, function (x) { return x.g === 'num' && pend(x); });
       var nEd = pcount(V, function (x) { return x.voted === P.election_day; });
-      var dec = pcount(V, function (x) { return !pend(x); });
+      var dec = pcount(V, function (x) { return !pend(x); }), cnt0 = countedIn(k, r), WAIT = waitingCounties();
       var v = '<div class="place">' + esc(LONG[k](r.name)) + '</div>';
       v += open ? '<div class="dl"><b>Deadline: ' + apTime(P.deadline) + '.</b> Voters who need to show a photo ID, or send a missing ID number, must reach the county board of elections office by then. County boards decide every provisional ballot at the county canvass, ' + apTime(P.canvass) + '.</div>'
         : '<div class="dl past"><b>The ID deadline passed at ' + apTime(P.deadline) + '.</b> County boards decide every provisional ballot at the county canvass, ' + apTime(P.canvass) + '. Statuses update as boards rule.</div>';
-      v += '<div class="head"><span class="big">' + fmt(nId) + '</span><span class="hl">' + (nId === 1 ? 'voter needs' : 'voters need') + ' to bring a photo ID to the county board</span></div>';
-      v += '<p class="dek">' + (V.length ? 'Another ' + fmt(nNum) + ' cast a Registration Repair or HAVA ID provisional and may need to send ID information by the same deadline. ' +
+      v += '<div class="head"><span class="big">' + fmt(nId) + '</span><span class="hl">' + (open ? (nId === 1 ? 'voter needs' : 'voters need') + ' to bring a photo ID to the county board' : (nId === 1 ? 'voter' : 'voters') + ' had to bring a photo ID to the county board by noon Nov. 10') + '</span></div>';
+      v += '<p class="dek">' + (V.length ? 'Another ' + fmt(nNum) + ' cast a Registration Repair or HAVA ID provisional and ' + (open ? 'may need to send ID information by the same deadline. ' : 'may have needed to send ID information by the same deadline. ') +
         fmt(V.length) + ' provisional ' + (V.length === 1 ? 'ballot was' : 'ballots were') + ' cast here in all, ' + fmt(nEd) + ' of them on Election Day.' : 'No provisional ballots were cast here.') + '</p>';
       v += '<div class="row">' + PGROUP.map(function (g, i) {
         var n = pcount(V, function (x) { return x.g === g[0] && pend(x); });
-        return cell(g[1], n, i < 2 ? 'fix' : '', i < 2 ? 'Pending, deadline ' + apDate(P.deadline.slice(0, 10)) : 'Pending');
-      }).join('') + cell('Decided', dec, dec ? 'ok' : '', dec ? fmt(pcount(V, function (x) { return x.st === 'ok' || x.st === 'part'; })) + ' counted in whole or part' : 'Boards haven’t ruled yet') + '</div>';
+        return cell(g[1], n, i < 2 ? 'fix' : '', i < 2 ? (open ? 'Pending, deadline ' : 'Pending; deadline passed ') + apDate(P.deadline.slice(0, 10)) : 'Pending');
+      }).join('') + (cnt0 !== null ? cell('In the count', cnt0, cnt0 ? 'ok' : '', cnt0 ? 'Provisional votes, U.S. Senate race' : 'None added to the count yet')
+        : cell('Decided', dec, dec ? 'ok' : '', dec ? fmt(pcount(V, function (x) { return x.st === 'ok' || x.st === 'part'; })) + ' counted in whole or part' : 'Boards haven’t ruled yet')) + '</div>';
+      if (cnt0 !== null) v += '<p class="note">' + (k === 'state'
+        ? fmt(cnt0) + ' provisional votes have been added to the U.S. Senate count so far' + (WAIT.length ? '. ' + fmt(WAIT.length) + (WAIT.length === 1 ? ' county hasn’t' : ' counties haven’t') + ' added any yet: ' + esc(WAIT.join(', ')) + '.' : ', and every county has added some.')
+        : cnt0 ? 'The county has added ' + fmt(cnt0) + ' provisional votes to its U.S. Senate count, against ' + fmt(V.length) + ' provisional ballots cast. The rest were rejected or are still under review.' : 'The county hasn’t added any provisional votes to its count yet.') +
+        ' The State Board’s provisional file hasn’t posted individual decisions yet, so every voter below still shows Pending.' + (P.counted_asof ? ' Count as of ' + updatedLabel(P.counted_asof).replace(/^Updated /, '').replace(/\.$/, '') + '.' : '') + '</p>';
       v += provListBlock();
       v += provReasonBlock(V, dec);
       v += provNotCounted(V);
@@ -520,7 +532,7 @@
       var by = {};
       V.forEach(function (x) {
         var key = k === 'state' ? x.county : k === 'county' ? x.precinct : x.county + ' · ' + x.precinct;
-        if (!by[key]) by[key] = { name: key, link: k === 'state' ? x.county : '', n: 0, id: 0, num: 0, ed: 0 };
+        if (!by[key]) by[key] = { name: key, link: k === 'state' ? x.county : '', n: 0, id: 0, num: 0, ed: 0, cnt: k === 'state' && P.counted ? P.counted[x.county] || 0 : null };
         var o = by[key]; o.n++; if (x.voted === P.election_day) o.ed++;
         if (x.st === 'pend' && x.g === 'id') o.id++; if (x.st === 'pend' && x.g === 'num') o.num++;
       });
@@ -529,14 +541,15 @@
       rows.sort(function (a, b) { return (b.id + b.num) - (a.id + a.num) || b.n - a.n || a.name.localeCompare(b.name); });
       var LIM = 15, total = rows.length, shown = state.allPl ? rows : rows.slice(0, LIM), unit = k === 'state' ? 'County' : 'Precinct';
       var t = '<div class="sec"><div class="sech">' + (k === 'state' ? 'Where they are' : 'By precinct') + '<span>' + fmt(total) + ' ' + (unit === 'County' ? 'counties' : 'precincts') + ' with provisional ballots</span></div>' +
-        '<div class="tw"><table class="cards"><thead><tr><th>' + unit + '</th><th>Provisional</th><th>Election Day</th><th>Photo ID</th><th>ID info</th></tr></thead><tbody>';
+        '<div class="tw"><table class="cards"><thead><tr><th>' + unit + '</th><th>Provisional</th><th>Election Day</th><th>Photo ID</th><th>ID info</th>' + (k === 'state' && P.counted ? '<th>In the count</th>' : '') + '</tr></thead><tbody>';
       shown.forEach(function (o) {
         t += '<tr' + (o.link ? ' class="go" tabindex="0" data-c="' + esc(o.link) + '"' : '') + '><td>' + esc(o.name) + '</td><td data-l="Provisional">' + fmt(o.n) + '</td><td data-l="Election Day">' + fmt(o.ed) + '</td>' +
-          '<td data-l="Photo ID"><b>' + fmt(o.id) + '</b></td><td data-l="ID info">' + fmt(o.num) + '</td></tr>';
+          '<td data-l="Photo ID"><b>' + fmt(o.id) + '</b></td><td data-l="ID info">' + fmt(o.num) + '</td>' +
+          (o.cnt !== null ? '<td data-l="In the count"' + (o.cnt ? '' : ' class="hi"') + '>' + (o.cnt ? fmt(o.cnt) : 'None yet') + '</td>' : '') + '</tr>';
       });
       t += '</tbody></table></div>';
       if (total > LIM) t += '<button type="button" class="more pl">' + (state.allPl ? 'Show fewer' : 'Show all ' + total) + '</button>';
-      return t + '<p class="note">' + (k === 'state' ? 'Select a county to see its precincts. ' : '') + 'Precinct is where the ballot was cast. Photo ID and ID info count pending ballots only.</p></div>';
+      return t + '<p class="note">' + (k === 'state' ? 'Select a county to see its precincts. ' : '') + 'Precinct is where the ballot was cast. Photo ID and ID info count pending ballots only.' + (k === 'state' && P.counted ? ' In the count: provisional votes the county has added to its U.S. Senate count; “None yet” in red means the county hasn’t added any.' : '') + '</p></div>';
     }
 
     function provListBlock() {

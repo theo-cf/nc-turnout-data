@@ -146,9 +146,10 @@
     y22: 'How far a district has moved toward or away from Democrats since the same point in 2022, relative to the rest of the state.',
     vl: 'How far tonight’s result is running ahead of or behind this district’s lean, given tonight’s statewide environment: (the district’s two-party margin − the statewide two-party margin) − 2 × its district lean. The statewide margin is the average of tonight’s statewide partisan races (U.S. Senate, Supreme Court and Court of Appeals). The lean is doubled to put it in margin points. Positive means the Democrat is running ahead of the lean; negative, behind it. Uses the unofficial count.',
     ov: 'Tonight’s result minus Harris’s 2024 margin over Trump: (Democrat − Republican tonight) − (Harris − Trump). Positive means the Democrat is running ahead of Harris’s margin; negative, behind it. It uses the unofficial count, so it will move as votes come in. Left blank where only one party has a candidate.',
+    prov: 'Provisional ballots that county boards have approved are added to the count as each county finishes reviewing them. This shows the provisional votes counted so far in this race, and how many provisional ballots voters in this district cast. Not every provisional ballot will count: in 2024, about 4 in 10 were counted in whole or in part.',
     res: 'The State Board of Elections’ unofficial count so far: the Democrat’s share of all votes in the race minus the Republican’s, with the share of precincts reporting. A check mark means the AP or another major news organization has called the race (the district’s card says which); a seat with only one candidate on the ballot is marked won.'
   };
-  var DLAB = { lean: 'District Lean', split: 'Party Split', pres: '2024 Presidential', pp: 'Performance vs. Presidential', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022', res: '2026 Results', ov: 'Over/Underperformance', vl: 'Performance vs. Lean' };
+  var DLAB = { lean: 'District Lean', split: 'Party Split', pres: '2024 Presidential', pp: 'Performance vs. Presidential', lp: 'Low-propensity margin', rg: 'Registration', vr: '2026 Results vs. Registration', y22: 'Compared to 2022', res: '2026 Results', prov: 'Provisional votes', ov: 'Over/Underperformance', vl: 'Performance vs. Lean' };
   var LAYERS = [   // max: points at which the color is fullest
     { k: 'res', name: '2026 Results', defs: ['res'], max: 20 },
     { k: 'ov', name: 'Over/Underperformance', defs: ['ov'], max: 15 },
@@ -423,6 +424,7 @@
       (r.cty.length ? '<p class="dl-cty">' + esc(r.cty.join(', ')) + (r.cty.length > 1 ? ' (largest parts)' : '') + '</p>' : '') +
       (cand.length ? '<ul class="dl-cand">' + cand.map(function (c) { return '<li><span class="dl-pty" style="background:' + (PCOL[c[1]] || '#6b6b6b') + '">' + esc(c[1]) + '</span><span' + (r.rw === c[1] ? ' class="dl-wn"' : '') + '>' + esc(c[0]) + (r.rw === c[1] ? ' ✓' : '') + '</span>' + (r.flip === c[1] ? flipTag(c[1], r.hold) : '') + (c[2] ? ' <span class="dl-inc">(incumbent)</span>' : '') + cv(r, c[1]) + '</li>'; }).join('') + (cand.every(function (c) { return !c[2]; }) ? '<li class="dl-inc">Open seat</li>' : '') + '</ul>' : '') +
       (r.res ? kv('2026 result' + qBtn('res') + '<span class="dl-sub">' + (r.res.by === 'unopposed' ? 'One candidate on the ballot' : r.rw ? 'Called by ' + esc(r.res.by) : 'Not called') + ' · ' + fmt(r.res.in) + ' of ' + fmt(r.res.of) + ' precincts</span>', r.rw ? esc(r.rw) + ' won' : r.rx ? esc(rxTxt(r)) : r.rm === null ? 'No votes yet' : dr(r.rm, 1), r.rw ? 'color:' + (PCOL[r.rw] || '#1a1a1a') : r.rx ? 'color:#4a4a4a' : col(r.rm)) : '') +
+      provKv(r, kv) +
       (hm === null ? '' : kv('2024 president' + qBtn('pres') + '<span class="dl-sub">Harris ' + r.h2.toFixed(1) + '% · Trump ' + (100 - r.h2).toFixed(1) + '% (two-party)</span>', hmTxt(hm))) +
       (r.res ? kv('Over/underperformance' + qBtn('ov') + '<span class="dl-sub">Tonight’s margin minus Harris’s</span>', r.ov === null ? '—' : gp(r.ov), col(r.ov)) : '') +
       (r.res ? kv('Performance vs. lean' + qBtn('vl') + '<span class="dl-sub">Vs. the statewide result' + (RES.st ? ' (D+' + RES.st.m.toFixed(1) + ')' : '') + ' and its lean</span>', r.vl === null ? '—' : gp(r.vl), col(r.vl)) : '') +
@@ -434,6 +436,24 @@
     card.querySelector('.dl-cx').onclick = function () { ST.pick = null; card.parentNode.removeChild(card); paint(); table(); };
   }
 
+  /* Provisional ballots: votes counted so far in this race, and ballots cast in the district (results.json pv, pc, pw). */
+  function provKv(r, kv) {
+    var x = r.res; if (!x || !x.pv || x.by === 'unopposed') return '';
+    var net = x.pv[0] - x.pv[1], both = x.c.some(function (c) { return c[1] === 'D'; }) && x.c.some(function (c) { return c[1] === 'R'; });
+    var sub = (both && x.pv[2] ? (net ? (net > 0 ? 'Democrats' : 'Republicans') + ' net +' + fmt(Math.abs(net)) : 'Even between the parties') + ' · ' : '') +
+      (x.pc ? fmt(x.pc) + ' cast by voters here' : '');
+    var h = kv('Provisional votes' + qBtn('prov') + (sub ? '<span class="dl-sub">' + sub + '</span>' : ''), x.pv[2] ? fmt(x.pv[2]) + ' counted' : 'None counted yet');
+    if (x.pw && !r.rw) {
+      var wc = RES.prov ? provWait(r) : null;
+      h += '<p class="dl-flip">' + fmt(x.pw) + ' provisional ' + (x.pw === 1 ? 'ballot was' : 'ballots were') + ' cast here in ' +
+        (wc && wc.n ? wc.t + ', which ' + (wc.n === 1 ? 'hasn’t' : 'haven’t') : 'counties that haven’t') + ' added provisional votes to the count yet. Not all of them will count.</p>';
+    }
+    return h;
+  }
+  function provWait(r) {   // which of this district's counties are still to count provisionals
+    var w = r.res.pwc || (RES.prov.wait || []).filter(function (c) { return r.cty.indexOf(c) >= 0; });
+    return { n: w.length, t: w.length === 1 ? w[0] + ' County' : w.slice(0, -1).join(', ') + ' and ' + w[w.length - 1] + ' counties' };
+  }
   function cv(r, p) {   // a candidate's votes and share in the card
     if (!r.res) return ''; var tot = 0, me = null; r.res.c.forEach(function (c) { tot += c[2]; if (c[1] === p) me = c; });
     return me && tot ? '<span class="dl-cv">' + fmt(me[2]) + ' · ' + (me[2] / tot * 100).toFixed(1) + '%</span>' : '';
@@ -532,8 +552,12 @@
         .concat(RES ? resCsv(r).concat([r.ov, r.vl]) : []); }), fname('data', 'csv'));
   }
 
-  function resHead() { return ['Winner', 'Winner party', 'Called by', '2026 result, unofficial count' + ' (pts, + = D)', 'Net votes, unofficial count (+ = D)', 'Precincts reporting', 'Precincts', 'Count as of', 'Seat held by (2025-26)', 'Flip']; }
-  function resCsv(r) { return r.res ? [r.rw ? candBy(r, r.rw) : '', r.rw || '', r.rw ? r.res.by : '', r.rm, r.rnv, r.res.in, r.res.of, RES.asof, r.hold || '', r.flip ? 'Yes' : ''] : ['', '', '', null, null, null, null, '', r.hold || '', '']; }
+  function resHead() { return ['Winner', 'Winner party', 'Called by', '2026 result, unofficial count' + ' (pts, + = D)', 'Net votes, unofficial count (+ = D)', 'Precincts reporting', 'Precincts', 'Count as of', 'Seat held by (2025-26)', 'Flip',
+    'Provisional votes counted', 'Provisional net votes (+ = D)', 'Provisional ballots cast in district', 'Cast in counties not yet counting provisionals']; }
+  function resCsv(r) {
+    var x = r.res, pv = x && x.pv ? [x.pv[2], x.pv[0] - x.pv[1], x.pc == null ? null : x.pc, x.pw == null ? null : x.pw] : [null, null, null, null];
+    return (x ? [r.rw ? candBy(r, r.rw) : '', r.rw || '', r.rw ? x.by : '', r.rm, r.rnv, x.in, x.of, RES.asof, r.hold || '', r.flip ? 'Yes' : ''] : ['', '', '', null, null, null, null, '', r.hold || '', '']).concat(pv);
+  }
   function tableCsv(rows) {   // the table as shown: its districts, columns, sort, units and As of now / Compared to 2022 setting
     var y22 = ST.y === '22', V = ST.u === 'votes', ks = tCols().slice(2);
     var unit = function (k) { return k === 'res' ? ' (unofficial count, pts, + = D)' : k === 'ov' ? ' (vs. Harris 2024 margin, pts, + = D ahead)' : k === 'vl' ? ' (vs. district lean, pts, + = D ahead)' : k === 'pres' ? ' (Harris minus Trump, pts, two-party)' : V && k !== 'lean' ? (k === 'rg' ? (y22 ? ' (change in net registered voters since 2022, + = D)' : ' (net registered voters, + = D)') : y22 ? ' (change in net votes since 2022, + = D)' : ' (net votes, + = D)') : (y22 && k !== 'lean' ? ' (change since 2022, pts, + = D)' : ' (pts, + = D)'); };

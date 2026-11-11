@@ -32,6 +32,25 @@ jobs:
         with:
           ref: results
           path: out
+      - name: Download the provisional and precinct results files (counts only are published)
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/p"
+          B=https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/2026_11_03
+          if curl -fsSL --retry 2 -o "$RUNNER_TEMP/p/provisional.txt" "$B/provisional_20261103.txt"; then
+            echo "PROV_FILE=$RUNNER_TEMP/p/provisional.txt" >> "$GITHUB_ENV"
+            echo "PROV_MODIFIED=$(curl -fsSI "$B/provisional_20261103.txt" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')" >> "$GITHUB_ENV"
+          fi
+          if curl -fsSL --retry 2 -o "$RUNNER_TEMP/p/pct.zip" "$B/results_pct_20261103.zip" && unzip -oq "$RUNNER_TEMP/p/pct.zip" -d "$RUNNER_TEMP/p/pct"; then
+            echo "RESULTS_PCT=$(find "$RUNNER_TEMP/p/pct" -iname '*.txt' | head -1)" >> "$GITHUB_ENV"
+            echo "RESULTS_PCT_MODIFIED=$(curl -fsSI "$B/results_pct_20261103.zip" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')" >> "$GITHUB_ENV"
+          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pandas
+        run: pip install pandas==2.2.3
       - name: Build results.json
         run: python3 -I main/build_results.py - out/calls.csv out/results.json
       - name: Publish
