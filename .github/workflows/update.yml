@@ -51,9 +51,12 @@ jobs:
             GO=true
           else
             TARGETS="337 737 1037"   # 5:37, 12:17, 17:17 in minutes after midnight
-            if [[ "$DAY" > "2026-11-13" ]]; then TARGETS="337"; fi
+            EARLY=0; LATE=55
+            # GitHub often fires scheduled runs ~50 minutes late and sometimes drops one, so the single daily
+            # run accepts 5:07-8:07 a.m. Both DST firings may go; a run with no new data commits nothing.
+            if [[ "$DAY" > "2026-11-13" ]]; then TARGETS="337"; EARLY=30; LATE=150; fi
             for T in $TARGETS; do
-              if [ $NOW -ge $T ] && [ $NOW -lt $((T + 55)) ]; then GO=true; fi
+              if [ $NOW -ge $((T - EARLY)) ] && [ $NOW -lt $((T + LATE)) ]; then GO=true; fi
             done
           fi
           echo "Eastern time now: $DAY $(TZ=America/New_York date +%H:%M); run: $GO"
