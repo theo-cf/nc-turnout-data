@@ -38,7 +38,7 @@ jobs:
         id: gate
         # Before Election Day and through the county canvass (Nov. 13): 5:37 a.m., 12:17 p.m. and 5:17 p.m.
         # Election night (7 p.m. Nov. 3 to 4:40 a.m. Nov. 4): every 20 minutes.
-        # Nov. 14-24 (to state certification): once a day, 5:37 a.m. After Nov. 24: no scheduled runs.
+        # Nov. 14-24 (to state certification): same three times, with wider windows. After Nov. 24: no scheduled runs.
         # Manual runs (Run workflow) always go ahead.
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
@@ -52,9 +52,10 @@ jobs:
           else
             TARGETS="337 737 1037"   # 5:37, 12:17, 17:17 in minutes after midnight
             EARLY=0; LATE=55
-            # GitHub often fires scheduled runs ~50 minutes late and sometimes drops one, so the single daily
-            # run accepts 5:07-8:07 a.m. Both DST firings may go; a run with no new data commits nothing.
-            if [[ "$DAY" > "2026-11-13" ]]; then TARGETS="337"; EARLY=30; LATE=150; fi
+            # GitHub often fires scheduled runs ~50-80 minutes late, and since Nov. 14 it has dropped nearly every
+            # morning cron, so after the canvass all three times are kept with windows 30 minutes early to
+            # 2.5 hours late. More than one firing may go; a run with no new data commits nothing.
+            if [[ "$DAY" > "2026-11-13" ]]; then EARLY=30; LATE=150; fi
             for T in $TARGETS; do
               if [ $NOW -ge $((T - EARLY)) ] && [ $NOW -lt $((T + LATE)) ]; then GO=true; fi
             done
